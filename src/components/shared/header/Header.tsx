@@ -1,8 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/cn";
-import { siteConfig } from "@/config/site";
-import Link from "next/link";
+import { BrandLogo } from "@/components/shared/brand/BrandLogo";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { DesktopNavigation } from "./DesktopNavigation";
@@ -45,18 +44,7 @@ export function Header() {
       style={{ "--header-height": "4rem" } as CSSProperties}
     >
       <div className="container-wide flex h-16 items-center justify-between gap-4">
-        <Link
-          href="/"
-          className={cn(
-            "text-label font-bold tracking-[0.12em] text-text-primary",
-            "transition-standard transition-colors hover:text-accent",
-            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-sm",
-          )}
-          aria-label={`${siteConfig.name} home`}
-          aria-current={isHome ? "page" : undefined}
-        >
-          {siteConfig.brandName}
-        </Link>
+        <BrandLogo aria-current={isHome ? "page" : undefined} />
 
         <DesktopNavigation />
 
