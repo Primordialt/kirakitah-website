@@ -20,6 +20,7 @@ import {
   IdentityReviewConflictError,
 } from "@/server/admin/registration/transitions";
 import { ParticipantSelectionError } from "@/server/tournament/participant-service";
+import { CompetitionOperationsError } from "@/server/tournament/competition/errors";
 
 export function adminJson(body: unknown, status: number, requestId: string) {
   return NextResponse.json(body, {
@@ -78,6 +79,19 @@ export async function withAdminApi(
         error.status,
         requestId,
       );
+    }
+    if (error instanceof CompetitionOperationsError) {
+      const code: ApiErrorCode =
+        error.code === "NOT_FOUND"
+          ? "NOT_FOUND"
+          : error.code === "CONFLICT" || error.code === "INVALID_TRANSITION" || error.code === "CAPACITY_REACHED"
+            ? "CONFLICT"
+            : error.code === "QUALIFICATION_RULES_NOT_CONFIGURED"
+              ? "VALIDATION_ERROR"
+              : error.code === "VALIDATION_ERROR"
+                ? "VALIDATION_ERROR"
+                : "INTERNAL_ERROR";
+      return adminJson(apiError(code, error.message), error.status, requestId);
     }
 
     const message =

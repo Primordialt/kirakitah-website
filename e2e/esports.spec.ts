@@ -42,7 +42,9 @@ test.describe("eSports experience", () => {
 test.describe("Registration", () => {
   test("minor age triggers guardian fields", async ({ page }) => {
     await page.goto("/esports/register");
-    await page.getByLabel("Date of birth").fill("2012-03-10");
+    const dob = page.getByLabel("Date of birth");
+    await dob.fill("2012-03-10");
+    await dob.blur();
     await expect(
       page.getByRole("group", { name: /IDENTITY VERIFICATION/i }),
     ).toBeVisible();

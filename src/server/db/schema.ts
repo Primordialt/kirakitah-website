@@ -218,6 +218,70 @@ export const adminAuditEventTypeEnum = pgEnum("admin_audit_event_type", [
   "PARTICIPANT_SELECTED",
   "PARTICIPANT_WITHDRAWN",
   "PARTICIPANT_DISQUALIFIED",
+  "PHASE_CREATED",
+  "PHASE_STARTED",
+  "PHASE_COMPLETED",
+  "MATCH_CREATED",
+  "MATCH_SCHEDULED",
+  "MATCH_RESULT_RECORDED",
+  "MATCH_RESULT_CORRECTED",
+  "MATCH_DISPUTED",
+  "MATCH_FORFEITED",
+  "QUALIFIER_ADVANCED",
+]);
+
+export const tournamentPhaseTypeEnum = pgEnum("tournament_phase_type", [
+  "qualification",
+  "knockout",
+  "final",
+]);
+
+export const tournamentPhaseStatusEnum = pgEnum("tournament_phase_status", [
+  "draft",
+  "scheduled",
+  "active",
+  "completed",
+  "cancelled",
+]);
+
+export const phaseParticipantStatusEnum = pgEnum("phase_participant_status", [
+  "active",
+  "qualified",
+  "eliminated",
+  "withdrawn",
+  "disqualified",
+]);
+
+export const matchStatusEnum = pgEnum("match_status", [
+  "scheduled",
+  "ready",
+  "live",
+  "completed",
+  "cancelled",
+  "disputed",
+  "forfeited",
+]);
+
+export const matchResultSourceEnum = pgEnum("match_result_source", [
+  "admin",
+  "player_report",
+  "integration",
+]);
+
+export const knockoutRoundTypeEnum = pgEnum("knockout_round_type", [
+  "round_of_32",
+  "round_of_16",
+  "quarterfinal",
+  "semifinal",
+  "grand_final",
+]);
+
+export const knockoutRoundStatusEnum = pgEnum("knockout_round_status", [
+  "draft",
+  "scheduled",
+  "active",
+  "completed",
+  "cancelled",
 ]);
 
 export const tournamentStatusEnum = pgEnum("tournament_status", [
@@ -261,6 +325,7 @@ export const tournaments = pgTable("tournaments", {
   eligibilityRules: jsonb("eligibility_rules")
     .$type<Record<string, unknown>>()
     .notNull(),
+  competitionRules: jsonb("competition_rules").$type<Record<string, unknown>>(),
   createdAt: timestamp("created_at", { withTimezone: true, mode: "string" })
     .notNull()
     .defaultNow(),
@@ -311,6 +376,8 @@ export const tournamentParticipants = pgTable(
       .notNull()
       .references(() => registrationApplications.id, { onDelete: "cascade" }),
     status: tournamentParticipantStatusEnum("status").notNull().default("selected"),
+    /** Safe public identifier — never expose DB UUID or application reference publicly. */
+    publicCode: text("public_code"),
     eligibilityEvaluationId: uuid("eligibility_evaluation_id")
       .notNull()
       .references(() => eligibilityEvaluations.id, { onDelete: "restrict" }),
@@ -338,10 +405,259 @@ export const tournamentParticipants = pgTable(
       table.tournamentId,
       table.applicationId,
     ),
+    uniqueIndex("tournament_participants_public_code_unique")
+      .on(table.publicCode)
+      .where(sql`${table.publicCode} IS NOT NULL`),
     index("tournament_participants_tournament_status_idx").on(
       table.tournamentId,
       table.status,
     ),
+  ],
+);
+
+export const tournamentPhases = pgTable(
+  "tournament_phases",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tournamentId: text("tournament_id")
+      .notNull()
+      .references(() => tournaments.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    slug: text("slug").notNull(),
+    phaseType: tournamentPhaseTypeEnum("phase_type").notNull(),
+    sequence: integer("sequence").notNull(),
+    status: tournamentPhaseStatusEnum("status").notNull().default("draft"),
+    participantLimit: integer("participant_limit"),
+    qualificationTarget: integer("qualification_target"),
+    startsAt: timestamp("starts_at", { withTimezone: true, mode: "string" }),
+    endsAt: timestamp("ends_at", { withTimezone: true, mode: "string" }),
+    rulesVersion: text("rules_version").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "string" })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true, mode: "string" })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("tournament_phases_tournament_slug_unique").on(
+      table.tournamentId,
+      table.slug,
+    ),
+    uniqueIndex("tournament_phases_tournament_sequence_unique").on(
+      table.tournamentId,
+      table.sequence,
+    ),
+    index("tournament_phases_tournament_status_idx").on(
+      table.tournamentId,
+      table.status,
+    ),
+  ],
+);
+
+export const tournamentPhaseParticipants = pgTable(
+  "tournament_phase_participants",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    phaseId: uuid("phase_id")
+      .notNull()
+      .references(() => tournamentPhases.id, { onDelete: "cascade" }),
+    participantId: uuid("participant_id")
+      .notNull()
+      .references(() => tournamentParticipants.id, { onDelete: "cascade" }),
+    status: phaseParticipantStatusEnum("status").notNull().default("active"),
+    seed: integer("seed"),
+    rank: integer("rank"),
+    qualificationPosition: integer("qualification_position"),
+    joinedAt: timestamp("joined_at", { withTimezone: true, mode: "string" })
+      .notNull()
+      .defaultNow(),
+    eliminatedAt: timestamp("eliminated_at", {
+      withTimezone: true,
+      mode: "string",
+    }),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "string" })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true, mode: "string" })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("tournament_phase_participants_phase_participant_unique").on(
+      table.phaseId,
+      table.participantId,
+    ),
+    index("tournament_phase_participants_phase_status_idx").on(
+      table.phaseId,
+      table.status,
+    ),
+  ],
+);
+
+export const knockoutRounds = pgTable(
+  "knockout_rounds",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    phaseId: uuid("phase_id")
+      .notNull()
+      .references(() => tournamentPhases.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    roundType: knockoutRoundTypeEnum("round_type").notNull(),
+    sequence: integer("sequence").notNull(),
+    participantCount: integer("participant_count").notNull(),
+    status: knockoutRoundStatusEnum("status").notNull().default("draft"),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "string" })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true, mode: "string" })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("knockout_rounds_phase_type_unique").on(
+      table.phaseId,
+      table.roundType,
+    ),
+    uniqueIndex("knockout_rounds_phase_sequence_unique").on(
+      table.phaseId,
+      table.sequence,
+    ),
+  ],
+);
+
+export const matches = pgTable(
+  "matches",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tournamentId: text("tournament_id")
+      .notNull()
+      .references(() => tournaments.id, { onDelete: "cascade" }),
+    phaseId: uuid("phase_id")
+      .notNull()
+      .references(() => tournamentPhases.id, { onDelete: "cascade" }),
+    knockoutRoundId: uuid("knockout_round_id").references(
+      () => knockoutRounds.id,
+      { onDelete: "set null" },
+    ),
+    participantAId: uuid("participant_a_id")
+      .notNull()
+      .references(() => tournamentParticipants.id, { onDelete: "restrict" }),
+    participantBId: uuid("participant_b_id")
+      .notNull()
+      .references(() => tournamentParticipants.id, { onDelete: "restrict" }),
+    scheduledAt: timestamp("scheduled_at", {
+      withTimezone: true,
+      mode: "string",
+    }),
+    status: matchStatusEnum("status").notNull().default("scheduled"),
+    authoritativeResultId: uuid("authoritative_result_id"),
+    rulesVersion: text("rules_version").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "string" })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true, mode: "string" })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index("matches_tournament_phase_status_idx").on(
+      table.tournamentId,
+      table.phaseId,
+      table.status,
+    ),
+  ],
+);
+
+export const matchResults = pgTable(
+  "match_results",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    matchId: uuid("match_id")
+      .notNull()
+      .references(() => matches.id, { onDelete: "cascade" }),
+    participantAScore: integer("participant_a_score").notNull(),
+    participantBScore: integer("participant_b_score").notNull(),
+    winnerParticipantId: uuid("winner_participant_id").references(
+      () => tournamentParticipants.id,
+      { onDelete: "set null" },
+    ),
+    isDraw: boolean("is_draw").notNull().default(false),
+    isAuthoritative: boolean("is_authoritative").notNull().default(true),
+    resultSource: matchResultSourceEnum("result_source")
+      .notNull()
+      .default("admin"),
+    recordedBy: text("recorded_by"),
+    recordedAt: timestamp("recorded_at", { withTimezone: true, mode: "string" })
+      .notNull()
+      .defaultNow(),
+    supersededAt: timestamp("superseded_at", {
+      withTimezone: true,
+      mode: "string",
+    }),
+    supersededByResultId: uuid("superseded_by_result_id"),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "string" })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index("match_results_match_authoritative_idx").on(
+      table.matchId,
+      table.isAuthoritative,
+    ),
+  ],
+);
+
+export const matchResultCorrections = pgTable("match_result_corrections", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  matchId: uuid("match_id")
+    .notNull()
+    .references(() => matches.id, { onDelete: "cascade" }),
+  originalResultId: uuid("original_result_id")
+    .notNull()
+    .references(() => matchResults.id, { onDelete: "restrict" }),
+  correctedResultId: uuid("corrected_result_id")
+    .notNull()
+    .references(() => matchResults.id, { onDelete: "restrict" }),
+  reason: text("reason").notNull(),
+  actorId: text("actor_id").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true, mode: "string" })
+    .notNull()
+    .defaultNow(),
+});
+
+export const qualificationStandings = pgTable(
+  "qualification_standings",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    phaseId: uuid("phase_id")
+      .notNull()
+      .references(() => tournamentPhases.id, { onDelete: "cascade" }),
+    participantId: uuid("participant_id")
+      .notNull()
+      .references(() => tournamentParticipants.id, { onDelete: "cascade" }),
+    played: integer("played").notNull().default(0),
+    wins: integer("wins").notNull().default(0),
+    draws: integer("draws").notNull().default(0),
+    losses: integer("losses").notNull().default(0),
+    points: integer("points").notNull().default(0),
+    goalsFor: integer("goals_for").notNull().default(0),
+    goalsAgainst: integer("goals_against").notNull().default(0),
+    goalDifference: integer("goal_difference").notNull().default(0),
+    rank: integer("rank"),
+    rebuiltAt: timestamp("rebuilt_at", { withTimezone: true, mode: "string" })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true, mode: "string" })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("qualification_standings_phase_participant_unique").on(
+      table.phaseId,
+      table.participantId,
+    ),
+    index("qualification_standings_phase_rank_idx").on(table.phaseId, table.rank),
   ],
 );
 

@@ -317,11 +317,11 @@ describe("tournament admin permissions", () => {
   });
 
   it("denies support tournament mutation permissions", () => {
-    expect(roleHasPermission("SUPPORT", "tournament:view")).toBe(false);
     expect(roleHasPermission("SUPPORT", "tournament:eligibility")).toBe(false);
     expect(roleHasPermission("SUPPORT", "tournament:participant_select")).toBe(
       false,
     );
+    expect(roleHasPermission("SUPPORT", "tournament:result_record")).toBe(false);
   });
 });
 

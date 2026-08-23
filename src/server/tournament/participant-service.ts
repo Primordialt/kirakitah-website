@@ -253,6 +253,10 @@ export async function selectParticipant(input: {
   const selectedAt = new Date().toISOString();
 
   const evaluationId = await persistEligibilitySnapshot(evaluation, "admin");
+  const { allocatePublicParticipantCode } = await import(
+    "@/server/tournament/competition/public-code"
+  );
+  const publicCode = await allocatePublicParticipantCode(input.tournamentId);
 
   try {
     const [participant] = await db
@@ -261,6 +265,7 @@ export async function selectParticipant(input: {
         tournamentId: input.tournamentId,
         applicationId: loaded.application.id,
         status: "selected",
+        publicCode,
         eligibilityEvaluationId: evaluationId,
         selectedAt,
       })
