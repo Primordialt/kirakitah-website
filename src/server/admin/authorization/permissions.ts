@@ -22,6 +22,11 @@ export const ADMIN_PERMISSIONS = [
   "photo:view",
   "audit:view",
   "admin:manage",
+  "tournament:view",
+  "tournament:eligibility",
+  "tournament:participant_select",
+  "tournament:participant_withdraw",
+  "tournament:participant_disqualify",
 ] as const;
 
 export type AdminPermission = (typeof ADMIN_PERMISSIONS)[number];
@@ -39,6 +44,11 @@ const ROLE_PERMISSIONS: Record<AdminRole, readonly AdminPermission[]> = {
     "photo:view",
     "audit:view",
     "admin:manage",
+    "tournament:view",
+    "tournament:eligibility",
+    "tournament:participant_select",
+    "tournament:participant_withdraw",
+    "tournament:participant_disqualify",
   ],
   TOURNAMENT_ADMIN: [
     "dashboard:view",
@@ -47,6 +57,11 @@ const ROLE_PERMISSIONS: Record<AdminRole, readonly AdminPermission[]> = {
     "applications:status",
     "identity:view_masked",
     "audit:view",
+    "tournament:view",
+    "tournament:eligibility",
+    "tournament:participant_select",
+    "tournament:participant_withdraw",
+    "tournament:participant_disqualify",
   ],
   REVIEWER: [
     "dashboard:view",
@@ -58,6 +73,8 @@ const ROLE_PERMISSIONS: Record<AdminRole, readonly AdminPermission[]> = {
     "guardian:view",
     "photo:view",
     "audit:view",
+    "tournament:view",
+    "tournament:eligibility",
   ],
   SUPPORT: [
     "dashboard:view",

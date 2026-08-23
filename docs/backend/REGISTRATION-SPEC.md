@@ -1,6 +1,6 @@
 # Registration Backend — Specification
 
-**Status:** Implemented through Step 4 (contact verification + admin foundation)  
+**Status:** Implemented through Step 6 (tournament eligibility foundation)  
 **Stack:** Neon PostgreSQL + Vercel Blob (private)  
 **Depends on:** Backend Steps 1–3A  
 **Frontend route:** `/esports/register`  
@@ -217,5 +217,20 @@ Mock path remains for local development and tests.
 Identity remains manual. Email/phone verification never auto-approves applications.
 
 See `docs/backend/VERIFICATION-ARCHITECTURE.md`.
-- E2E: full form submit against API mode (CI with test DB or mocked storage)
-- Security: confirm guardian not in any public GET response
+
+---
+
+## Step 6 — Tournament eligibility & participation
+
+Registration applications remain separate from tournament participants. Eligibility is evaluated on demand; admin selection creates a participant record with an eligibility snapshot.
+
+| Capability | Status |
+|------------|--------|
+| Tournament entity (`tournaments`) | IMPLEMENTED |
+| Eligibility engine (`kg926-v1`) | IMPLEMENTED |
+| Participant records + unique constraint | IMPLEMENTED |
+| Eligibility snapshots | IMPLEMENTED |
+| Admin eligibility API + UI | IMPLEMENTED |
+| Automatic selection / qualification | FUTURE (Step 7) |
+
+See `docs/backend/TOURNAMENT-ELIGIBILITY.md`.

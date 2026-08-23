@@ -75,6 +75,12 @@ export function AdminShell({
             >
               Audit
             </Link>
+            <Link
+              className="hover:text-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-border-focus"
+              href="/admin/tournaments/participants"
+            >
+              Participants
+            </Link>
             <AdminLogoutButton />
           </nav>
         </div>

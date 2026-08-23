@@ -1,6 +1,6 @@
 # KIRAKITAH Backend — Architecture & Foundation Audit
 
-**Phase:** Backend Steps 1–4 (registration + contact verification + admin foundation)  
+**Phase:** Backend Steps 1–6 (registration + verification + admin + tournament eligibility)  
 **Date:** August 23, 2026  
 **Repository:** [kirakitah-website](https://github.com/Primordialt/kirakitah-website)  
 **Deployment:** Vercel (Next.js 15 App Router, Node 22, region `iad1`)
@@ -11,11 +11,13 @@
 
 The KIRAKITAH frontend is production-ready with a **service abstraction layer**. Registration now has a real Neon + Blob backend, manual identity review, and email/phone ownership verification challenges.
 
-**Today:** Registration API implemented; contact verification lifecycle implemented; identity remains manual (`pending_review`). Admin dashboard is **not** built — only server-side repository boundaries exist.
+**Today:** Registration API, contact verification, manual identity review, secure admin reviewer workflow, and tournament eligibility/participation foundation are implemented.
 
-**Next implementation priority:** **Backend Step 6 — Tournament Operations & Registration Eligibility**.
+**Next implementation priority:** **Backend Step 7 — Tournament Qualification & Competition Operations**.
 
 Admin reviewer workflow (Step 5) is implemented with production auth **PENDING PROVIDER**.
+
+Tournament eligibility (Step 6) is documented in [TOURNAMENT-ELIGIBILITY.md](./TOURNAMENT-ELIGIBILITY.md).
 
 This document audits the frontend foundations and tracks backend architecture evolution.
 

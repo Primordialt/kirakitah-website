@@ -2,6 +2,7 @@ import { sql } from "drizzle-orm";
 import {
   boolean,
   date,
+  index,
   integer,
   jsonb,
   pgEnum,
@@ -213,7 +214,136 @@ export const adminAuditEventTypeEnum = pgEnum("admin_audit_event_type", [
   "SENSITIVE_IDENTITY_VIEWED",
   "GUARDIAN_DATA_VIEWED",
   "PLAYER_PHOTO_VIEWED",
+  "ELIGIBILITY_EVALUATED",
+  "PARTICIPANT_SELECTED",
+  "PARTICIPANT_WITHDRAWN",
+  "PARTICIPANT_DISQUALIFIED",
 ]);
+
+export const tournamentStatusEnum = pgEnum("tournament_status", [
+  "draft",
+  "registration_open",
+  "registration_closed",
+  "qualification",
+  "knockout",
+  "completed",
+  "cancelled",
+]);
+
+export const tournamentParticipantStatusEnum = pgEnum("tournament_participant_status", [
+  "selected",
+  "withdrawn",
+  "disqualified",
+]);
+
+export const tournaments = pgTable("tournaments", {
+  id: text("id").primaryKey(),
+  slug: text("slug").notNull().unique(),
+  name: text("name").notNull(),
+  game: text("game").notNull(),
+  edition: text("edition").notNull(),
+  description: text("description"),
+  format: text("format"),
+  status: tournamentStatusEnum("status").notNull().default("draft"),
+  registrationStart: timestamp("registration_start", {
+    withTimezone: true,
+    mode: "string",
+  }),
+  registrationDeadline: timestamp("registration_deadline", {
+    withTimezone: true,
+    mode: "string",
+  }),
+  commencementDate: date("commencement_date"),
+  targetParticipantCount: integer("target_participant_count"),
+  qualificationTarget: integer("qualification_target"),
+  prizeInfo: text("prize_info"),
+  eligibilityRulesVersion: text("eligibility_rules_version").notNull(),
+  eligibilityRules: jsonb("eligibility_rules")
+    .$type<Record<string, unknown>>()
+    .notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true, mode: "string" })
+    .notNull()
+    .defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true, mode: "string" })
+    .notNull()
+    .defaultNow(),
+});
+
+export const eligibilityEvaluations = pgTable(
+  "eligibility_evaluations",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tournamentId: text("tournament_id")
+      .notNull()
+      .references(() => tournaments.id, { onDelete: "cascade" }),
+    applicationId: uuid("application_id")
+      .notNull()
+      .references(() => registrationApplications.id, { onDelete: "cascade" }),
+    participantId: uuid("participant_id"),
+    rulesVersion: text("rules_version").notNull(),
+    eligible: boolean("eligible").notNull(),
+    reasonCodes: jsonb("reason_codes").$type<string[]>().notNull(),
+    evaluatedRequirements: jsonb("evaluated_requirements")
+      .$type<Record<string, boolean | string | number | null>>()
+      .notNull(),
+    evaluatorType: text("evaluator_type").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "string" })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index("eligibility_evaluations_tournament_application_idx").on(
+      table.tournamentId,
+      table.applicationId,
+      table.createdAt,
+    ),
+  ],
+);
+
+export const tournamentParticipants = pgTable(
+  "tournament_participants",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tournamentId: text("tournament_id")
+      .notNull()
+      .references(() => tournaments.id, { onDelete: "cascade" }),
+    applicationId: uuid("application_id")
+      .notNull()
+      .references(() => registrationApplications.id, { onDelete: "cascade" }),
+    status: tournamentParticipantStatusEnum("status").notNull().default("selected"),
+    eligibilityEvaluationId: uuid("eligibility_evaluation_id")
+      .notNull()
+      .references(() => eligibilityEvaluations.id, { onDelete: "restrict" }),
+    selectedAt: timestamp("selected_at", { withTimezone: true, mode: "string" })
+      .notNull()
+      .defaultNow(),
+    withdrawnAt: timestamp("withdrawn_at", {
+      withTimezone: true,
+      mode: "string",
+    }),
+    disqualifiedAt: timestamp("disqualified_at", {
+      withTimezone: true,
+      mode: "string",
+    }),
+    disqualificationReason: text("disqualification_reason"),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "string" })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true, mode: "string" })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("tournament_participants_tournament_application_unique").on(
+      table.tournamentId,
+      table.applicationId,
+    ),
+    index("tournament_participants_tournament_status_idx").on(
+      table.tournamentId,
+      table.status,
+    ),
+  ],
+);
 
 export const adminUsers = pgTable("admin_users", {
   id: uuid("id").primaryKey().defaultRandom(),

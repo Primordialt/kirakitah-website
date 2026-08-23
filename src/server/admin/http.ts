@@ -19,6 +19,7 @@ import {
   ApplicationStatusTransitionError,
   IdentityReviewConflictError,
 } from "@/server/admin/registration/transitions";
+import { ParticipantSelectionError } from "@/server/tournament/participant-service";
 
 export function adminJson(body: unknown, status: number, requestId: string) {
   return NextResponse.json(body, {
@@ -60,6 +61,23 @@ export async function withAdminApi(
       error instanceof ApplicationStatusTransitionError
     ) {
       return adminJson(apiError("CONFLICT", error.message), 409, requestId);
+    }
+    if (error instanceof ParticipantSelectionError) {
+      const code: ApiErrorCode =
+        error.code === "NOT_FOUND"
+          ? "NOT_FOUND"
+          : error.code === "NOT_ELIGIBLE"
+            ? "VALIDATION_ERROR"
+            : error.code === "CONFLICT"
+              ? "CONFLICT"
+              : error.code === "VALIDATION_ERROR"
+                ? "VALIDATION_ERROR"
+                : "INTERNAL_ERROR";
+      return adminJson(
+        apiError(code, error.message),
+        error.status,
+        requestId,
+      );
     }
 
     const message =

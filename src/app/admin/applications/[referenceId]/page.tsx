@@ -5,9 +5,11 @@ import {
   IdentityReviewActions,
   RevealIdentityButton,
 } from "@/components/admin/ApplicationReviewActions";
+import { TournamentEligibilityPanel } from "@/components/admin/TournamentEligibilityPanel";
 import { getAdminApplicationDetail } from "@/server/admin/registration/service";
 import { roleHasPermission } from "@/server/admin/authorization/permissions";
 import { isRegistrationBackendConfigured } from "@/server/env";
+import { getParticipantForApplicationReference } from "@/server/tournament/participant-lookup";
 
 export default async function AdminApplicationDetailPage({
   params,
@@ -41,6 +43,10 @@ export default async function AdminApplicationDetailPage({
   const canReveal = roleHasPermission(session.user.role, "identity:reveal");
   const canReview = roleHasPermission(session.user.role, "identity:review");
   const canStatus = roleHasPermission(session.user.role, "applications:status");
+  const canEvaluate = roleHasPermission(session.user.role, "tournament:eligibility");
+  const canSelect = roleHasPermission(session.user.role, "tournament:participant_select");
+
+  const participant = await getParticipantForApplicationReference(detail.referenceId);
 
   return (
     <AdminShell session={session}>
@@ -234,6 +240,13 @@ export default async function AdminApplicationDetailPage({
           referenceId={detail.referenceId}
           currentStatus={detail.status}
           canChange={canStatus}
+        />
+        <TournamentEligibilityPanel
+          referenceId={detail.referenceId}
+          canEvaluate={canEvaluate}
+          canSelect={canSelect}
+          initialParticipantId={participant?.participantId}
+          initialParticipantStatus={participant?.status}
         />
       </div>
     </AdminShell>
