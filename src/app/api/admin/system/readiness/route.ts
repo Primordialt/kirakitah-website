@@ -5,7 +5,9 @@ export const runtime = "nodejs";
 
 /**
  * Authenticated launch readiness diagnostics.
- * Never exposes secrets. Requires dashboard:view.
+ * Requires dashboard:view. Never exposes secrets or applicant PII.
+ *
+ * Check statuses: CONFIGURED | NOT_CONFIGURED | ERROR | PENDING_PRODUCT_DECISION
  */
 export async function GET(request: Request) {
   return withAdminApi(request, "dashboard:view", async (_session, requestId) => {

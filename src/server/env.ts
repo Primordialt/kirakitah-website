@@ -167,11 +167,10 @@ export function isPhoneDeliveryConfigured(): boolean {
   );
 }
 
+/**
+ * Env credentials alone are insufficient while HttpAdminAuthProvider is a stub.
+ * See HTTP_ADMIN_AUTH_IMPLEMENTED in launch-readiness.ts.
+ */
 export function isAdminAuthConfigured(): boolean {
-  return (
-    serverEnv.adminAuthProvider === "http" &&
-    Boolean(serverEnv.adminSessionSecret) &&
-    Boolean(serverEnv.adminAuthApiUrl) &&
-    Boolean(serverEnv.adminAuthApiKey)
-  );
+  return false;
 }

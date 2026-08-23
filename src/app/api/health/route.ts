@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 /**
  * Liveness + safe configuration snapshot for operations.
  * Does not expose secrets, tokens, URLs with credentials, or encryption keys.
+ * Does not call paid email/SMS providers.
  */
 export async function GET() {
   const snapshot = getPublicHealthSnapshot();
@@ -11,17 +12,17 @@ export async function GET() {
   return NextResponse.json(
     {
       status: "ok",
-      phase: "production-registration-readiness",
+      phase: "production-launch-verification",
       competition: "KIRAKITAH GAMING 926",
       databaseConfigured: snapshot.databaseConfigured,
       blobConfigured: snapshot.blobConfigured,
       registrationConfigured: snapshot.registrationConfigured,
-      emailVerificationConfigured: snapshot.emailVerificationConfigured,
-      phoneVerificationConfigured: snapshot.phoneVerificationConfigured,
+      emailConfigured: snapshot.emailConfigured,
+      phoneConfigured: snapshot.phoneConfigured,
+      adminConfigured: snapshot.adminConfigured,
       identityVerificationMode: snapshot.identityVerificationMode,
-      adminAuthConfigured: snapshot.adminAuthConfigured,
       dataSource: snapshot.dataSource,
-      launchGateHint: snapshot.launchGate,
+      launchGateHint: snapshot.launchGateHint,
       automatedNinLookupEnabled: false,
       contactVerification: {
         mockAllowedInProduction: false,

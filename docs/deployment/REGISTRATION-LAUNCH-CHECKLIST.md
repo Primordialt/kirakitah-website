@@ -1,65 +1,59 @@
 # Registration launch checklist — KIRAKITAH GAMING 926
 
-Competition brand: **KIRAKITAH GAMING 926** (not “2026”). Commencement: **14 September 2026**.
+Competition: **KIRAKITAH GAMING 926** (not “2026”). Commencement: **14 September 2026**.  
+Identity: **manual review only**.
 
-Identity verification: **MANUAL ONLY**.
+Only check a box after a human verifies it in the real Production environment.
 
-## Launch gate states
+## INFRASTRUCTURE
 
-- `REGISTRATION_NOT_READY`
-- `REGISTRATION_READY`
+- [ ] Neon production database exists
+- [ ] Correct migrations applied (`0000` → `0010`)
+- [ ] Vercel Blob configured (private)
+- [ ] Encryption key configured (valid 64 hex)
 
-Do not infer readiness from a green CI build alone.
+## PROVIDERS
 
-## External blockers (typical)
+- [ ] Email provider configured
+- [ ] Email delivery tested with synthetic mailbox (**EMAIL DELIVERY unblocked**)
+- [ ] SMS provider configured
+- [ ] SMS delivery tested with synthetic phone (**SMS DELIVERY unblocked**)
+- [ ] Admin auth provider configured and login tested (**ADMIN AUTH unblocked**)
 
-| Dependency | Status until configured |
-|------------|-------------------------|
-| Real email provider credentials | EMAIL DELIVERY = BLOCKED |
-| Real SMS provider credentials | SMS DELIVERY = BLOCKED |
-| Real admin auth provider | ADMIN AUTH = BLOCKED |
-| Neon production migrations through 0010 | MIGRATIONS = BLOCKED |
-| Vercel Production env: `NEXT_PUBLIC_DATA_SOURCE=api` + secrets | CONFIG = BLOCKED |
+## VERCEL
 
-## Production test matrix
+- [ ] Production env vars configured
+- [ ] Production data source = `api`
+- [ ] Node 22
+- [ ] Production deployment successful
 
-Use synthetic test applicants only. Never use real people’s NIN/passport/photos.
+## SECURITY
 
-| # | Test | Expected |
-|---|------|----------|
-| 1 | Valid adult registration | Application persisted; reference `KG926-…`; identity `pending_review` |
-| 2 | Minor registration | Guardian required + stored |
-| 3 | Invalid email | `VALIDATION_ERROR` |
-| 4 | Duplicate email | `DUPLICATE_EMAIL` |
-| 5 | Duplicate phone | `DUPLICATE_PHONE` |
-| 6 | Duplicate NIN | `DUPLICATE_IDENTITY` |
-| 7 | Duplicate passport | `DUPLICATE_IDENTITY` |
-| 8 | Invalid NIN format | validation error |
-| 9 | Invalid passport format | validation error |
-| 10 | Oversized photo | `PHOTO_TOO_LARGE` |
-| 11 | Invalid photo file / magic mismatch | `PHOTO_INVALID` |
-| 12 | Email OTP success | email verified |
-| 13 | Email OTP incorrect | controlled verification error |
-| 14 | Email OTP expired | controlled verification error |
-| 15 | Email OTP max attempts | controlled verification error |
-| 16 | Email resend cooldown | cooldown / rate limit |
-| 17 | Phone OTP success | phone verified |
-| 18 | Phone OTP incorrect | controlled verification error |
-| 19 | Phone resend cooldown | cooldown / rate limit |
-| 20 | Identity enters manual review | `pending_review`, provider `manual` |
-| 21 | Admin identity approval | identity approved; application not auto-verified |
-| 22 | Admin identity rejection | explicit rejection + audit |
-| 23 | Application status transition | audited transition |
-| 24 | Eligibility evaluation | separate from identity |
-| 25 | Participant selection | separate from application received |
+- [ ] No secrets in repository
+- [ ] No mock providers in production
+- [ ] Admin protected (auth + CSRF + RBAC)
+- [ ] Registration API fail-closed when misconfigured
+- [ ] PII not exposed in public APIs / logs
+- [ ] Photos private
 
-## Product / legal pending
+## TESTING
 
-- Capacity auto-reject at 128: **CAPACITY_POLICY_PENDING** (do not invent waitlist).
-- Data retention periods: **PENDING_PRODUCT_LEGAL_POLICY**.
-- Guardian OTP: future Product Owner decision (not inventing requirements).
-- Privacy Policy: if placeholder, do not claim legal compliance — update content with counsel.
+- [ ] Adult registration tested
+- [ ] Minor registration tested
+- [ ] Email verification tested
+- [ ] Phone verification tested
+- [ ] Duplicate protections tested
+- [ ] Manual identity review tested
+- [ ] Admin workflow tested
 
-## Rate limiting note
+## LAUNCH
 
-Registration rate limits are database-backed application checks (email/IP). This is **not** a full distributed edge / DDoS protector.
+- [ ] Health check passes (safe booleans)
+- [ ] Readiness check passes (all required = `CONFIGURED`)
+- [ ] Launch gate = `REGISTRATION_READY`
+- [ ] Tournament status intentionally `registration_open`
+- [ ] Product decisions recorded (see `PRODUCT-DECISIONS-BEFORE-LAUNCH.md`)
+
+Only then:
+
+- [ ] **PUBLIC REGISTRATION OPENED**
