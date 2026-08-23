@@ -8,6 +8,10 @@ import {
   listTournamentPhases,
 } from "@/server/tournament/competition/phase-service";
 import { parseCompetitionRules } from "@/server/tournament/competition/competition-rules";
+import {
+  ensureQualificationPods,
+  getQualificationDashboard,
+} from "@/server/tournament/qualification/pod-service";
 
 export default async function AdminTournamentDetailPage({
   params,
@@ -32,6 +36,8 @@ export default async function AdminTournamentDetailPage({
   const rules = parseCompetitionRules(tournament.competitionRules);
   const knockout = phases.find((phase) => phase.slug === "knockout");
   const rounds = knockout ? await listKnockoutRounds(knockout.id) : [];
+  await ensureQualificationPods(tournamentId);
+  const qualificationDashboard = await getQualificationDashboard(tournamentId);
 
   return (
     <AdminShell session={session}>
@@ -48,16 +54,41 @@ export default async function AdminTournamentDetailPage({
       <section className="mt-6 rounded-xl border border-border bg-surface-elevated p-4">
         <h2 className="text-h3">Competition rules</h2>
         <p className="mt-2 text-body-sm text-text-secondary">
-          Version {rules.rulesVersion}. Qualification scoring, pairing, and
-          advancement are explicitly pending Product Owner decisions.
+          Version {rules.rulesVersion}. Qualification uses 32 single-elimination
+          pods (128 → 32). Knockout seeding and pairing remain pending Product
+          Owner decisions.
         </p>
         <ul className="mt-3 list-disc space-y-1 pl-5 text-body-sm">
-          <li>Qualification scoring: {rules.qualification.scoring}</li>
-          <li>Qualification pairing: {rules.qualification.pairing}</li>
-          <li>Qualification advancement: {rules.qualification.advancement}</li>
+          <li>Qualification format: {rules.qualification.format}</li>
+          <li>Pods: {rules.qualification.podCount} × {rules.qualification.positionsPerPod} positions</li>
+          <li>Qualifiers: {rules.qualification.qualificationTarget}</li>
+          <li>Assignment: {rules.qualification.assignmentMode}</li>
+          <li>Tie resolution: {rules.qualification.tieResolution} (PENDING PRODUCT DECISION)</li>
           <li>Knockout seeding: {rules.knockout.seeding}</li>
           <li>Knockout pairing: {rules.knockout.pairing}</li>
         </ul>
+      </section>
+
+      <section className="mt-6 rounded-xl border border-border bg-surface-elevated p-4">
+        <h2 className="text-h3">Qualification progress</h2>
+        <p className="mt-2 text-body-sm text-text-secondary">
+          {qualificationDashboard.totalParticipants} / {qualificationDashboard.targetParticipants}{" "}
+          participants · {qualificationDashboard.totalPods} / {qualificationDashboard.targetPods}{" "}
+          pods · {qualificationDashboard.qualifiersProduced} / {qualificationDashboard.targetQualifiers}{" "}
+          qualifiers
+        </p>
+        <ul className="mt-3 space-y-1 text-body-sm text-text-muted">
+          <li>Pods filled: {qualificationDashboard.podsFilled}</li>
+          <li>Pods active: {qualificationDashboard.podsActive}</li>
+          <li>Pods completed: {qualificationDashboard.podsCompleted}</li>
+          <li>Remaining qualifiers: {qualificationDashboard.remainingQualifiers}</li>
+        </ul>
+        <Link
+          href={`/admin/tournaments/${tournamentId}/qualification`}
+          className="mt-3 inline-block text-accent underline"
+        >
+          Manage qualification
+        </Link>
       </section>
 
       <section className="mt-6 rounded-xl border border-border bg-surface-elevated p-4">

@@ -1,6 +1,7 @@
-import { and, eq } from "drizzle-orm";
+import { and, count, eq } from "drizzle-orm";
 import { getDb } from "@/server/db";
 import {
+  qualificationPods,
   tournamentPhaseParticipants,
   tournamentPhases,
   tournaments,
@@ -9,35 +10,43 @@ import type { AdminRole } from "@/server/admin/authorization/permissions";
 import { recordAdminAuditEvent } from "@/server/admin/audit/record";
 import { CompetitionOperationsError } from "@/server/tournament/competition/errors";
 import {
-  isQualificationAdvancementConfigured,
+  KG926_QUALIFICATION_POD_COUNT,
+  KG926_QUALIFICATION_TARGET,
   parseCompetitionRules,
 } from "@/server/tournament/competition/competition-rules";
-import { listQualificationStandings } from "@/server/tournament/competition/standings-service";
-import { addParticipantToPhase } from "@/server/tournament/competition/phase-service";
+import {
+  advanceAllPodWinnersToTop32,
+  advancePodWinnerToTop32,
+} from "@/server/tournament/qualification/match-engine";
+import {
+  getQualificationPhase,
+  isQualificationPhaseComplete,
+  listQualificationPods,
+} from "@/server/tournament/qualification/pod-service";
 
 /**
- * Advances qualifiers from qualification → knockout.
- * Ranking/tie-break/advancement mechanics are PENDING PRODUCT DECISION.
+ * Advances pod winners from qualification → knockout (KIRAKITAH TOP 32).
+ * Qualifiers are derived from completed qualification pods — not standings.
  */
 export async function advanceQualifiers(input: {
   tournamentId: string;
   actorId: string;
   actorRole: AdminRole;
   requestId?: string;
-  /**
-   * Explicit ordered participant IDs when Product Owner provides a finalized ranking.
-   * Without configured advancement rules AND without explicit ranking, returns not-configured.
-   */
+  /** Legacy override — explicit ordered participant IDs when admin supplies a finalized list */
   explicitRankingParticipantIds?: string[];
 }): Promise<
   | {
-      code: "QUALIFICATION_RULES_NOT_CONFIGURED";
+      code: "QUALIFICATION_INCOMPLETE";
       message: string;
+      completedPods: number;
+      requiredPods: number;
     }
   | {
       advanced: number;
       knockoutPhaseId: string;
       alreadyAdvanced: boolean;
+      skipped?: number;
     }
 > {
   const db = getDb();
@@ -52,17 +61,7 @@ export async function advanceQualifiers(input: {
   }
 
   const rules = parseCompetitionRules(tournament.competitionRules);
-
-  const [qualificationPhase] = await db
-    .select()
-    .from(tournamentPhases)
-    .where(
-      and(
-        eq(tournamentPhases.tournamentId, input.tournamentId),
-        eq(tournamentPhases.slug, "qualification"),
-      ),
-    )
-    .limit(1);
+  const target = rules.qualification.qualificationTarget;
 
   const [knockoutPhase] = await db
     .select()
@@ -75,95 +74,70 @@ export async function advanceQualifiers(input: {
     )
     .limit(1);
 
-  if (!qualificationPhase || !knockoutPhase) {
-    throw new CompetitionOperationsError(
-      "Qualification or knockout phase not found.",
-      "NOT_FOUND",
-      404,
-    );
+  if (!knockoutPhase) {
+    throw new CompetitionOperationsError("Knockout phase not found.", "NOT_FOUND", 404);
   }
 
-  const existingKnockoutMembers = await db
-    .select({ id: tournamentPhaseParticipants.id })
+  const [existingKnockoutCount] = await db
+    .select({ value: count() })
     .from(tournamentPhaseParticipants)
-    .where(eq(tournamentPhaseParticipants.phaseId, knockoutPhase.id))
-    .limit(1);
+    .where(eq(tournamentPhaseParticipants.phaseId, knockoutPhase.id));
 
-  if (existingKnockoutMembers.length > 0) {
+  if (Number(existingKnockoutCount?.value ?? 0) >= target) {
     return {
-      advanced: existingKnockoutMembers.length,
+      advanced: Number(existingKnockoutCount?.value ?? 0),
       knockoutPhaseId: knockoutPhase.id,
       alreadyAdvanced: true,
     };
   }
 
-  const target = rules.qualification.qualificationTarget;
-
-  if (
-    !isQualificationAdvancementConfigured(rules) &&
-    !input.explicitRankingParticipantIds
-  ) {
-    return {
-      code: "QUALIFICATION_RULES_NOT_CONFIGURED",
-      message:
-        "Qualification advancement is PENDING PRODUCT DECISION. Provide an explicit finalized ranking or configure advancement rules.",
-    };
-  }
-
-  let orderedIds = input.explicitRankingParticipantIds;
-
-  if (!orderedIds) {
-    const standings = await listQualificationStandings(qualificationPhase.id);
-    if (standings.length < target) {
-      throw new CompetitionOperationsError(
-        "Insufficient standings to advance qualifiers.",
-        "VALIDATION_ERROR",
-        400,
-      );
-    }
-    orderedIds = standings.slice(0, target).map((row) => row.participantId);
-  }
-
-  if (orderedIds.length < target) {
+  if (input.explicitRankingParticipantIds?.length) {
     throw new CompetitionOperationsError(
-      `Advancement requires ${target} participants.`,
+      "Explicit ranking override is not supported for pod-based qualification. Advance pod winners individually or use bulk Top 32 advancement.",
       "VALIDATION_ERROR",
       400,
     );
   }
 
-  const toAdvance = orderedIds.slice(0, target);
-  let advanced = 0;
+  const phase = await getQualificationPhase(input.tournamentId);
+  const pods = await listQualificationPods(input.tournamentId);
 
-  for (let index = 0; index < toAdvance.length; index += 1) {
-    const participantId = toAdvance[index];
-    const result = await addParticipantToPhase({
-      phaseId: knockoutPhase.id,
-      participantId,
-      actorId: input.actorId,
-      actorRole: input.actorRole,
-      requestId: input.requestId,
-      seed: index + 1,
-    });
-
-    await db
-      .update(tournamentPhaseParticipants)
-      .set({
-        status: "qualified",
-        qualificationPosition: index + 1,
-        updatedAt: new Date().toISOString(),
-      })
-      .where(
-        and(
-          eq(tournamentPhaseParticipants.phaseId, qualificationPhase.id),
-          eq(tournamentPhaseParticipants.participantId, participantId),
-        ),
-      );
-
-    if (!result.alreadyMember) {
-      advanced += 1;
-    }
+  if (!isQualificationPhaseComplete(pods)) {
+    const completedPods = pods.filter(
+      (pod) => pod.status === "completed" && pod.qualifierParticipantId != null,
+    ).length;
+    return {
+      code: "QUALIFICATION_INCOMPLETE",
+      message: `Qualification requires all ${KG926_QUALIFICATION_POD_COUNT} pods to produce a qualifier before Top 32 advancement.`,
+      completedPods,
+      requiredPods: KG926_QUALIFICATION_POD_COUNT,
+    };
   }
+
+  const completedWithQualifier = await db
+    .select({ id: qualificationPods.id })
+    .from(qualificationPods)
+    .where(
+      and(
+        eq(qualificationPods.phaseId, phase.id),
+        eq(qualificationPods.status, "completed"),
+      ),
+    );
+
+  if (completedWithQualifier.length < KG926_QUALIFICATION_TARGET) {
+    throw new CompetitionOperationsError(
+      "Insufficient pod qualifiers for Top 32 advancement.",
+      "VALIDATION_ERROR",
+      400,
+    );
+  }
+
+  const result = await advanceAllPodWinnersToTop32({
+    tournamentId: input.tournamentId,
+    actorId: input.actorId,
+    actorRole: input.actorRole,
+    requestId: input.requestId,
+  });
 
   await recordAdminAuditEvent({
     eventType: "QUALIFIER_ADVANCED",
@@ -172,16 +146,21 @@ export async function advanceQualifiers(input: {
     requestId: input.requestId,
     metadata: {
       tournamentId: input.tournamentId,
-      qualificationPhaseId: qualificationPhase.id,
+      qualificationPhaseId: phase.id,
       knockoutPhaseId: knockoutPhase.id,
-      advanced,
+      advanced: result.advanced,
+      skipped: result.skipped,
       target,
     },
   });
 
   return {
-    advanced,
+    advanced: result.advanced,
     knockoutPhaseId: knockoutPhase.id,
-    alreadyAdvanced: false,
+    alreadyAdvanced: result.advanced === 0 && result.skipped >= target,
+    skipped: result.skipped,
   };
 }
+
+/** @deprecated Use advancePodWinnerToTop32 from qualification/match-engine */
+export { advancePodWinnerToTop32 };

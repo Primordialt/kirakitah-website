@@ -17,8 +17,8 @@ export function MatchResultActions({
   tournamentId: string;
   matchId: string;
   status: string;
-  participantAId: string;
-  participantBId: string;
+  participantAId: string | null;
+  participantBId: string | null;
   canRecord: boolean;
   canCorrect: boolean;
   canForfeit: boolean;
@@ -54,9 +54,14 @@ export function MatchResultActions({
     router.refresh();
   };
 
+  const participantsReady = Boolean(participantAId && participantBId);
+
   return (
     <div className="space-y-2">
-      {(canRecord || canCorrect) && status !== "cancelled" ? (
+      {!participantsReady ? (
+        <p className="text-body-sm text-text-muted">Participants not resolved</p>
+      ) : null}
+      {(canRecord || canCorrect) && status !== "cancelled" && participantsReady ? (
         <div className="flex flex-wrap gap-2">
           <input
             aria-label="Score A"
@@ -126,7 +131,7 @@ export function MatchResultActions({
             Dispute
           </button>
         ) : null}
-        {canForfeit && status !== "forfeited" && status !== "cancelled" ? (
+        {canForfeit && status !== "forfeited" && status !== "cancelled" && participantAId ? (
           <button
             type="button"
             disabled={loading}
@@ -142,7 +147,7 @@ export function MatchResultActions({
             Forfeit A
           </button>
         ) : null}
-        {canForfeit && status !== "forfeited" && status !== "cancelled" ? (
+        {canForfeit && status !== "forfeited" && status !== "cancelled" && participantBId ? (
           <button
             type="button"
             disabled={loading}

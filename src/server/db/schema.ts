@@ -228,6 +228,14 @@ export const adminAuditEventTypeEnum = pgEnum("admin_audit_event_type", [
   "MATCH_DISPUTED",
   "MATCH_FORFEITED",
   "QUALIFIER_ADVANCED",
+  "QUALIFICATION_POD_CREATED",
+  "QUALIFICATION_PARTICIPANT_ASSIGNED",
+  "QUALIFICATION_PARTICIPANT_REASSIGNED",
+  "QUALIFICATION_MATCH_CREATED",
+  "QUALIFICATION_MATCH_RESOLVED",
+  "QUALIFICATION_AUTO_ADVANCED",
+  "QUALIFICATION_POD_COMPLETED",
+  "QUALIFICATION_TOP32_ADVANCED",
 ]);
 
 export const tournamentPhaseTypeEnum = pgEnum("tournament_phase_type", [
@@ -260,6 +268,7 @@ export const matchStatusEnum = pgEnum("match_status", [
   "cancelled",
   "disputed",
   "forfeited",
+  "requires_resolution",
 ]);
 
 export const matchResultSourceEnum = pgEnum("match_result_source", [
@@ -282,6 +291,31 @@ export const knockoutRoundStatusEnum = pgEnum("knockout_round_status", [
   "active",
   "completed",
   "cancelled",
+]);
+
+export const qualificationPodStatusEnum = pgEnum("qualification_pod_status", [
+  "draft",
+  "ready",
+  "active",
+  "completed",
+  "cancelled",
+]);
+
+export const qualificationRoundTypeEnum = pgEnum("qualification_round_type", [
+  "semifinal",
+  "final",
+]);
+
+export const competitorSlotTypeEnum = pgEnum("competitor_slot_type", [
+  "participant",
+  "host",
+  "match_winner",
+]);
+
+export const qualificationOutcomeTypeEnum = pgEnum("qualification_outcome_type", [
+  "played",
+  "auto_advance",
+  "requires_resolution",
 ]);
 
 export const tournamentStatusEnum = pgEnum("tournament_status", [
@@ -526,6 +560,102 @@ export const knockoutRounds = pgTable(
   ],
 );
 
+export const qualificationPods = pgTable(
+  "qualification_pods",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tournamentId: text("tournament_id")
+      .notNull()
+      .references(() => tournaments.id, { onDelete: "cascade" }),
+    phaseId: uuid("phase_id")
+      .notNull()
+      .references(() => tournamentPhases.id, { onDelete: "cascade" }),
+    podNumber: integer("pod_number").notNull(),
+    status: qualificationPodStatusEnum("status").notNull().default("draft"),
+    capacity: integer("capacity").notNull().default(4),
+    hostSemifinalIndex: integer("host_semifinal_index"),
+    qualifierParticipantId: uuid("qualifier_participant_id").references(
+      () => tournamentParticipants.id,
+      { onDelete: "set null" },
+    ),
+    rulesVersion: text("rules_version").notNull().default("kg926-v1"),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "string" })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true, mode: "string" })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("qualification_pods_tournament_pod_number_unique").on(
+      table.tournamentId,
+      table.podNumber,
+    ),
+    index("qualification_pods_phase_status_idx").on(table.phaseId, table.status),
+  ],
+);
+
+export const qualificationPodMembers = pgTable(
+  "qualification_pod_members",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    podId: uuid("pod_id")
+      .notNull()
+      .references(() => qualificationPods.id, { onDelete: "cascade" }),
+    phaseId: uuid("phase_id")
+      .notNull()
+      .references(() => tournamentPhases.id, { onDelete: "cascade" }),
+    participantId: uuid("participant_id")
+      .notNull()
+      .references(() => tournamentParticipants.id, { onDelete: "cascade" }),
+    positionNumber: integer("position_number").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "string" })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("qualification_pod_members_pod_position_unique").on(
+      table.podId,
+      table.positionNumber,
+    ),
+    uniqueIndex("qualification_pod_members_pod_participant_unique").on(
+      table.podId,
+      table.participantId,
+    ),
+    uniqueIndex("qualification_pod_members_phase_participant_unique").on(
+      table.phaseId,
+      table.participantId,
+    ),
+  ],
+);
+
+export const qualificationAutoAdvancements = pgTable(
+  "qualification_auto_advancements",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    podId: uuid("pod_id")
+      .notNull()
+      .references(() => qualificationPods.id, { onDelete: "cascade" }),
+    phaseId: uuid("phase_id")
+      .notNull()
+      .references(() => tournamentPhases.id, { onDelete: "cascade" }),
+    participantId: uuid("participant_id")
+      .notNull()
+      .references(() => tournamentParticipants.id, { onDelete: "cascade" }),
+    semifinalIndex: integer("semifinal_index").notNull(),
+    reason: text("reason").notNull().default("HOST_POSITION"),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "string" })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("qualification_auto_advancements_pod_participant_unique").on(
+      table.podId,
+      table.participantId,
+    ),
+  ],
+);
+
 export const matches = pgTable(
   "matches",
   {
@@ -540,12 +670,24 @@ export const matches = pgTable(
       () => knockoutRounds.id,
       { onDelete: "set null" },
     ),
-    participantAId: uuid("participant_a_id")
-      .notNull()
-      .references(() => tournamentParticipants.id, { onDelete: "restrict" }),
-    participantBId: uuid("participant_b_id")
-      .notNull()
-      .references(() => tournamentParticipants.id, { onDelete: "restrict" }),
+    qualificationPodId: uuid("qualification_pod_id").references(
+      () => qualificationPods.id,
+      { onDelete: "cascade" },
+    ),
+    qualificationRound: qualificationRoundTypeEnum("qualification_round"),
+    semifinalIndex: integer("semifinal_index"),
+    slotAType: competitorSlotTypeEnum("slot_a_type").default("participant"),
+    slotBType: competitorSlotTypeEnum("slot_b_type").default("participant"),
+    participantAId: uuid("participant_a_id").references(
+      () => tournamentParticipants.id,
+      { onDelete: "restrict" },
+    ),
+    participantBId: uuid("participant_b_id").references(
+      () => tournamentParticipants.id,
+      { onDelete: "restrict" },
+    ),
+    dependsOnMatchAId: uuid("depends_on_match_a_id"),
+    dependsOnMatchBId: uuid("depends_on_match_b_id"),
     scheduledAt: timestamp("scheduled_at", {
       withTimezone: true,
       mode: "string",
@@ -565,6 +707,10 @@ export const matches = pgTable(
       table.tournamentId,
       table.phaseId,
       table.status,
+    ),
+    index("matches_qualification_pod_idx").on(
+      table.qualificationPodId,
+      table.qualificationRound,
     ),
   ],
 );
@@ -587,6 +733,8 @@ export const matchResults = pgTable(
     resultSource: matchResultSourceEnum("result_source")
       .notNull()
       .default("admin"),
+    outcomeType: qualificationOutcomeTypeEnum("outcome_type")
+      .default("played"),
     recordedBy: text("recorded_by"),
     recordedAt: timestamp("recorded_at", { withTimezone: true, mode: "string" })
       .notNull()

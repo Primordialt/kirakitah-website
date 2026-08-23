@@ -77,6 +77,7 @@ export async function rebuildQualificationStandings(phaseId: string): Promise<vo
 
   for (const match of completedMatches) {
     if (match.status !== "completed" && match.status !== "forfeited") continue;
+    if (!match.participantAId || !match.participantBId) continue;
 
     const a = map.get(match.participantAId);
     const b = map.get(match.participantBId);

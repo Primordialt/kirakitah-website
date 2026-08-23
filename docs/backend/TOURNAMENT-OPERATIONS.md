@@ -1,4 +1,4 @@
-# Tournament Competition Operations — Backend Step 7
+# Tournament Competition Operations — Backend Steps 7–8
 
 **Competition:** KIRAKITAH GAMING 926 (`event-kg926`)  
 **Rules version:** `kg926-v1`  
@@ -8,11 +8,13 @@
 
 ## Overview
 
-Backend Step 7 establishes the **competition-management foundation**:
+Backend Step 7 established the **competition-management foundation**:
 
 Tournament → TournamentPhase → Phase Participants → Matches / Results → Standings
 
-This step does **not** finalize how the 128-player pool becomes 32 qualifiers, nor how knockout brackets are generated.
+Backend Step 8 **finalized KG926 qualification mechanics** and built the qualification engine. See [QUALIFICATION-SYSTEM.md](./QUALIFICATION-SYSTEM.md) for full detail.
+
+Qualification is **single-elimination pods** (128 → 32 pods × 4 → 32 qualifiers). It is **not** round-robin or points-based advancement.
 
 ---
 
@@ -89,20 +91,30 @@ Table: `match_results`
 
 ---
 
-## Qualification (PENDING PRODUCT DECISION)
+## Qualification (IMPLEMENTED — Step 8)
 
-`createQualificationMatches()` exists as a service boundary and returns:
+**FINALIZED PRODUCT RULE:** 32 pods, 4 positions each, single elimination, 1 qualifier per pod.
 
-`QUALIFICATION_RULES_NOT_CONFIGURED`
+Services (`src/server/tournament/qualification/`):
 
-when pairing remains `pending`.
+| Service | Purpose |
+|---------|---------|
+| `pod-service` | Pod CRUD, dashboard, Top 32 list |
+| `assignment-service` | Manual pod assignment / reassignment |
+| `match-engine` | Match generation, results, host auto-advance, Top 32 advancement |
 
-`advanceQualifiers()` returns the same controlled code unless:
+Key operations:
 
-- advancement rules are configured, **or**
-- an explicit finalized ranking list is provided by an authorized admin
+- `ensureQualificationPods()` / `assignParticipantToPod()`
+- `generateQualificationPodMatches(podId)`
+- `recordQualificationMatchResult()`
+- `advancePodWinnerToTop32()` / `advanceAllPodWinnersToTop32()`
 
-Do not invent scoring, group sizes, match counts, or pairing.
+`advanceQualifiers()` now derives Top 32 from completed pod winners. Returns `QUALIFICATION_INCOMPLETE` if any pod lacks a qualifier.
+
+Host rule: opponent auto-advances against host slot (`auto_advance` outcome). Host is not a participant.
+
+Tie-break for draws: **PENDING PRODUCT DECISION** (`requires_resolution` status).
 
 ---
 
@@ -114,7 +126,7 @@ Materialized from authoritative match results via `rebuildQualificationStandings
 
 Fields: played, wins, draws, losses, points, goals_for/against, goal_difference, rank.
 
-**IMPORTANT:** Placeholder 3/1/0 point aggregation is a **technical rebuild aid only**. It is **not** approved KG926 policy. Ranking/tie-breakers for advancement remain **PENDING PRODUCT DECISION**.
+**IMPORTANT:** `qualification_standings` remains a technical aggregation aid from Step 7. It is **not** the KG926 qualification advancement mechanism. Advancement is pod-winner based (Step 8).
 
 Admins cannot silently edit standings without going through match result correction.
 
@@ -167,9 +179,11 @@ Routes:
 - `/admin/tournaments/[id]`
 - `/admin/tournaments/[id]/phases`
 - `/admin/tournaments/[id]/matches`
+- `/admin/tournaments/[id]/qualification`
+- `/admin/tournaments/[id]/qualification/pods/[n]`
 - `/admin/tournaments/participants` (from Step 6)
 
-APIs under `/api/admin/tournaments/[tournamentId]/…` for phases, matches, standings, advance-qualifiers.
+APIs under `/api/admin/tournaments/[tournamentId]/…` for phases, matches, standings, qualification, advance-qualifiers.
 
 ---
 
@@ -184,6 +198,7 @@ APIs under `/api/admin/tournaments/[tournamentId]/…` for phases, matches, stan
 | `tournament:result_correct` | ✓ | ✓ | — | — |
 | `tournament:forfeit` | ✓ | ✓ | — | — |
 | `tournament:standings_view` | ✓ | ✓ | ✓ | ✓ |
+| `tournament:pod_manage` | ✓ | ✓ | — | — |
 
 ---
 
@@ -207,13 +222,17 @@ Stored in `tournaments.competition_rules`:
 {
   "rulesVersion": "kg926-v1",
   "qualification": {
-    "scoring": "pending",
-    "ranking": "pending",
-    "tiebreakers": "pending",
-    "pairing": "pending",
-    "advancement": "pending",
+    "format": "single_elimination_pods",
+    "podCount": 32,
+    "positionsPerPod": 4,
+    "qualifiersPerPod": 1,
+    "maxMatchesPerNormalPod": 3,
+    "maxQualificationMatches": 96,
     "targetEntrants": 128,
-    "qualificationTarget": 32
+    "qualificationTarget": 32,
+    "assignmentMode": "manual",
+    "hostRule": { "enabled": true, "autoAdvanceAgainstHost": true, "hostIsNotParticipant": true },
+    "tieResolution": "pending"
   },
   "knockout": {
     "seeding": "pending",
@@ -227,15 +246,16 @@ Stored in `tournaments.competition_rules`:
 
 ## Audit (IMPLEMENTED)
 
-`PHASE_CREATED` · `PHASE_STARTED` · `PHASE_COMPLETED` · `MATCH_CREATED` · `MATCH_SCHEDULED` · `MATCH_RESULT_RECORDED` · `MATCH_RESULT_CORRECTED` · `MATCH_DISPUTED` · `MATCH_FORFEITED` · `QUALIFIER_ADVANCED`
+`PHASE_CREATED` · … · `QUALIFIER_ADVANCED` · `QUALIFICATION_POD_CREATED` · `QUALIFICATION_PARTICIPANT_ASSIGNED` · `QUALIFICATION_PARTICIPANT_REASSIGNED` · `QUALIFICATION_MATCH_CREATED` · `QUALIFICATION_MATCH_RESOLVED` · `QUALIFICATION_AUTO_ADVANCED` · `QUALIFICATION_POD_COMPLETED` · `QUALIFICATION_TOP32_ADVANCED`
 
 ---
 
 ## Database (IMPLEMENTED)
 
-Migration: `drizzle/0006_tournament_operations.sql`
+Migration: `drizzle/0006_tournament_operations.sql` (Step 7)  
+Migration: `drizzle/0007_qualification_engine.sql` (Step 8)
 
-Tables: `tournament_phases`, `tournament_phase_participants`, `knockout_rounds`, `matches`, `match_results`, `match_result_corrections`, `qualification_standings`
+Tables: … `qualification_pods`, `qualification_pod_members`, `qualification_auto_advancements`
 
 Also: `tournaments.competition_rules`, `tournament_participants.public_code`
 
@@ -253,26 +273,25 @@ Also: `tournaments.competition_rules`, `tournament_participants.public_code`
 
 ## Open product decisions (PENDING)
 
-1. Qualification scoring system  
-2. Qualification group structure  
-3. Number of qualification matches  
-4. Match duration  
-5. Tie-breakers  
-6. Seeding rules  
-7. Pairing rules  
-8. Knockout rules  
-9. No-show rules  
-10. Disconnect rules  
-11. Forfeit rules (detailed)  
-12. Dispute process (detailed)  
-13. Replacement of withdrawn participants  
-14. Public standings during qualification  
-15. Public gamer-tag display policy  
-16. Whether player photos are ever public  
-17. Final eligibility requirements  
+1. Match tie-resolution mechanism (qualification draws)
+2. Exact eFootball match settings
+3. Match duration
+4. Extra time / penalties policy
+5. No-show timing
+6. Disconnect handling
+7. Forfeit policy (detailed)
+8. Dispute policy (detailed)
+9. Central vs manual match scheduling
+10. Random vs seeded pod assignment (beyond manual default)
+11. Top 32 knockout bracket seeding
+12. Knockout pairing rules
+13. Public visibility of qualification pods
+14. Public visibility of standings/results
+15. Public gamer-tag display policy
+16. Whether player photos are ever public
 
 ---
 
 ## Next step
 
-**Backend Step 8 — Finalize KG926 Qualification Mechanics & Build Qualification Engine**
+**Backend Step 9 — Finalize Knockout Mechanics & Tournament Execution**

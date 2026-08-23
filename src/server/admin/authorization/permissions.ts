@@ -34,6 +34,7 @@ export const ADMIN_PERMISSIONS = [
   "tournament:result_correct",
   "tournament:forfeit",
   "tournament:standings_view",
+  "tournament:pod_manage",
 ] as const;
 
 export type AdminPermission = (typeof ADMIN_PERMISSIONS)[number];
@@ -63,6 +64,7 @@ const ROLE_PERMISSIONS: Record<AdminRole, readonly AdminPermission[]> = {
     "tournament:result_correct",
     "tournament:forfeit",
     "tournament:standings_view",
+    "tournament:pod_manage",
   ],
   TOURNAMENT_ADMIN: [
     "dashboard:view",
@@ -83,6 +85,7 @@ const ROLE_PERMISSIONS: Record<AdminRole, readonly AdminPermission[]> = {
     "tournament:result_correct",
     "tournament:forfeit",
     "tournament:standings_view",
+    "tournament:pod_manage",
   ],
   REVIEWER: [
     "dashboard:view",

@@ -1,6 +1,6 @@
 # KIRAKITAH Backend — Architecture & Foundation Audit
 
-**Phase:** Backend Steps 1–7 (registration + admin + eligibility + competition operations foundation)  
+**Phase:** Backend Steps 1–8 (registration + admin + eligibility + competition + qualification engine)  
 **Date:** August 23, 2026  
 **Repository:** [kirakitah-website](https://github.com/Primordialt/kirakitah-website)  
 **Deployment:** Vercel (Next.js 15 App Router, Node 22, region `iad1`)
@@ -11,14 +11,15 @@
 
 The KIRAKITAH frontend is production-ready with a **service abstraction layer**. Registration now has a real Neon + Blob backend, manual identity review, and email/phone ownership verification challenges.
 
-**Today:** Registration API, contact verification, manual identity review, secure admin reviewer workflow, tournament eligibility/participation, and competition operations foundation (phases, matches, results, standings boundaries) are implemented.
+**Today:** Registration API, contact verification, manual identity review, secure admin reviewer workflow, tournament eligibility/participation, competition operations foundation, and **KG926 qualification engine** (32 pods, single elimination, host rule, Top 32 advancement) are implemented.
 
-**Next implementation priority:** **Backend Step 8 — Finalize KG926 Qualification Mechanics & Build Qualification Engine**.
+**Next implementation priority:** **Backend Step 9 — Finalize Knockout Mechanics & Tournament Execution**.
 
 Admin reviewer workflow (Step 5) is implemented with production auth **PENDING PROVIDER**.
 
 Tournament eligibility (Step 6): [TOURNAMENT-ELIGIBILITY.md](./TOURNAMENT-ELIGIBILITY.md).  
-Competition operations (Step 7): [TOURNAMENT-OPERATIONS.md](./TOURNAMENT-OPERATIONS.md).
+Competition operations (Step 7): [TOURNAMENT-OPERATIONS.md](./TOURNAMENT-OPERATIONS.md).  
+Qualification engine (Step 8): [QUALIFICATION-SYSTEM.md](./QUALIFICATION-SYSTEM.md).
 
 This document audits the frontend foundations and tracks backend architecture evolution.
 

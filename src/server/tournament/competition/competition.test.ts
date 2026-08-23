@@ -38,13 +38,14 @@ describe("phase status transitions", () => {
 });
 
 describe("competition rules configuration", () => {
-  it("uses kg926-v1 and marks mechanics pending", () => {
+  it("uses kg926-v1 with finalized pod single-elimination structure", () => {
     expect(KG926_COMPETITION_RULES_VERSION).toBe("kg926-v1");
-    expect(DEFAULT_KG926_COMPETITION_RULES.qualification.scoring).toBe("pending");
-    expect(DEFAULT_KG926_COMPETITION_RULES.qualification.pairing).toBe("pending");
-    expect(DEFAULT_KG926_COMPETITION_RULES.qualification.advancement).toBe(
-      "pending",
+    expect(DEFAULT_KG926_COMPETITION_RULES.qualification.format).toBe(
+      "single_elimination_pods",
     );
+    expect(DEFAULT_KG926_COMPETITION_RULES.qualification.podCount).toBe(32);
+    expect(DEFAULT_KG926_COMPETITION_RULES.qualification.positionsPerPod).toBe(4);
+    expect(DEFAULT_KG926_COMPETITION_RULES.qualification.assignmentMode).toBe("manual");
     expect(DEFAULT_KG926_COMPETITION_RULES.knockout.seeding).toBe("pending");
   });
 
@@ -52,16 +53,17 @@ describe("competition rules configuration", () => {
     const json = JSON.stringify(DEFAULT_KG926_COMPETITION_RULES);
     expect(json).not.toContain('"pointsForWin"');
     expect(json).not.toContain('"3 for win"');
+    expect(json).not.toContain("round_robin");
   });
 
-  it("keeps pending markers when parsing unknown scoring values", () => {
+  it("keeps tie resolution pending while preserving pod structure", () => {
     const parsed = parseCompetitionRules({
-      qualification: { scoring: "3-1-0", pairing: "random" },
+      qualification: { tieResolution: "admin_resolution" },
     });
-    expect(parsed.qualification.scoring).toBe("pending");
-    expect(parsed.qualification.pairing).toBe("pending");
-    expect(isQualificationAdvancementConfigured(parsed)).toBe(false);
-    expect(isQualificationPairingConfigured(parsed)).toBe(false);
+    expect(parsed.qualification.format).toBe("single_elimination_pods");
+    expect(parsed.qualification.tieResolution).toBe("admin_resolution");
+    expect(isQualificationAdvancementConfigured(parsed)).toBe(true);
+    expect(isQualificationPairingConfigured(parsed)).toBe(true);
   });
 
   it("preserves known capacity targets", () => {
@@ -145,6 +147,16 @@ describe("competition RBAC", () => {
     expect(roleHasPermission("REVIEWER", "tournament:phase_manage")).toBe(false);
   });
 
+  it("grants tournament admin pod management permission", () => {
+    expect(roleHasPermission("TOURNAMENT_ADMIN", "tournament:pod_manage")).toBe(true);
+    expect(roleHasPermission("SUPER_ADMIN", "tournament:pod_manage")).toBe(true);
+  });
+
+  it("denies reviewer and support pod management", () => {
+    expect(roleHasPermission("REVIEWER", "tournament:pod_manage")).toBe(false);
+    expect(roleHasPermission("SUPPORT", "tournament:pod_manage")).toBe(false);
+  });
+
   it("denies support mutation permissions", () => {
     expect(roleHasPermission("SUPPORT", "tournament:result_record")).toBe(false);
     expect(roleHasPermission("SUPPORT", "tournament:match_manage")).toBe(false);
@@ -154,9 +166,9 @@ describe("competition RBAC", () => {
 });
 
 describe("qualification advancement boundary", () => {
-  it("documents not-configured code for pending advancement", () => {
+  it("uses pod-winner advancement configuration", () => {
     expect(isQualificationAdvancementConfigured(DEFAULT_KG926_COMPETITION_RULES)).toBe(
-      false,
+      true,
     );
   });
 });
