@@ -6,7 +6,10 @@ test.describe("Global website shell", () => {
   }) => {
     await page.goto("/");
     await expect(
-      page.getByRole("heading", { level: 1, name: "KIRAKITAH" }),
+      page.getByRole("heading", {
+        level: 1,
+        name: /THE FUTURE IS YOURS TO CREATE/i,
+      }),
     ).toBeVisible();
     await expect(page.getByRole("banner")).toBeVisible();
     await expect(page.getByRole("contentinfo")).toBeVisible();
@@ -29,5 +32,40 @@ test.describe("Global website shell", () => {
 
     await menuButton.click();
     await expect(menuButton).toHaveAttribute("aria-expanded", "false");
+  });
+});
+
+test.describe("Homepage", () => {
+  test("desktop homepage loads without horizontal overflow", async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto("/");
+
+    await expect(
+      page.getByRole("link", { name: "EXPLORE KIRAKITAH" }).first(),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "KIRAKITAH GAMING 2026", exact: true }),
+    ).toBeVisible();
+
+    const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
+    const clientWidth = await page.evaluate(() => document.documentElement.clientWidth);
+    expect(scrollWidth).toBeLessThanOrEqual(clientWidth);
+  });
+
+  test("mobile homepage shows hero and primary CTA", async ({ page }) => {
+    await page.setViewportSize({ width: 375, height: 812 });
+    await page.goto("/");
+
+    await expect(
+      page.getByRole("heading", { level: 1, name: /THE FUTURE IS YOURS TO CREATE/i }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("link", { name: "EXPLORE KIRAKITAH" }).first(),
+    ).toBeVisible();
+    await expect(page.getByRole("contentinfo")).toBeVisible();
+
+    const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
+    const clientWidth = await page.evaluate(() => document.documentElement.clientWidth);
+    expect(scrollWidth).toBeLessThanOrEqual(clientWidth);
   });
 });

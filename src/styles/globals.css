@@ -335,4 +335,45 @@
     transition-duration: var(--duration-slow);
     transition-timing-function: var(--ease-out);
   }
+
+  /* Hero decorative visuals */
+  .hero-grid {
+    background-image:
+      linear-gradient(rgb(255 255 255 / 0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgb(255 255 255 / 0.03) 1px, transparent 1px);
+    background-size: 48px 48px;
+    mask-image: radial-gradient(ellipse at 30% 20%, black 20%, transparent 70%);
+  }
+
+  .hero-orb {
+    animation: hero-float 8s ease-in-out infinite;
+  }
+
+  .hero-orb-2 {
+    animation-delay: -2s;
+    animation-duration: 10s;
+  }
+
+  .hero-orb-3 {
+    animation-delay: -4s;
+    animation-duration: 12s;
+  }
+
+  @keyframes hero-float {
+    0%,
+    100% {
+      transform: translateY(0);
+      opacity: 0.6;
+    }
+    50% {
+      transform: translateY(-12px);
+      opacity: 1;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .hero-orb {
+      animation: none;
+    }
+  }
 }
