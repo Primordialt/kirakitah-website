@@ -1,11 +1,16 @@
 import type { Tournament } from "@/domain/tournament";
+import {
+  COMPETITION_NAME,
+  TOURNAMENT_EVENT_ID,
+  TOURNAMENT_SLUG,
+} from "@/config/competition";
 
 export const mockTournaments: Tournament[] = [
   {
-    id: "event-kg2026",
-    slug: "kirakitah-gaming-2026",
+    id: TOURNAMENT_EVENT_ID,
+    slug: TOURNAMENT_SLUG,
     initiativeId: "init-gaming",
-    name: "KIRAKITAH Gaming 2026",
+    name: COMPETITION_NAME,
     competitionTitle: "eFootball Mobile Championship",
     description:
       "The inaugural KIRAKITAH eFootball Mobile competition — an online 1v1 championship.",
@@ -29,4 +34,4 @@ export const mockTournaments: Tournament[] = [
   },
 ];
 
-export const TOURNAMENT_EVENT_ID = "event-kg2026";
+export { TOURNAMENT_EVENT_ID };

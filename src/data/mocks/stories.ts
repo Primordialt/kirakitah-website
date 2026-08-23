@@ -14,8 +14,8 @@ export const mockStories: Story[] = [
   },
   {
     id: "story-002",
-    slug: "gaming-2026-registration",
-    title: "KIRAKITAH Gaming 2026 Registration Is Coming",
+    slug: "gaming-926-registration",
+    title: "KIRAKITAH GAMING 926 Registration Is Coming",
     excerpt:
       "The inaugural eFootball Mobile tournament opens soon. Stay tuned for registration details.",
     content: "Placeholder story content.",

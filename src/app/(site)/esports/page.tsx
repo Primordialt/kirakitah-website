@@ -19,13 +19,13 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 const description =
-  "KIRAKITAH Gaming 2026 — the inaugural eFootball Mobile championship. 128 players, 32 qualify, one champion, US$100 grand prize. Commences September 14, 2026.";
+  "KIRAKITAH GAMING 926 — the inaugural eFootball Mobile championship. 128 players, 32 qualify, one champion, US$100 grand prize. Commences September 14, 2026.";
 
 export const metadata: Metadata = {
-  title: "KIRAKITAH Gaming 2026 — eFootball Mobile Championship",
+  title: "KIRAKITAH GAMING 926 — eFootball Mobile Championship",
   description,
   openGraph: {
-    title: "KIRAKITAH Gaming 2026 — eFootball Mobile Championship",
+    title: "KIRAKITAH GAMING 926 — eFootball Mobile Championship",
     description,
     url: `${siteConfig.url}/esports`,
     siteName: siteConfig.name,
@@ -33,7 +33,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "KIRAKITAH Gaming 2026 — eFootball Mobile Championship",
+    title: "KIRAKITAH GAMING 926 — eFootball Mobile Championship",
     description,
   },
   alternates: { canonical: `${siteConfig.url}/esports` },

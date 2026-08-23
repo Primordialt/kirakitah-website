@@ -2,7 +2,7 @@
 
 Official website repository for **KIRAKITAH** — an initiative of Zurfte Zolutions.
 
-KIRAKITAH is a scalable digital platform, with KIRAKITAH Gaming 2026 as its first major public-facing initiative.
+KIRAKITAH is a scalable digital platform, with KIRAKITAH GAMING 926 as its first major public-facing initiative.
 
 ## Stack
 

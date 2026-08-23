@@ -9,6 +9,7 @@ import {
   type RegistrationFormValues,
 } from "@/domain/registration";
 import { TOURNAMENT_EVENT_ID } from "@/data/mocks/tournaments";
+import { COMPETITION_NAME } from "@/config/competition";
 import { services } from "@/services";
 import { Button } from "@/components/ui";
 import { PlayerInformation } from "./PlayerInformation";
@@ -122,12 +123,22 @@ export function RegistrationForm() {
       ? "Editing application"
       : "Registration form";
 
+  const onInvalid = () => {
+    requestAnimationFrame(() => {
+      const firstInvalid = document.querySelector('[aria-invalid="true"]');
+      if (firstInvalid instanceof HTMLElement) {
+        firstInvalid.focus();
+        firstInvalid.scrollIntoView?.({ behavior: "smooth", block: "center" });
+      }
+    });
+  };
+
   return (
     <form
-      onSubmit={handleSubmit(onSubmit)}
+      onSubmit={handleSubmit(onSubmit, onInvalid)}
       className="mx-auto flex max-w-2xl flex-col gap-10"
       noValidate
-      aria-label="KIRAKITAH Gaming 2026 registration"
+      aria-label={`${COMPETITION_NAME} registration`}
     >
       <p className="sr-only" role="status" aria-live="polite">
         {formStatusLabel}

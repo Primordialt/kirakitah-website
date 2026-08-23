@@ -21,7 +21,7 @@ export const mockFaqs: FAQ[] = [
     id: "faq-esports-002",
     question: "What age do I need to be?",
     answer:
-      "The minimum age to participate in KIRAKITAH Gaming 2026 is 10. Participants under 18 must provide parent or guardian information during registration.",
+      "The minimum age to participate in KIRAKITAH GAMING 926 is 10. Participants under 18 must provide parent or guardian information during registration.",
     category: "esports",
     order: 2,
   },
@@ -29,7 +29,7 @@ export const mockFaqs: FAQ[] = [
     id: "faq-esports-003",
     question: "What game are we playing?",
     answer:
-      "KIRAKITAH Gaming 2026 is an eFootball Mobile championship — an online 1v1 competition.",
+      "KIRAKITAH GAMING 926 is an eFootball Mobile championship — an online 1v1 competition.",
     category: "esports",
     order: 3,
   },
@@ -37,7 +37,7 @@ export const mockFaqs: FAQ[] = [
     id: "faq-esports-004",
     question: "Do I need a PlayStation?",
     answer:
-      "No. KIRAKITAH Gaming 2026 is played on eFootball Mobile. You need a compatible mobile device with the game installed.",
+      "No. KIRAKITAH GAMING 926 is played on eFootball Mobile. You need a compatible mobile device with the game installed.",
     category: "esports",
     order: 4,
   },
@@ -76,14 +76,14 @@ export const mockFaqs: FAQ[] = [
   {
     id: "faq-esports-009",
     question: "What is the prize?",
-    answer: "The grand prize for KIRAKITAH Gaming 2026 is US$100.",
+    answer: "The grand prize for KIRAKITAH GAMING 926 is US$100.",
     category: "esports",
     order: 9,
   },
   {
     id: "faq-esports-010",
     question: "When does the tournament start?",
-    answer: "KIRAKITAH Gaming 2026 commences on September 14, 2026.",
+    answer: "KIRAKITAH GAMING 926 commences on September 14, 2026.",
     category: "esports",
     order: 10,
   },

@@ -1,13 +1,25 @@
 "use client";
 
 import { Checkbox } from "@/components/ui";
+import Link from "next/link";
 import { Controller } from "react-hook-form";
 import type { FormSectionProps } from "./types";
 
 const consentItems = [
   {
     name: "consents.rules" as const,
-    label: "I have read and accept the tournament rules",
+    label: (
+      <>
+        I have read and accept the{" "}
+        <Link
+          href="/esports/rules"
+          className="text-accent underline-offset-2 hover:underline"
+          onClick={(event) => event.stopPropagation()}
+        >
+          tournament rules
+        </Link>
+      </>
+    ),
   },
   {
     name: "consents.terms" as const,

@@ -38,7 +38,7 @@ export interface EsportsPlatform {
 }
 
 export const esportsHero = {
-  eyebrow: "KIRAKITAH GAMING 2026",
+  eyebrow: "KIRAKITAH GAMING 926",
   headline: "YOUR GAME. YOUR SKILL. YOUR SHOT.",
   supportingCopy:
     "The inaugural KIRAKITAH Gaming competition brings players together for an online eFootball Mobile championship built around competition, skill and the chance to become the first KIRAKITAH champion.",
@@ -59,7 +59,7 @@ export const esportsStats: EsportsStat[] = [
 export const esportsIntro = {
   lead: "KIRAKITAH Gaming brings competitive players together for organised online gaming experiences designed to challenge, connect and celebrate talent.",
   detail:
-    "The 2026 competition is the inaugural KIRAKITAH Gaming championship — an eFootball Mobile championship where skill, strategy and determination define who reaches the top.",
+    "KIRAKITAH GAMING 926 is the inaugural KIRAKITAH Gaming championship — an eFootball Mobile championship for the September 2026 edition where skill, strategy and determination define who reaches the top.",
 } as const;
 
 export const esportsJourneySteps: EsportsJourneyStep[] = [
@@ -67,7 +67,7 @@ export const esportsJourneySteps: EsportsJourneyStep[] = [
     step: "01",
     title: "REGISTER",
     description:
-      "Submit your application with player and gaming information for KIRAKITAH Gaming 2026.",
+      "Submit your application with player and gaming information for KIRAKITAH GAMING 926.",
   },
   {
     step: "02",
@@ -171,7 +171,7 @@ export const esportsFinalCta = {
 
 export const esportsRegisterHero = {
   headline: "YOUR GAME. YOUR SKILL. YOUR SHOT.",
-  copy: "Register your interest in KIRAKITAH Gaming 2026.",
+  copy: "Register your interest in KIRAKITAH GAMING 926.",
 } as const;
 
 export const registrationCountries = [
@@ -211,7 +211,7 @@ export const esportsRulesSections: EsportsRuleSection[] = [
     id: "eligibility",
     title: "Eligibility",
     content: [
-      "KIRAKITAH Gaming 2026 is open to players who meet the minimum age requirement and can compete in eFootball Mobile on a supported mobile device.",
+      "KIRAKITAH GAMING 926 is open to players who meet the minimum age requirement and can compete in eFootball Mobile on a supported mobile device.",
       "Participation is subject to application review and verification by KIRAKITAH.",
     ],
   },
@@ -315,7 +315,7 @@ export const esportsRulesSections: EsportsRuleSection[] = [
     id: "prize",
     title: "Prize",
     content: [
-      "The grand prize for KIRAKITAH Gaming 2026 is US$100.",
+      "The grand prize for KIRAKITAH GAMING 926 is US$100.",
       "Prize distribution details will be confirmed with verified participants.",
     ],
   },

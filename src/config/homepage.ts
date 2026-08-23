@@ -103,7 +103,7 @@ export const homepageEcosystem = {
 } as const;
 
 export const homepageFeaturedInitiative: FeaturedInitiativeData = {
-  title: "KIRAKITAH GAMING 2026",
+  title: "KIRAKITAH GAMING 926",
   subtitle: "Inaugural eFootball Mobile Tournament",
   description:
     "The first major public-facing initiative on the KIRAKITAH platform — competitive mobile football at the intersection of culture and technology.",
@@ -114,7 +114,7 @@ export const homepageFeaturedInitiative: FeaturedInitiativeData = {
     { label: "Grand Prize", value: "$100" },
   ],
   primaryCta: { label: "EXPLORE THE TOURNAMENT", href: "/esports" },
-  secondaryCta: { label: "REGISTER TO COMPETE", href: null },
+  secondaryCta: { label: "REGISTER TO COMPETE", href: "/esports/register" },
 };
 
 export const homepagePrinciples = {

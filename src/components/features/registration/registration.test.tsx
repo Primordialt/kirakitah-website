@@ -87,7 +87,7 @@ describe("registration domain", () => {
         codeOfConduct: true,
         mediaConsent: true,
       },
-      eventId: "event-kg2026",
+      eventId: "event-kg926",
     });
 
     expect(result.success).toBe(false);

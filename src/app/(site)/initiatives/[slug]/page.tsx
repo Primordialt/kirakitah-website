@@ -6,6 +6,7 @@ import {
   getInitiativeStatusVariant,
 } from "@/lib/initiative-display";
 import { services } from "@/services";
+import { COMPETITION_NAME } from "@/config/competition";
 import { siteConfig } from "@/config/site";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
@@ -76,7 +77,7 @@ export default async function InitiativeDetailPage({
             </h2>
             <p className="mt-4 max-w-2xl text-body text-text-secondary">
               KIRAKITAH Gaming is the platform&apos;s first major active initiative.
-              The full competition experience — including KIRAKITAH Gaming 2026 —
+              The full competition experience — including {COMPETITION_NAME} —
               lives on the dedicated eSports section.
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">

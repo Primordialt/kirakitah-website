@@ -56,6 +56,11 @@ describe("HomePage", () => {
       "href",
       "/esports",
     );
+
+    expect(screen.getByRole("link", { name: /REGISTER TO COMPETE/i })).toHaveAttribute(
+      "href",
+      "/esports/register",
+    );
   });
 
   it("renders featured initiative statistics", async () => {
@@ -85,7 +90,7 @@ describe("Stories section", () => {
     render(<Stories stories={mockStories.filter((s) => s.featured)} />);
     expect(screen.getByText("Meet KIRAKITAH")).toBeInTheDocument();
     expect(
-      screen.getByText("KIRAKITAH Gaming 2026 Registration Is Coming"),
+      screen.getByText("KIRAKITAH GAMING 926 Registration Is Coming"),
     ).toBeInTheDocument();
   });
 });

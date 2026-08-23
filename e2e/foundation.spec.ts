@@ -44,7 +44,7 @@ test.describe("Homepage", () => {
       page.getByRole("link", { name: "EXPLORE KIRAKITAH" }).first(),
     ).toBeVisible();
     await expect(
-      page.getByRole("heading", { name: "KIRAKITAH GAMING 2026", exact: true }),
+      page.getByRole("heading", { name: "KIRAKITAH GAMING 926", exact: true }),
     ).toBeVisible();
 
     const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);

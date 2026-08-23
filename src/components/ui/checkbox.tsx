@@ -4,7 +4,6 @@ import { cn } from "@/lib/cn";
 import {
   FieldDescription,
   FieldError,
-  Label,
   useFieldIds,
 } from "@/components/ui/label";
 import { Check } from "lucide-react";
@@ -16,7 +15,7 @@ import {
 
 export interface CheckboxProps
   extends Omit<InputHTMLAttributes<HTMLInputElement>, "type" | "id"> {
-  label?: string;
+  label?: React.ReactNode;
   description?: string;
   error?: string;
   id?: string;
@@ -49,8 +48,14 @@ export const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>(
 
     return (
       <div className="flex flex-col gap-1.5">
-        <div className="flex items-start gap-3">
-          <div className="relative flex shrink-0 items-center">
+        <label
+          htmlFor={id}
+          className={cn(
+            "flex cursor-pointer items-start gap-3",
+            disabled && "cursor-not-allowed opacity-50",
+          )}
+        >
+          <span className="relative flex shrink-0 items-center">
             <input
               ref={ref}
               type="checkbox"
@@ -66,7 +71,7 @@ export const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>(
             />
             <span
               className={cn(
-                "flex size-5 items-center justify-center rounded-md border border-border bg-surface",
+                "pointer-events-none flex size-5 items-center justify-center rounded-md border border-border bg-surface",
                 "transition-standard transition-colors",
                 "peer-hover:border-border-strong",
                 "peer-focus-visible:border-border-focus peer-focus-visible:ring-2 peer-focus-visible:ring-border-focus/30",
@@ -80,22 +85,27 @@ export const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>(
             >
               <Check className="size-3 text-white" />
             </span>
-          </div>
+          </span>
           {(label || description) && (
-            <div className="flex flex-col gap-0.5 pt-0.5">
+            <span className="flex flex-col gap-0.5 pt-0.5">
               {label && (
-                <Label htmlFor={id} required={required} className="cursor-pointer">
+                <span className="text-label text-text-primary">
                   {label}
-                </Label>
+                  {required && (
+                    <span className="ml-0.5 text-error" aria-hidden="true">
+                      *
+                    </span>
+                  )}
+                </span>
               )}
               {description && !error && (
                 <FieldDescription id={descriptionId}>
                   {description}
                 </FieldDescription>
               )}
-            </div>
+            </span>
           )}
-        </div>
+        </label>
         {error && <FieldError id={errorId}>{error}</FieldError>}
       </div>
     );

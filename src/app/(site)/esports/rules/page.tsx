@@ -1,16 +1,16 @@
 import { RulesContent, RulesNavigation } from "@/components/sections/esports/RulesContent";
 import { SectionShell } from "@/components/sections/esports/SectionShell";
+import { COMPETITION_NAME } from "@/config/competition";
 import { siteConfig } from "@/config/site";
 import type { Metadata } from "next";
 
-const description =
-  "Official tournament rules for KIRAKITAH Gaming 2026 — eligibility, registration, match format, prizes and safeguarding.";
+const description = `Official tournament rules for ${COMPETITION_NAME} — eligibility, registration, match format, prizes and safeguarding.`;
 
 export const metadata: Metadata = {
-  title: "KIRAKITAH Gaming 2026 — Tournament Rules",
+  title: `${COMPETITION_NAME} — Tournament Rules`,
   description,
   openGraph: {
-    title: "KIRAKITAH Gaming 2026 — Tournament Rules",
+    title: `${COMPETITION_NAME} — Tournament Rules`,
     description,
     url: `${siteConfig.url}/esports/rules`,
     siteName: siteConfig.name,
@@ -18,7 +18,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "KIRAKITAH Gaming 2026 — Tournament Rules",
+    title: `${COMPETITION_NAME} — Tournament Rules`,
     description,
   },
   alternates: { canonical: `${siteConfig.url}/esports/rules` },
@@ -32,7 +32,7 @@ export default function EsportsRulesPage() {
     >
       <div className="mb-12 max-w-2xl">
         <p className="text-label font-semibold tracking-[0.2em] text-accent">
-          KIRAKITAH GAMING 2026
+          {COMPETITION_NAME}
         </p>
         <h1 className="mt-3 text-h1 text-text-primary">TOURNAMENT RULES</h1>
         <p className="mt-4 text-body-lg text-text-secondary">

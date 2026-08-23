@@ -34,7 +34,7 @@ describe("EsportsPage", () => {
       }),
     ).toBeInTheDocument();
 
-    expect(screen.getByText("KIRAKITAH Gaming 2026")).toBeInTheDocument();
+    expect(screen.getAllByText("KIRAKITAH GAMING 926").length).toBeGreaterThan(0);
 
     const statsRegion = screen.getByLabelText("Tournament statistics");
     for (const stat of esportsStats) {

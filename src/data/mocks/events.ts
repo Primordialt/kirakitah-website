@@ -1,11 +1,16 @@
 import type { Event } from "@/domain/event";
+import {
+  COMPETITION_NAME,
+  TOURNAMENT_EVENT_ID,
+  TOURNAMENT_SLUG,
+} from "@/config/competition";
 
 export const mockEvents: Event[] = [
   {
-    id: "event-kg2026",
-    slug: "kirakitah-gaming-2026",
+    id: TOURNAMENT_EVENT_ID,
+    slug: TOURNAMENT_SLUG,
     initiativeId: "init-gaming",
-    name: "KIRAKITAH Gaming 2026",
+    name: COMPETITION_NAME,
     description:
       "The inaugural KIRAKITAH Gaming eFootball Mobile championship.",
     status: "registration-open",
