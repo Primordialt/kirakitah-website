@@ -44,7 +44,7 @@ export function Header() {
       style={{ "--header-height": "4rem" } as CSSProperties}
     >
       <div className="container-wide flex h-16 items-center justify-between gap-4">
-        <BrandLogo aria-current={isHome ? "page" : undefined} />
+        <BrandLogo tone="white" aria-current={isHome ? "page" : undefined} />
 
         <DesktopNavigation />
 

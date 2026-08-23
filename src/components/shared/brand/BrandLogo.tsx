@@ -1,10 +1,11 @@
-import { brandAssets } from "@/config/brand";
+import { brandAssets, type BrandAssetTone } from "@/config/brand";
 import { siteConfig } from "@/config/site";
 import { cn } from "@/lib/cn";
 import Link from "next/link";
 
 export interface BrandLogoProps {
   variant?: "full" | "mark";
+  tone?: BrandAssetTone;
   href?: string;
   className?: string;
   imageClassName?: string;
@@ -13,12 +14,20 @@ export interface BrandLogoProps {
 
 export function BrandLogo({
   variant = "full",
+  tone = "brand",
   href = "/",
   className,
   imageClassName,
   "aria-current": ariaCurrent,
 }: BrandLogoProps) {
-  const asset = variant === "mark" ? brandAssets.logoMark : brandAssets.logo;
+  const asset =
+    variant === "mark"
+      ? tone === "white"
+        ? brandAssets.logoMarkWhite
+        : brandAssets.logoMark
+      : tone === "white"
+        ? brandAssets.logoWhite
+        : brandAssets.logo;
 
   return (
     <Link
