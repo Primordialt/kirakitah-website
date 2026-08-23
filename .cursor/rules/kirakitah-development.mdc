@@ -1,0 +1,31 @@
+---
+description: Core development guidelines for the KIRAKITAH official website
+alwaysApply: true
+---
+
+# KIRAKITAH Development Guidelines
+
+## Architecture
+
+- **Frontend first** — build and publish the user-facing experience before backend work.
+- **No backend unless requested** — do not add APIs, databases, CMS, or server integrations unless explicitly instructed.
+- **Vercel** is the deployment target; keep the project compatible with Vercel conventions.
+
+## Code quality
+
+- **Mobile-first** — design and implement for small screens first, then scale up.
+- **Reusable components** — prefer composable, shared UI over one-off implementations.
+- **Accessibility** — use semantic HTML, keyboard support, and sufficient contrast.
+- **Performance** — optimize images, avoid unnecessary dependencies, and keep bundles lean.
+- **TypeScript** — use TypeScript when the project stack supports it.
+
+## Safety
+
+- **Never commit secrets** — no API keys, tokens, passwords, or `.env.local` files.
+- **Inspect before modifying** — read existing code before changing it; do not replace functionality without understanding it.
+- **Minimal scope** — avoid large architectural changes or unnecessary dependencies without explicit instruction.
+- **Preserve existing work** — do not delete or overwrite established patterns without approval.
+
+## Future integration
+
+Keep eventual backend integration in mind (data shapes, env var patterns) without implementing backend functionality prematurely.
