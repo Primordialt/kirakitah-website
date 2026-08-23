@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
 import {
+  boolean,
   date,
   integer,
   jsonb,
@@ -191,6 +192,56 @@ export const registrationAuditEvents = pgTable("registration_audit_events", {
     .references(() => registrationApplications.id, { onDelete: "cascade" }),
   eventType: registrationAuditEventTypeEnum("event_type").notNull(),
   actor: text("actor"),
+  metadata: jsonb("metadata").$type<Record<string, string | number | boolean | null>>(),
+  createdAt: timestamp("created_at", { withTimezone: true, mode: "string" })
+    .notNull()
+    .defaultNow(),
+});
+
+export const adminRoleEnum = pgEnum("admin_role", [
+  "SUPER_ADMIN",
+  "TOURNAMENT_ADMIN",
+  "REVIEWER",
+  "SUPPORT",
+]);
+
+export const adminAuditEventTypeEnum = pgEnum("admin_audit_event_type", [
+  "ADMIN_LOGIN",
+  "IDENTITY_REVIEW_APPROVED",
+  "IDENTITY_REVIEW_REJECTED",
+  "APPLICATION_STATUS_CHANGED",
+  "SENSITIVE_IDENTITY_VIEWED",
+  "GUARDIAN_DATA_VIEWED",
+  "PLAYER_PHOTO_VIEWED",
+]);
+
+export const adminUsers = pgTable("admin_users", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  email: text("email").notNull().unique(),
+  displayName: text("display_name").notNull(),
+  role: adminRoleEnum("role").notNull(),
+  active: boolean("active").notNull().default(true),
+  createdAt: timestamp("created_at", { withTimezone: true, mode: "string" })
+    .notNull()
+    .defaultNow(),
+  lastLoginAt: timestamp("last_login_at", { withTimezone: true, mode: "string" }),
+});
+
+/**
+ * Append-only administrative audit trail.
+ * Never store NIN, passport, OTP, email, phone, or guardian contacts.
+ */
+export const adminAuditEvents = pgTable("admin_audit_events", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  eventType: adminAuditEventTypeEnum("event_type").notNull(),
+  actorId: text("actor_id"),
+  actorRole: adminRoleEnum("actor_role"),
+  applicationId: uuid("application_id").references(
+    () => registrationApplications.id,
+    { onDelete: "set null" },
+  ),
+  applicationReference: text("application_reference"),
+  requestId: text("request_id"),
   metadata: jsonb("metadata").$type<Record<string, string | number | boolean | null>>(),
   createdAt: timestamp("created_at", { withTimezone: true, mode: "string" })
     .notNull()

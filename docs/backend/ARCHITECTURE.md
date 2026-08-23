@@ -13,7 +13,9 @@ The KIRAKITAH frontend is production-ready with a **service abstraction layer**.
 
 **Today:** Registration API implemented; contact verification lifecycle implemented; identity remains manual (`pending_review`). Admin dashboard is **not** built — only server-side repository boundaries exist.
 
-**Next implementation priority:** **Backend Step 5 — Registration Administration & Secure Reviewer Workflow**.
+**Next implementation priority:** **Backend Step 6 — Tournament Operations & Registration Eligibility**.
+
+Admin reviewer workflow (Step 5) is implemented with production auth **PENDING PROVIDER**.
 
 This document audits the frontend foundations and tracks backend architecture evolution.
 

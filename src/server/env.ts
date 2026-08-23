@@ -87,6 +87,31 @@ export const serverEnv = {
   get allowMockContactProviders() {
     return !this.isProduction;
   },
+
+  get adminAuthProvider(): "mock" | "http" | "unavailable" {
+    const value = readEnv("ADMIN_AUTH_PROVIDER");
+    if (value === "http") return "http";
+    if (value === "mock") return "mock";
+    if (value === "unavailable") return "unavailable";
+    return this.isProduction ? "unavailable" : "mock";
+  },
+
+  get adminSessionSecret() {
+    return readEnv("ADMIN_SESSION_SECRET");
+  },
+
+  get adminAuthApiUrl() {
+    return readEnv("ADMIN_AUTH_API_URL");
+  },
+
+  get adminAuthApiKey() {
+    return readEnv("ADMIN_AUTH_API_KEY");
+  },
+
+  /** Mock admin auth is allowed only outside production. */
+  get allowMockAdminAuth() {
+    return !this.isProduction;
+  },
 } as const;
 
 export function isRegistrationBackendConfigured(): boolean {

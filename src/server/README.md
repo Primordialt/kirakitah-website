@@ -8,8 +8,16 @@
 | `db/` | Drizzle schema + Neon client |
 | `registration/` | Validation, PII encryption, blob upload, persistence |
 | `verification/` | Contact challenge lifecycle + identity provider abstractions |
-| `admin/` | Future registration administration repository (not public) |
+| `admin/` | Secure reviewer auth, RBAC, registration admin services |
 | `audit/` | Audit event recording (no PII/OTP payloads) |
+
+## Admin (Step 5)
+
+See `docs/backend/ADMIN-REVIEWER-ARCHITECTURE.md`.
+
+- Mock admin auth: development/test only
+- Production admin auth: **PENDING PROVIDER** (fail closed)
+- Identity review remains manual; does not auto-approve applications
 
 ## Identity verification (production)
 
@@ -42,6 +50,7 @@ Contact verification does **not** approve applications.
 | `POST /api/registrations` | Submit registration (manual identity review) |
 | `POST /api/registrations/verify` | Confirm email/phone OTP challenge |
 | `POST /api/registrations/verify/resend` | Resend OTP with cooldown + rate limits |
+| `GET|POST /api/admin/*` | Internal reviewer APIs (authenticated) |
 | `GET /api/health` | Liveness + configuration check |
 
 ## Database migrations
@@ -50,6 +59,7 @@ Contact verification does **not** approve applications.
 2. `drizzle/0001_verification.sql`
 3. `drizzle/0002_manual_identity_review.sql`
 4. `drizzle/0003_contact_verification.sql`
+5. `drizzle/0004_admin_reviewer.sql`
 
 See `docs/backend/VERIFICATION-ARCHITECTURE.md`.
 
