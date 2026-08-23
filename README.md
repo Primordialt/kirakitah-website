@@ -2,16 +2,41 @@
 
 Official website repository for **KIRAKITAH** — an initiative of Zurfte Zolutions.
 
-KIRAKITAH is a scalable digital platform, with KIRAKITAH Gaming 2026 as its first major public-facing initiative. This repository contains the source code for the official website.
+KIRAKITAH is a scalable digital platform, with KIRAKITAH Gaming 2026 as its first major public-facing initiative.
+
+## Stack
+
+- Next.js 15 (App Router)
+- TypeScript
+- Tailwind CSS v4
+- React Hook Form + Zod
+- Lucide React
+- Vitest + React Testing Library + Playwright
+- Deployment target: Vercel
 
 ## Development approach
 
-- **Frontend first** — the user-facing experience is built and published before backend integration.
-- **Backend later** — server-side functionality, APIs, and data services will be added in a subsequent phase after the frontend foundation is in place.
+Frontend-first — the user-facing experience is built and published before backend integration.
 
-## Deployment
+## Requirements
 
-Production deployment is planned on **Vercel**.
+- **Node.js 22 LTS** (production target; see `.nvmrc`)
+- npm
+
+## Commands
+
+```bash
+npm run dev          # Start development server
+npm run build        # Production build
+npm run start        # Start production server
+npm run lint         # ESLint
+npm run type-check   # TypeScript check
+npm run test         # Unit/component tests (Vitest)
+npm run test:watch   # Vitest watch mode
+npm run test:e2e     # End-to-end tests (Playwright)
+```
+
+## Branches
 
 - `main` — production-ready code (Vercel Production)
 - `development` — active development (Vercel Preview)
