@@ -1,3 +1,15 @@
+import type {
+  IdentityDocumentMetadata,
+} from "@/lib/identity-upload";
+import {
+  GOVERNMENT_ID_ACCEPTED_TYPES,
+  MAX_IDENTITY_FILE_SIZE_BYTES,
+  PLAYER_PHOTO_ACCEPTED_TYPES,
+  formatAcceptedTypes,
+  formatFileSize,
+  isAcceptedFileType,
+  toIdentityDocumentMetadata,
+} from "@/lib/identity-upload";
 import { z } from "zod";
 
 export interface GuardianInfo {
@@ -16,6 +28,11 @@ export interface RegistrationConsents {
   mediaConsent: boolean;
 }
 
+export interface IdentityVerificationSubmission {
+  governmentId: IdentityDocumentMetadata;
+  playerPhoto: IdentityDocumentMetadata;
+}
+
 export interface RegistrationSubmission {
   fullName: string;
   dateOfBirth: string;
@@ -23,6 +40,7 @@ export interface RegistrationSubmission {
   city: string;
   email: string;
   phone: string;
+  identityVerification: IdentityVerificationSubmission;
   gamerTag: string;
   game: string;
   platform: string;
@@ -74,6 +92,28 @@ export const guardianSchema = z.object({
   }),
 });
 
+const identityFileSchema = (
+  label: string,
+  acceptedTypes: readonly string[],
+) =>
+  z
+    .instanceof(File, { message: `${label} is required` })
+    .refine((file) => file.size > 0, { message: `${label} is required` })
+    .refine((file) => isAcceptedFileType(file, acceptedTypes), {
+      message: `${label} must be ${formatAcceptedTypes(acceptedTypes)}`,
+    })
+    .refine((file) => file.size <= MAX_IDENTITY_FILE_SIZE_BYTES, {
+      message: `${label} must be ${formatFileSize(MAX_IDENTITY_FILE_SIZE_BYTES)} or smaller`,
+    });
+
+export const identityVerificationFormSchema = z.object({
+  governmentId: identityFileSchema(
+    "Government-issued ID",
+    GOVERNMENT_ID_ACCEPTED_TYPES,
+  ),
+  playerPhoto: identityFileSchema("Player photo", PLAYER_PHOTO_ACCEPTED_TYPES),
+});
+
 export const registrationSchema = z
   .object({
     fullName: z.string().min(1, "Full name is required"),
@@ -82,6 +122,7 @@ export const registrationSchema = z
     city: z.string().min(1, "City is required"),
     email: z.string().email("Email must be valid"),
     phone: z.string().min(1, "Phone is required"),
+    identityVerification: identityVerificationFormSchema,
     gamerTag: z.string().min(1, "Gamer tag is required"),
     game: z.string().min(1, "Game is required"),
     platform: z.string().min(1, "Platform is required"),
@@ -138,3 +179,43 @@ export const registrationSchema = z
   });
 
 export type RegistrationFormValues = z.infer<typeof registrationSchema>;
+
+export function toRegistrationSubmission(
+  data: RegistrationFormValues,
+  options: { includeGuardian: boolean },
+): RegistrationSubmission {
+  const socialEntries = {
+    instagram: data.socialHandles?.instagram,
+    tiktok: data.socialHandles?.tiktok,
+    youtube: data.socialHandles?.youtube,
+  };
+
+  const socialHandles = Object.fromEntries(
+    Object.entries(socialEntries).filter((entry): entry is [string, string] =>
+      Boolean(entry[1]),
+    ),
+  );
+
+  return {
+    fullName: data.fullName,
+    dateOfBirth: data.dateOfBirth,
+    country: data.country,
+    city: data.city,
+    email: data.email,
+    phone: data.phone,
+    identityVerification: {
+      governmentId: toIdentityDocumentMetadata(data.identityVerification.governmentId),
+      playerPhoto: toIdentityDocumentMetadata(data.identityVerification.playerPhoto),
+    },
+    gamerTag: data.gamerTag,
+    game: data.game,
+    platform: data.platform,
+    gamingProfile: data.gamingProfile || undefined,
+    timezone: data.timezone,
+    availability: data.availability,
+    socialHandles: Object.keys(socialHandles).length > 0 ? socialHandles : undefined,
+    guardian: options.includeGuardian ? data.guardian : undefined,
+    consents: data.consents,
+    eventId: data.eventId,
+  };
+}

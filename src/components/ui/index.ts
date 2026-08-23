@@ -36,3 +36,6 @@ export type { SelectProps, SelectOption } from "./select";
 
 export { Textarea } from "./textarea";
 export type { TextareaProps } from "./textarea";
+
+export { FileInput } from "./file-input";
+export type { FileInputProps } from "./file-input";

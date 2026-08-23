@@ -6,6 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import {
   registrationSchema,
   requiresGuardian,
+  toRegistrationSubmission,
   type RegistrationFormValues,
 } from "@/domain/registration";
 import { TOURNAMENT_EVENT_ID } from "@/data/mocks/tournaments";
@@ -13,6 +14,7 @@ import { COMPETITION_NAME } from "@/config/competition";
 import { services } from "@/services";
 import { Button } from "@/components/ui";
 import { PlayerInformation } from "./PlayerInformation";
+import { IdentityVerification } from "./IdentityVerification";
 import { GamingInformation } from "./GamingInformation";
 import { AvailabilityInformation } from "./AvailabilityInformation";
 import { SocialInformation } from "./SocialInformation";
@@ -30,6 +32,10 @@ const defaultValues: RegistrationFormValues = {
   city: "",
   email: "",
   phone: "",
+  identityVerification: {
+    governmentId: undefined,
+    playerPhoto: undefined,
+  },
   gamerTag: "",
   game: "eFootball Mobile",
   platform: "",
@@ -49,7 +55,7 @@ const defaultValues: RegistrationFormValues = {
     mediaConsent: false as unknown as true,
   },
   eventId: TOURNAMENT_EVENT_ID,
-};
+} as unknown as RegistrationFormValues;
 
 export function RegistrationForm() {
   const [status, setStatus] = useState<FormStatus>("idle");
@@ -80,15 +86,7 @@ export function RegistrationForm() {
   const onSubmit = async (data: RegistrationFormValues) => {
     setStatus("submitting");
     try {
-      const payload: RegistrationFormValues = {
-        ...data,
-        guardian: showGuardian ? data.guardian : undefined,
-        socialHandles: {
-          instagram: data.socialHandles?.instagram || undefined,
-          tiktok: data.socialHandles?.tiktok || undefined,
-          youtube: data.socialHandles?.youtube || undefined,
-        },
-      };
+      const payload = toRegistrationSubmission(data, { includeGuardian: showGuardian });
 
       const result = await services.registration.submit(payload);
 
@@ -145,15 +143,15 @@ export function RegistrationForm() {
       </p>
 
       <PlayerInformation register={register} control={control} errors={errors} />
+      <IdentityVerification register={register} control={control} errors={errors} />
       <GamingInformation register={register} control={control} errors={errors} />
       <AvailabilityInformation register={register} control={control} errors={errors} />
       <SocialInformation register={register} control={control} errors={errors} />
+      <ConsentSection register={register} control={control} errors={errors} />
 
       {showGuardian && (
         <GuardianInformation register={register} control={control} errors={errors} />
       )}
-
-      <ConsentSection register={register} control={control} errors={errors} />
 
       <input type="hidden" {...register("eventId")} />
       <input type="hidden" {...register("game")} />

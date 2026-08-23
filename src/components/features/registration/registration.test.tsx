@@ -2,6 +2,7 @@ import {
   calculateAge,
   registrationSchema,
   requiresGuardian,
+  toRegistrationSubmission,
 } from "@/domain/registration";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -51,6 +52,37 @@ function underageDob() {
   return date.toISOString().slice(0, 10);
 }
 
+function createTestFile(name: string, type: string, content = "test-content") {
+  return new File([content], name, { type });
+}
+
+async function fillRequiredRegistrationFields(user: ReturnType<typeof userEvent.setup>) {
+  await user.type(screen.getByLabelText(/Full name/i), "Test Player");
+  await user.type(screen.getByLabelText(/Date of birth/i), adultDob());
+  await user.selectOptions(screen.getByLabelText(/Country/i), "NG");
+  await user.type(screen.getByLabelText(/City \/ location/i), "Lagos");
+  await user.type(screen.getByLabelText(/^Email/i), "player@example.com");
+  await user.type(screen.getByLabelText(/Phone number/i), "08012345678");
+
+  const governmentIdInput = screen.getByLabelText(/Government-issued ID/i);
+  const playerPhotoInput = screen.getByLabelText(/Player photo/i);
+  await user.upload(
+    governmentIdInput,
+    createTestFile("government-id.pdf", "application/pdf"),
+  );
+  await user.upload(playerPhotoInput, createTestFile("player-photo.jpg", "image/jpeg"));
+
+  await user.type(screen.getByLabelText(/Gamer tag/i), "TestGamer");
+  await user.selectOptions(screen.getByLabelText(/Mobile platform/i), "android");
+  await user.selectOptions(screen.getByLabelText(/Time zone/i), "Africa/Lagos");
+  await user.click(screen.getByLabelText(/Flexible — will adapt to schedule/i));
+  await user.click(screen.getByLabelText(/tournament rules/i));
+  await user.click(screen.getByLabelText(/terms and conditions/i));
+  await user.click(screen.getByLabelText(/privacy policy/i));
+  await user.click(screen.getByLabelText(/code of conduct/i));
+  await user.click(screen.getByLabelText(/media coverage/i));
+}
+
 describe("registration domain", () => {
   it("calculates age accounting for birthday", () => {
     const today = new Date();
@@ -75,6 +107,10 @@ describe("registration domain", () => {
       city: "Lagos",
       email: "test@example.com",
       phone: "1234567890",
+      identityVerification: {
+        governmentId: createTestFile("id.pdf", "application/pdf"),
+        playerPhoto: createTestFile("photo.jpg", "image/jpeg"),
+      },
       gamerTag: "TestTag",
       game: "eFootball Mobile",
       platform: "android",
@@ -92,6 +128,56 @@ describe("registration domain", () => {
 
     expect(result.success).toBe(false);
   });
+
+  it("strips identity files to metadata before submission", () => {
+    const payload = toRegistrationSubmission(
+      {
+        fullName: "Test Player",
+        dateOfBirth: adultDob(),
+        country: "NG",
+        city: "Lagos",
+        email: "test@example.com",
+        phone: "1234567890",
+        identityVerification: {
+          governmentId: createTestFile("id.pdf", "application/pdf"),
+          playerPhoto: createTestFile("photo.jpg", "image/jpeg"),
+        },
+        gamerTag: "TestTag",
+        game: "eFootball Mobile",
+        platform: "android",
+        gamingProfile: "",
+        timezone: "Africa/Lagos",
+        availability: ["flexible"],
+        consents: {
+          rules: true,
+          terms: true,
+          privacy: true,
+          codeOfConduct: true,
+          mediaConsent: true,
+        },
+        eventId: "event-kg926",
+      },
+      { includeGuardian: false },
+    );
+
+    expect(payload.identityVerification).toEqual({
+      governmentId: {
+        fileName: "id.pdf",
+        fileSize: payload.identityVerification.governmentId.fileSize,
+        mimeType: "application/pdf",
+      },
+      playerPhoto: {
+        fileName: "photo.jpg",
+        fileSize: payload.identityVerification.playerPhoto.fileSize,
+        mimeType: "image/jpeg",
+      },
+    });
+    expect(Object.keys(payload.identityVerification.governmentId)).toEqual([
+      "fileName",
+      "fileSize",
+      "mimeType",
+    ]);
+  });
 });
 
 describe("RegistrationForm", () => {
@@ -107,6 +193,8 @@ describe("RegistrationForm", () => {
     await user.click(screen.getByRole("button", { name: /SUBMIT APPLICATION/i }));
 
     expect(await screen.findByText("Full name is required")).toBeInTheDocument();
+    expect(await screen.findByText("Government-issued ID is required")).toBeInTheDocument();
+    expect(await screen.findByText("Player photo is required")).toBeInTheDocument();
     expect(mockSubmit).not.toHaveBeenCalled();
   });
 
@@ -134,28 +222,18 @@ describe("RegistrationForm", () => {
     render(<RegistrationForm />);
     const user = userEvent.setup();
 
-    await user.type(screen.getByLabelText(/Full name/i), "Test Player");
-    await user.type(screen.getByLabelText(/Date of birth/i), adultDob());
-    await user.selectOptions(screen.getByLabelText(/Country/i), "NG");
-    await user.type(screen.getByLabelText(/City \/ location/i), "Lagos");
-    await user.type(screen.getByLabelText(/^Email/i), "player@example.com");
-    await user.type(screen.getByLabelText(/Phone number/i), "08012345678");
-    await user.type(screen.getByLabelText(/Gamer tag/i), "TestGamer");
-    await user.selectOptions(screen.getByLabelText(/Mobile platform/i), "android");
-    await user.selectOptions(screen.getByLabelText(/Time zone/i), "Africa/Lagos");
-    await user.click(screen.getByLabelText(/Flexible — will adapt to schedule/i));
-    await user.click(screen.getByLabelText(/tournament rules/i));
-    await user.click(screen.getByLabelText(/terms and conditions/i));
-    await user.click(screen.getByLabelText(/privacy policy/i));
-    await user.click(screen.getByLabelText(/code of conduct/i));
-    await user.click(screen.getByLabelText(/media coverage/i));
-
+    await fillRequiredRegistrationFields(user);
     await user.click(screen.getByRole("button", { name: /SUBMIT APPLICATION/i }));
 
     await waitFor(() => {
       expect(screen.getByText(/YOUR APPLICATION HAS BEEN RECEIVED/i)).toBeInTheDocument();
     });
+
     expect(mockSubmit).toHaveBeenCalledOnce();
+    const submitted = mockSubmit.mock.calls[0][0];
+    expect(submitted.identityVerification.governmentId.fileName).toBe("government-id.pdf");
+    expect(submitted.identityVerification.playerPhoto.fileName).toBe("player-photo.jpg");
+    expect(submitted.identityVerification.governmentId).not.toHaveProperty("content");
   });
 
   it("shows failure state when mock submission fails", async () => {
@@ -163,22 +241,7 @@ describe("RegistrationForm", () => {
     render(<RegistrationForm />);
     const user = userEvent.setup();
 
-    await user.type(screen.getByLabelText(/Full name/i), "Test Player");
-    await user.type(screen.getByLabelText(/Date of birth/i), adultDob());
-    await user.selectOptions(screen.getByLabelText(/Country/i), "NG");
-    await user.type(screen.getByLabelText(/City \/ location/i), "Lagos");
-    await user.type(screen.getByLabelText(/^Email/i), "player@example.com");
-    await user.type(screen.getByLabelText(/Phone number/i), "08012345678");
-    await user.type(screen.getByLabelText(/Gamer tag/i), "TestGamer");
-    await user.selectOptions(screen.getByLabelText(/Mobile platform/i), "android");
-    await user.selectOptions(screen.getByLabelText(/Time zone/i), "Africa/Lagos");
-    await user.click(screen.getByLabelText(/Flexible — will adapt to schedule/i));
-    await user.click(screen.getByLabelText(/tournament rules/i));
-    await user.click(screen.getByLabelText(/terms and conditions/i));
-    await user.click(screen.getByLabelText(/privacy policy/i));
-    await user.click(screen.getByLabelText(/code of conduct/i));
-    await user.click(screen.getByLabelText(/media coverage/i));
-
+    await fillRequiredRegistrationFields(user);
     await user.click(screen.getByRole("button", { name: /SUBMIT APPLICATION/i }));
 
     await waitFor(() => {
