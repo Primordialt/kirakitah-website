@@ -67,7 +67,7 @@ export const homepageEcosystem = {
       title: "Gaming & eSports",
       description: "Competitive gaming experiences and tournaments.",
       icon: Gamepad2,
-      href: "/esports",
+      href: "/initiatives/kirakitah-gaming",
       featured: true,
     },
     {

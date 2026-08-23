@@ -69,3 +69,39 @@ test.describe("Homepage", () => {
     expect(scrollWidth).toBeLessThanOrEqual(clientWidth);
   });
 });
+
+test.describe("About page", () => {
+  test("loads with main sections and CTA on desktop", async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto("/about");
+
+    await expect(
+      page.getByRole("heading", { level: 1, name: /MORE THAN ONE THING/i }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("link", { name: "EXPLORE INITIATIVES" }).first(),
+    ).toBeVisible();
+
+    const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
+    const clientWidth = await page.evaluate(() => document.documentElement.clientWidth);
+    expect(scrollWidth).toBeLessThanOrEqual(clientWidth);
+  });
+});
+
+test.describe("Initiatives page", () => {
+  test("loads with gaming initiative on mobile", async ({ page }) => {
+    await page.setViewportSize({ width: 375, height: 812 });
+    await page.goto("/initiatives");
+
+    await expect(
+      page.getByRole("heading", { level: 1, name: /WHAT WE'RE BUILDING/i }),
+    ).toBeVisible();
+    await expect(page.getByRole("heading", { name: "KIRAKITAH Gaming" })).toBeVisible();
+    await expect(page.getByText("Coming Soon").first()).toBeVisible();
+    await expect(page.getByRole("contentinfo")).toBeVisible();
+
+    const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
+    const clientWidth = await page.evaluate(() => document.documentElement.clientWidth);
+    expect(scrollWidth).toBeLessThanOrEqual(clientWidth);
+  });
+});

@@ -1,6 +1,10 @@
 import type { ImageAsset } from "./image-asset";
 
-export type InitiativeStatus = "active" | "upcoming" | "archived";
+export type InitiativeStatus =
+  | "active"
+  | "upcoming"
+  | "coming-soon"
+  | "archived";
 
 export type InitiativeCategory =
   | "technology"
@@ -26,5 +30,6 @@ export interface Initiative {
   featuredImage: ImageAsset;
   heroImage?: ImageAsset;
   cta?: InitiativeCta;
+  featured?: boolean;
   sortOrder: number;
 }

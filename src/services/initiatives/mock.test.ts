@@ -6,7 +6,16 @@ describe("MockInitiativeService", () => {
     const service = new MockInitiativeService();
     const initiatives = await service.getAll();
 
-    expect(initiatives).toHaveLength(1);
-    expect(initiatives[0]?.slug).toBe("gaming");
+    expect(initiatives.length).toBeGreaterThanOrEqual(5);
+    expect(initiatives[0]?.slug).toBe("kirakitah-gaming");
+  });
+
+  it("retrieves initiative by slug", async () => {
+    const service = new MockInitiativeService();
+    const gaming = await service.getBySlug("kirakitah-gaming");
+
+    expect(gaming).not.toBeNull();
+    expect(gaming?.status).toBe("active");
+    expect(gaming?.name).toBe("KIRAKITAH Gaming");
   });
 });
