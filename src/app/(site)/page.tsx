@@ -13,16 +13,16 @@ import { services } from "@/services";
 import type { Metadata } from "next";
 
 const description =
-  "KIRAKITAH is a platform built around competition, creativity, technology, community and experiences — bringing people together for what's next.";
+  "KIRAKITAH is a growing platform for competition, creativity, technology, community and experiences. Explore what we're building.";
 
 export const metadata: Metadata = {
-  title: "KIRAKITAH — Play. Compete. Create.",
+  title: "KIRAKITAH | Play. Compete. Create.",
   description,
   alternates: {
     canonical: siteConfig.url,
   },
   openGraph: {
-    title: "KIRAKITAH — Play. Compete. Create.",
+    title: "KIRAKITAH | Play. Compete. Create.",
     description,
     url: siteConfig.url,
     siteName: siteConfig.name,
@@ -31,7 +31,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "KIRAKITAH — Play. Compete. Create.",
+    title: "KIRAKITAH | Play. Compete. Create.",
     description,
   },
 };

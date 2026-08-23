@@ -69,7 +69,7 @@ export const mockFaqs: FAQ[] = [
     id: "faq-esports-008",
     question: "How does qualification work?",
     answer:
-      "The qualification stage is part of the official KIRAKITAH Gaming tournament, starting from a pool of 128 players with a target of 32 qualifiers for the KIRAKITAH Top 32. Qualification mechanics will be published once finalized.",
+      "All verified players begin in the qualification stage. KIRAKITAH organises players into controlled qualification groups managed by a KIRAKITAH host. The host occupies the host position in the Custom Tournament and does not compete — the player matched against the host automatically advances from that matchup. The stage continues until 32 players earn their place in the KIRAKITAH Top 32, followed by a straight knockout journey to the Grand Final.",
     category: "esports",
     order: 8,
   },
@@ -99,7 +99,7 @@ export const mockFaqs: FAQ[] = [
     id: "faq-esports-012",
     question: "What happens if I disconnect?",
     answer:
-      "Connection and disconnection policies will be covered in the tournament rules. Detailed rules will be published once finalized.",
+      "Players are responsible for maintaining a stable internet connection during matches. Connection interruptions may be reviewed on a case-by-case basis. Repeated connection failures may result in forfeiture, as outlined in the tournament rules.",
     category: "esports",
     order: 12,
   },

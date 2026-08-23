@@ -70,6 +70,7 @@ export const footerColumns: FooterColumn[] = [
       { label: "Register", href: "/esports/register" },
       { label: "Tournament Rules", href: "/esports/rules" },
       { label: "FAQ", href: "/esports/faq" },
+      { label: "Code of Conduct", href: "/code-of-conduct" },
     ],
   },
   {
@@ -83,9 +84,9 @@ export const footerColumns: FooterColumn[] = [
   {
     title: "Legal",
     links: [
-      { label: "Privacy Policy", href: null },
-      { label: "Terms", href: null },
-      { label: "Code of Conduct", href: null },
+      { label: "Terms & Conditions", href: "/terms" },
+      { label: "Privacy Policy", href: "/privacy" },
+      { label: "Code of Conduct", href: "/code-of-conduct" },
     ],
   },
 ];

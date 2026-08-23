@@ -18,7 +18,7 @@ export function FeaturedInitiative() {
       <div className="relative grid gap-10 lg:grid-cols-2 lg:items-center lg:gap-16">
         <Reveal>
           <p className="text-label font-semibold uppercase tracking-[0.15em] text-accent">
-            Currently in the Arena
+            Current Featured Initiative
           </p>
           <h2
             id="featured-initiative-heading"
@@ -31,6 +31,9 @@ export function FeaturedInitiative() {
           </p>
           <p className="mt-4 max-w-lg text-body text-text-secondary">
             {data.description}
+          </p>
+          <p className="mt-3 text-body-sm font-medium text-accent">
+            {data.commencement}
           </p>
           <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
             <HomeCta cta={data.primaryCta} variant="primary" />

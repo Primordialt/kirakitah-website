@@ -2,6 +2,8 @@ import { aboutContent } from "@/config/about";
 import { Reveal, SectionShell } from "@/components/sections/home";
 import { Button } from "@/components/ui";
 
+export { HowItWorks } from "./HowItWorks";
+
 export function AboutHero() {
   const { hero, parentOrganisation } = aboutContent;
   return (

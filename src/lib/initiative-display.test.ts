@@ -7,7 +7,7 @@ import { describe, expect, it } from "vitest";
 describe("initiative-display", () => {
   it("maps status labels for accessibility", () => {
     expect(getInitiativeStatusLabel("active")).toBe("Active");
-    expect(getInitiativeStatusLabel("coming-soon")).toBe("Coming Soon");
+    expect(getInitiativeStatusLabel("in-development")).toBe("In Development");
     expect(getInitiativeStatusLabel("archived")).toBe("Completed");
   });
 

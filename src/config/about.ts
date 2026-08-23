@@ -16,8 +16,44 @@ export const aboutContent = {
   whyWeExist: {
     heading: "WHY WE'RE BUILDING THIS",
     paragraphs: [
-      "People deserve platforms that bring them together around what they care about — not silos that limit them to one identity or one interest.",
-      "KIRAKITAH exists to create experiences and opportunities at the intersection of competition, creativity, technology and community. We're building something that can grow with the people who use it.",
+      "The world is full of people with different interests, different talents and different ways of expressing themselves.",
+      "KIRAKITAH exists to create spaces where people can pursue those interests, challenge themselves, connect with others and turn ideas into experiences.",
+      "We are building a platform that does not ask people to fit into one category. Instead, KIRAKITAH creates room for competition, creativity, technology, community and whatever comes next.",
+    ],
+  },
+  howItWorks: {
+    heading: "HOW KIRAKITAH WORKS",
+    items: [
+      {
+        id: "discover",
+        title: "DISCOVER",
+        description:
+          "Find experiences, competitions, communities and ideas that interest you.",
+      },
+      {
+        id: "participate",
+        title: "PARTICIPATE",
+        description:
+          "Take part instead of simply watching from the sidelines.",
+      },
+      {
+        id: "connect",
+        title: "CONNECT",
+        description:
+          "Meet people who share your interests and ambitions.",
+      },
+      {
+        id: "create",
+        title: "CREATE",
+        description:
+          "Contribute ideas, stories, content and experiences.",
+      },
+      {
+        id: "grow",
+        title: "GROW",
+        description:
+          "Use every experience as an opportunity to learn, improve and go further.",
+      },
     ],
   },
   principles: {

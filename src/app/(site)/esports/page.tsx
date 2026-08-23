@@ -4,6 +4,9 @@ import {
   TournamentDetails,
   TournamentJourney,
   Qualification,
+  WhyEnter,
+  WhatYouNeed,
+  WhoCanEnter,
   KnockoutStage,
   TournamentTechnology,
   WatchAction,
@@ -19,13 +22,13 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 const description =
-  "KIRAKITAH GAMING 926 — the inaugural eFootball Mobile championship. 128 players, 32 qualify, one champion, US$100 grand prize. Commences September 14, 2026.";
+  "Compete in KIRAKITAH Gaming 926, the inaugural eFootball Mobile championship. 128 players, 32 qualifiers, 1 champion and a US$100 grand prize.";
 
 export const metadata: Metadata = {
-  title: "KIRAKITAH GAMING 926 — eFootball Mobile Championship",
+  title: "KIRAKITAH Gaming 926 | eFootball Mobile Championship",
   description,
   openGraph: {
-    title: "KIRAKITAH GAMING 926 — eFootball Mobile Championship",
+    title: "KIRAKITAH Gaming 926 | eFootball Mobile Championship",
     description,
     url: `${siteConfig.url}/esports`,
     siteName: siteConfig.name,
@@ -33,7 +36,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "KIRAKITAH GAMING 926 — eFootball Mobile Championship",
+    title: "KIRAKITAH Gaming 926 | eFootball Mobile Championship",
     description,
   },
   alternates: { canonical: `${siteConfig.url}/esports` },
@@ -58,6 +61,9 @@ export default async function EsportsPage() {
       <TournamentDetails tournament={tournament} />
       <TournamentJourney />
       <Qualification />
+      <WhyEnter />
+      <WhatYouNeed />
+      <WhoCanEnter />
       <KnockoutStage />
       <TournamentTechnology />
       <WatchAction />

@@ -66,6 +66,14 @@ export default async function InitiativeDetailPage({
           <p className="mt-6 max-w-2xl text-body-lg text-text-secondary">
             {initiative.description}
           </p>
+          {initiative.body?.map((paragraph) => (
+            <p
+              key={paragraph.slice(0, 32)}
+              className="mt-4 max-w-2xl text-body-lg text-text-secondary"
+            >
+              {paragraph}
+            </p>
+          ))}
         </Reveal>
       </SectionShell>
 
@@ -81,7 +89,7 @@ export default async function InitiativeDetailPage({
               lives on the dedicated eSports section.
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-              <Button href="/esports">Go to eSports</Button>
+              <Button href="/esports">Explore KIRAKITAH Gaming</Button>
               <Button href="/initiatives" variant="outline">
                 All Initiatives
               </Button>
@@ -90,14 +98,18 @@ export default async function InitiativeDetailPage({
         </SectionShell>
       )}
 
-      {initiative.status === "coming-soon" && (
+      {initiative.slug === "community" && (
         <SectionShell>
           <Reveal>
-            <p className="text-body-lg text-text-secondary">
-              This initiative has not been announced yet. Check back as the
-              KIRAKITAH ecosystem grows.
-            </p>
-            <Button href="/initiatives" variant="outline" className="mt-8">
+            <Button href="/community">Explore Community</Button>
+          </Reveal>
+        </SectionShell>
+      )}
+
+      {initiative.status !== "active" && initiative.slug !== "kirakitah-gaming" && (
+        <SectionShell>
+          <Reveal>
+            <Button href="/initiatives" variant="outline">
               Back to Initiatives
             </Button>
           </Reveal>

@@ -5,13 +5,13 @@ import { esportsRegisterHero } from "@/config/esports";
 import { siteConfig } from "@/config/site";
 import type { Metadata } from "next";
 
-const description = `Register your interest in ${COMPETITION_NAME} — the inaugural eFootball Mobile championship.`;
+const description = `Register for ${COMPETITION_NAME} — the inaugural eFootball Mobile championship commencing September 14, 2026.`;
 
 export const metadata: Metadata = {
-  title: `Register — ${COMPETITION_NAME}`,
+  title: `Register for ${COMPETITION_NAME} — KIRAKITAH`,
   description,
   openGraph: {
-    title: `Register — ${COMPETITION_NAME}`,
+    title: `Register for ${COMPETITION_NAME} — KIRAKITAH`,
     description,
     url: `${siteConfig.url}/esports/register`,
     siteName: siteConfig.name,
@@ -19,7 +19,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: `Register — ${COMPETITION_NAME}`,
+    title: `Register for ${COMPETITION_NAME} — KIRAKITAH`,
     description,
   },
   alternates: { canonical: `${siteConfig.url}/esports/register` },
@@ -34,9 +34,12 @@ export default function EsportsRegisterPage() {
             {COMPETITION_NAME}
           </p>
           <h1 className="mt-3 text-h1 text-text-primary">
-            {esportsRegisterHero.headline}
+            REGISTER FOR {COMPETITION_NAME}
           </h1>
           <p className="mt-4 text-body-lg text-text-secondary">
+            {esportsRegisterHero.headline}
+          </p>
+          <p className="mt-2 text-body text-text-muted">
             {esportsRegisterHero.copy}
           </p>
         </div>

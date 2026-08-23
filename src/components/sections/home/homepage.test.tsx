@@ -35,8 +35,13 @@ describe("HomePage", () => {
     ).toBeInTheDocument();
 
     expect(screen.getByRole("heading", { name: /MORE THAN ONE THING/i })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: /BUILT FOR WHAT'S NEXT/i })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: homepageFeaturedInitiative.title })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /KIRAKITAH ECOSYSTEM/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", {
+        level: 2,
+        name: homepageFeaturedInitiative.title,
+      }),
+    ).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: /BUILT DIFFERENT/i })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: /YOU DON'T HAVE TO DO IT ALONE/i })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: /WHAT'S HAPPENING/i })).toBeInTheDocument();
@@ -49,15 +54,14 @@ describe("HomePage", () => {
 
     const exploreLinks = screen.getAllByRole("link", { name: /EXPLORE KIRAKITAH/i });
     for (const link of exploreLinks) {
-      expect(link).toHaveAttribute("href", "/initiatives");
+      expect(link).toHaveAttribute("href", "/about");
     }
 
-    expect(screen.getByRole("link", { name: /EXPLORE THE TOURNAMENT/i })).toHaveAttribute(
-      "href",
-      "/esports",
-    );
+    for (const link of screen.getAllByRole("link", { name: /EXPLORE THE COMPETITION/i })) {
+      expect(link).toHaveAttribute("href", "/esports");
+    }
 
-    expect(screen.getByRole("link", { name: /REGISTER TO COMPETE/i })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: /REGISTER NOW/i })).toHaveAttribute(
       "href",
       "/esports/register",
     );
@@ -88,10 +92,9 @@ describe("Ecosystem", () => {
 describe("Stories section", () => {
   it("renders story cards from data", () => {
     render(<Stories stories={mockStories.filter((s) => s.featured)} />);
-    expect(screen.getByText("Meet KIRAKITAH")).toBeInTheDocument();
-    expect(
-      screen.getByText("KIRAKITAH GAMING 926 Registration Is Coming"),
-    ).toBeInTheDocument();
+    expect(screen.getByText("Introducing KIRAKITAH")).toBeInTheDocument();
+    expect(screen.getByText("KIRAKITAH GAMING 926")).toBeInTheDocument();
+    expect(screen.getByText("Building What's Next")).toBeInTheDocument();
   });
 });
 
@@ -99,6 +102,6 @@ describe("FeaturedInitiative", () => {
   it("renders tournament information from data", () => {
     render(<FeaturedInitiative />);
     expect(screen.getByText(homepageFeaturedInitiative.subtitle)).toBeInTheDocument();
-    expect(screen.getByText("$100")).toBeInTheDocument();
+    expect(screen.getByText("US$100")).toBeInTheDocument();
   });
 });

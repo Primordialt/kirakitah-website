@@ -21,11 +21,12 @@ export function RegistrationSuccess() {
         tabIndex={-1}
         className="text-h2 text-text-primary outline-none"
       >
-        YOU&apos;RE IN THE SYSTEM.
+        YOUR APPLICATION HAS BEEN RECEIVED.
       </h2>
       <p className="text-body-lg text-text-secondary">
-        Your KIRAKITAH Gaming application has been received. We&apos;ll review
-        your information and contact you with the next steps.
+        Your KIRAKITAH Gaming 926 application has been received. KIRAKITAH will
+        review your information and contact you with next steps once verification
+        is complete.
       </p>
       <Button href="/esports" variant="outline" size="lg">
         BACK TO TOURNAMENT

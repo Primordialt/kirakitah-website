@@ -153,7 +153,7 @@ describe("RegistrationForm", () => {
     await user.click(screen.getByRole("button", { name: /SUBMIT APPLICATION/i }));
 
     await waitFor(() => {
-      expect(screen.getByText(/YOU'RE IN THE SYSTEM/i)).toBeInTheDocument();
+      expect(screen.getByText(/YOUR APPLICATION HAS BEEN RECEIVED/i)).toBeInTheDocument();
     });
     expect(mockSubmit).toHaveBeenCalledOnce();
   });

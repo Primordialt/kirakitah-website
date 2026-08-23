@@ -83,7 +83,7 @@ test.describe("Registration", () => {
 
     await page.getByRole("button", { name: /SUBMIT APPLICATION/i }).click();
 
-    await expect(page.getByText(/YOU'RE IN THE SYSTEM/i)).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText(/YOUR APPLICATION HAS BEEN RECEIVED/i)).toBeVisible({ timeout: 10000 });
   });
 
   test("invalid submission is blocked", async ({ page }) => {

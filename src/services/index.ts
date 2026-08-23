@@ -5,6 +5,7 @@ import { MockInitiativeService } from "./initiatives/mock";
 import { MockRegistrationService } from "./registration/mock";
 import { MockStoryService } from "./stories/mock";
 import { MockTournamentService } from "./tournaments/mock";
+import { mockContactService } from "./contact/mock";
 
 function createServices() {
   const dataSource = getDataSource();
@@ -15,13 +16,14 @@ function createServices() {
     );
   }
 
-  return {
+    return {
     initiatives: new MockInitiativeService(),
     events: new MockEventService(),
     stories: new MockStoryService(),
     faqs: new MockFAQService(),
     registration: new MockRegistrationService(),
     tournaments: new MockTournamentService(),
+    contact: mockContactService,
   };
 }
 

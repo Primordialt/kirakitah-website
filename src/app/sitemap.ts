@@ -1,5 +1,6 @@
 import { siteConfig } from "@/config/site";
 import { mockInitiatives } from "@/data/mocks/initiatives";
+import { mockStories } from "@/data/mocks/stories";
 import type { MetadataRoute } from "next";
 
 const staticPaths = [
@@ -13,6 +14,9 @@ const staticPaths = [
   "/community",
   "/stories",
   "/contact",
+  "/terms",
+  "/privacy",
+  "/code-of-conduct",
 ];
 
 export default function sitemap(): MetadataRoute.Sitemap {
@@ -20,8 +24,9 @@ export default function sitemap(): MetadataRoute.Sitemap {
   const initiativePaths = mockInitiatives.map(
     (initiative) => `/initiatives/${initiative.slug}`,
   );
+  const storyPaths = mockStories.map((story) => `/stories/${story.slug}`);
 
-  return [...staticPaths, ...initiativePaths].map((path) => ({
+  return [...staticPaths, ...initiativePaths, ...storyPaths].map((path) => ({
     url: `${siteConfig.url}${path}`,
     lastModified,
     changeFrequency: path === "" || path.startsWith("/esports") ? "weekly" : "monthly",
