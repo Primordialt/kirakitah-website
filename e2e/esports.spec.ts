@@ -44,6 +44,9 @@ test.describe("Registration", () => {
     await page.goto("/esports/register");
     await page.getByLabel("Date of birth").fill("2012-03-10");
     await expect(
+      page.getByRole("group", { name: /IDENTITY VERIFICATION/i }),
+    ).toBeVisible();
+    await expect(
       page.getByRole("group", { name: /PARENT \/ GUARDIAN INFORMATION/i }),
     ).toBeVisible();
   });
@@ -71,6 +74,15 @@ test.describe("Registration", () => {
     await page.getByLabel("City / location").fill("Lagos");
     await page.getByLabel(/^Email/i).fill("e2e.player@example.com");
     await page.getByLabel("Phone number").fill("08000000000");
+
+    await page.getByLabel("Identification type").selectOption("nin");
+    await page.getByLabel("NIN").fill("12345678901");
+    await page.getByLabel("Player photo").setInputFiles({
+      name: "player-photo.jpg",
+      mimeType: "image/jpeg",
+      buffer: Buffer.from("mock-player-photo"),
+    });
+
     await page.getByLabel("Gamer tag").fill("E2EPlayer");
     await page.getByLabel("Mobile platform").selectOption("android");
     await page.getByLabel("Time zone").selectOption("Africa/Lagos");

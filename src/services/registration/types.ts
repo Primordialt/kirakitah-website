@@ -1,8 +1,20 @@
 import type {
+  RegistrationFormValues,
   RegistrationResult,
-  RegistrationSubmission,
 } from "@/domain/registration";
+import { toRegistrationSubmission } from "@/domain/registration";
+
+export interface RegistrationSubmitOptions {
+  includeGuardian: boolean;
+}
 
 export interface IRegistrationService {
-  submit(data: RegistrationSubmission): Promise<RegistrationResult>;
+  submit(
+    data: RegistrationFormValues,
+    options: RegistrationSubmitOptions,
+  ): Promise<RegistrationResult>;
 }
+
+export type { RegistrationFormValues, RegistrationResult };
+
+export { toRegistrationSubmission };

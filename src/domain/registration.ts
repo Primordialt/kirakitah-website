@@ -1,3 +1,17 @@
+import type { IdentificationType } from "@/lib/identification";
+import {
+  normalizeIdentificationNumber,
+  validateIdentificationNumber,
+} from "@/lib/identification";
+import type { IdentityDocumentMetadata } from "@/lib/identity-upload";
+import {
+  MAX_IDENTITY_FILE_SIZE_BYTES,
+  PLAYER_PHOTO_ACCEPTED_TYPES,
+  formatAcceptedTypes,
+  formatFileSize,
+  isAcceptedFileType,
+  toIdentityDocumentMetadata,
+} from "@/lib/identity-upload";
 import { z } from "zod";
 
 export interface GuardianInfo {
@@ -16,6 +30,12 @@ export interface RegistrationConsents {
   mediaConsent: boolean;
 }
 
+export interface IdentityVerificationSubmission {
+  identificationType: IdentificationType;
+  identificationNumber: string;
+  playerPhoto: IdentityDocumentMetadata;
+}
+
 export interface RegistrationSubmission {
   fullName: string;
   dateOfBirth: string;
@@ -23,6 +43,7 @@ export interface RegistrationSubmission {
   city: string;
   email: string;
   phone: string;
+  identityVerification: IdentityVerificationSubmission;
   gamerTag: string;
   game: string;
   platform: string;
@@ -74,6 +95,39 @@ export const guardianSchema = z.object({
   }),
 });
 
+const playerPhotoFileSchema = z
+  .instanceof(File, { message: "Player photo is required" })
+  .refine((file) => file.size > 0, { message: "Player photo is required" })
+  .refine((file) => isAcceptedFileType(file, PLAYER_PHOTO_ACCEPTED_TYPES), {
+    message: `Player photo must be ${formatAcceptedTypes(PLAYER_PHOTO_ACCEPTED_TYPES)}`,
+  })
+  .refine((file) => file.size <= MAX_IDENTITY_FILE_SIZE_BYTES, {
+    message: `Player photo must be ${formatFileSize(MAX_IDENTITY_FILE_SIZE_BYTES)} or smaller`,
+  });
+
+export const identityVerificationFormSchema = z
+  .object({
+    identificationType: z.enum(["nin", "passport"], {
+      errorMap: () => ({ message: "Identification type is required" }),
+    }),
+    identificationNumber: z.string().min(1, "Identification number is required"),
+    playerPhoto: playerPhotoFileSchema,
+  })
+  .superRefine((data, ctx) => {
+    const message = validateIdentificationNumber(
+      data.identificationType,
+      data.identificationNumber,
+    );
+
+    if (message) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message,
+        path: ["identificationNumber"],
+      });
+    }
+  });
+
 export const registrationSchema = z
   .object({
     fullName: z.string().min(1, "Full name is required"),
@@ -82,6 +136,7 @@ export const registrationSchema = z
     city: z.string().min(1, "City is required"),
     email: z.string().email("Email must be valid"),
     phone: z.string().min(1, "Phone is required"),
+    identityVerification: identityVerificationFormSchema,
     gamerTag: z.string().min(1, "Gamer tag is required"),
     game: z.string().min(1, "Game is required"),
     platform: z.string().min(1, "Platform is required"),
@@ -138,3 +193,49 @@ export const registrationSchema = z
   });
 
 export type RegistrationFormValues = z.infer<typeof registrationSchema>;
+
+export function toRegistrationSubmission(
+  data: RegistrationFormValues,
+  options: { includeGuardian: boolean },
+): RegistrationSubmission {
+  const socialEntries = {
+    instagram: data.socialHandles?.instagram,
+    tiktok: data.socialHandles?.tiktok,
+    youtube: data.socialHandles?.youtube,
+  };
+
+  const socialHandles = Object.fromEntries(
+    Object.entries(socialEntries).filter((entry): entry is [string, string] =>
+      Boolean(entry[1]),
+    ),
+  );
+
+  const { identificationType, identificationNumber } = data.identityVerification;
+
+  return {
+    fullName: data.fullName,
+    dateOfBirth: data.dateOfBirth,
+    country: data.country,
+    city: data.city,
+    email: data.email,
+    phone: data.phone,
+    identityVerification: {
+      identificationType,
+      identificationNumber: normalizeIdentificationNumber(
+        identificationType,
+        identificationNumber,
+      ),
+      playerPhoto: toIdentityDocumentMetadata(data.identityVerification.playerPhoto),
+    },
+    gamerTag: data.gamerTag,
+    game: data.game,
+    platform: data.platform,
+    gamingProfile: data.gamingProfile || undefined,
+    timezone: data.timezone,
+    availability: data.availability,
+    socialHandles: Object.keys(socialHandles).length > 0 ? socialHandles : undefined,
+    guardian: options.includeGuardian ? data.guardian : undefined,
+    consents: data.consents,
+    eventId: data.eventId,
+  };
+}

@@ -3,7 +3,7 @@
 import { useEffect, useRef } from "react";
 import { Button } from "@/components/ui";
 
-export function RegistrationSuccess() {
+export function RegistrationSuccess({ referenceId }: { referenceId?: string }) {
   const headingRef = useRef<HTMLHeadingElement>(null);
 
   useEffect(() => {
@@ -27,6 +27,12 @@ export function RegistrationSuccess() {
         Your KIRAKITAH Gaming application has been received. We&apos;ll review
         your information and contact you with the next steps.
       </p>
+      {referenceId ? (
+        <p className="text-body-sm text-text-muted">
+          Application reference:{" "}
+          <span className="font-medium text-text-primary">{referenceId}</span>
+        </p>
+      ) : null}
       <Button href="/esports" variant="outline" size="lg">
         BACK TO TOURNAMENT
       </Button>

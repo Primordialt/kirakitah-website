@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Montserrat } from "next/font/google";
 import "@/styles/globals.css";
 import { siteConfig } from "@/config/site";
+import { withSocialMetadata } from "@/lib/social-metadata";
 
 const montserrat = Montserrat({
   subsets: ["latin"],
@@ -9,11 +10,16 @@ const montserrat = Montserrat({
   display: "swap",
 });
 
-export const metadata: Metadata = {
+export const metadata: Metadata = withSocialMetadata({
   metadataBase: new URL(siteConfig.url),
   title: siteConfig.name,
   description: `${siteConfig.name} — ${siteConfig.parentOrganisation}`,
-};
+  openGraph: {
+    siteName: siteConfig.name,
+    type: "website",
+    locale: "en",
+  },
+});
 
 export default function RootLayout({
   children,
