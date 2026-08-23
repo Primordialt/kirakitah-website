@@ -30,7 +30,7 @@ export async function POST(request: Request) {
     assertAdminCsrf(request);
     assertAdminAuthConfigured();
 
-    if (serverEnv.isProduction && serverEnv.adminAuthProvider === "mock") {
+    if (serverEnv.isStrictProduction && serverEnv.adminAuthProvider === "mock") {
       return NextResponse.json(
         apiError("FORBIDDEN", "Mock admin authentication is disabled in production."),
         {
@@ -87,7 +87,7 @@ export async function POST(request: Request) {
     return NextResponse.json(
       apiError(
         "UNAUTHORIZED",
-        serverEnv.isProduction
+        serverEnv.isStrictProduction
           ? "Admin authentication is unavailable."
           : message,
       ),

@@ -35,11 +35,13 @@ export function RegistrationSuccess({
         YOU&apos;RE IN THE SYSTEM.
       </h2>
       <p className="text-body-lg text-text-secondary">
-        Your application has been received.
+        Your application has been received — this is not yet confirmed tournament
+        participation.
       </p>
       <p className="text-body-sm text-text-secondary">
-        Complete the required contact verification steps when available. Your
-        identity information will be reviewed manually by the KIRAKITAH team.
+        Email and phone verification are required when available. Identity
+        documents enter manual KIRAKITAH review and do not auto-approve your
+        application.
       </p>
       {referenceId ? (
         <p className="text-body-sm text-text-muted">

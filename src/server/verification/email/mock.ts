@@ -15,7 +15,7 @@ export class MockEmailDeliveryProvider implements IEmailDeliveryProvider {
   async sendVerificationEmail(
     request: EmailDeliveryRequest,
   ): Promise<DeliveryResult> {
-    if (serverEnv.isProduction) {
+    if (!serverEnv.allowMockContactProviders) {
       return {
         status: "unavailable",
         provider: this.providerId,

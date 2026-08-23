@@ -13,7 +13,7 @@ export class MockPhoneDeliveryProvider implements IPhoneDeliveryProvider {
   async sendVerificationSms(
     request: PhoneDeliveryRequest,
   ): Promise<DeliveryResult> {
-    if (serverEnv.isProduction) {
+    if (!serverEnv.allowMockContactProviders) {
       return {
         status: "unavailable",
         provider: this.providerId,

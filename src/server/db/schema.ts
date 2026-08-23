@@ -90,6 +90,8 @@ export const registrationApplications = pgTable(
     city: text("city").notNull(),
     email: text("email").notNull(),
     phone: text("phone").notNull(),
+    /** Digits-only form of phone for duplicate protection. Original `phone` is preserved. */
+    phoneNormalized: text("phone_normalized").notNull(),
     identificationType: identificationTypeEnum("identification_type").notNull(),
     identificationNumberHash: text("identification_number_hash").notNull(),
     identificationNumberEncrypted: text("identification_number_encrypted").notNull(),
@@ -142,6 +144,9 @@ export const registrationApplications = pgTable(
   (table) => [
     uniqueIndex("registration_event_email_active_idx")
       .on(table.eventId, sql`lower(${table.email})`)
+      .where(sql`${table.status} NOT IN ('rejected', 'withdrawn')`),
+    uniqueIndex("registration_event_phone_active_idx")
+      .on(table.eventId, table.phoneNormalized)
       .where(sql`${table.status} NOT IN ('rejected', 'withdrawn')`),
     uniqueIndex("registration_event_id_hash_active_idx")
       .on(table.eventId, table.identificationType, table.identificationNumberHash)

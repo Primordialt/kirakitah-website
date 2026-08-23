@@ -1,4 +1,4 @@
-import { getDataSource } from "@/config/data-source";
+import { getDataSource, isMockRegistrationAllowed } from "@/config/data-source";
 import { MockEventService } from "./events/mock";
 import { MockFAQService } from "./faqs/mock";
 import { MockInitiativeService } from "./initiatives/mock";
@@ -10,16 +10,17 @@ import { mockContactService } from "./contact/mock";
 
 function createServices() {
   const dataSource = getDataSource();
+  const useMockRegistration =
+    dataSource === "mock" && isMockRegistrationAllowed();
 
   return {
     initiatives: new MockInitiativeService(),
     events: new MockEventService(),
     stories: new MockStoryService(),
     faqs: new MockFAQService(),
-    registration:
-      dataSource === "api"
-        ? new ApiRegistrationService()
-        : new MockRegistrationService(),
+    registration: useMockRegistration
+      ? new MockRegistrationService()
+      : new ApiRegistrationService(),
     tournaments: new MockTournamentService(),
     contact: mockContactService,
   };

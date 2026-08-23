@@ -44,7 +44,7 @@ export const serverEnv = {
     if (value === "none") return "none";
     if (value === "http") return "http";
     if (value === "mock") return "mock";
-    return this.isProduction ? "http" : "mock";
+    return this.isStrictProduction ? "http" : "mock";
   },
 
   get emailVerificationApiUrl() {
@@ -60,7 +60,7 @@ export const serverEnv = {
     if (value === "none") return "none";
     if (value === "http") return "http";
     if (value === "mock") return "mock";
-    return this.isProduction ? "http" : "mock";
+    return this.isStrictProduction ? "http" : "mock";
   },
 
   get phoneVerificationApiUrl() {
@@ -75,17 +75,38 @@ export const serverEnv = {
     return process.env.NODE_ENV ?? "development";
   },
 
+  /** Vercel deployment target when present: production | preview | development */
+  get vercelEnv() {
+    return readEnv("VERCEL_ENV");
+  },
+
   get isProduction() {
     return this.nodeEnv === "production";
+  },
+
+  /**
+   * True only on Vercel Production (or forced local production without VERCEL_ENV).
+   * Preview may keep development-friendly defaults while still failing closed for mocks
+   * when NODE_ENV is production and allowMock* is false via isProduction.
+   */
+  get isStrictProduction() {
+    if (this.vercelEnv === "production") return true;
+    if (this.vercelEnv === "preview" || this.vercelEnv === "development") {
+      return false;
+    }
+    return this.isProduction && !this.isTest;
   },
 
   get isTest() {
     return this.nodeEnv === "test" || process.env.VITEST === "true";
   },
 
-  /** Mock contact providers are allowed only outside production. */
+  /**
+   * Mock contact providers are allowed outside Vercel Production.
+   * NODE_ENV=production on Preview still blocks mocks (safe default).
+   */
   get allowMockContactProviders() {
-    return !this.isProduction;
+    return !this.isProduction || this.vercelEnv === "preview";
   },
 
   get adminAuthProvider(): "mock" | "http" | "unavailable" {
@@ -93,7 +114,7 @@ export const serverEnv = {
     if (value === "http") return "http";
     if (value === "mock") return "mock";
     if (value === "unavailable") return "unavailable";
-    return this.isProduction ? "unavailable" : "mock";
+    return this.isStrictProduction ? "unavailable" : "mock";
   },
 
   get adminSessionSecret() {
@@ -108,9 +129,9 @@ export const serverEnv = {
     return readEnv("ADMIN_AUTH_API_KEY");
   },
 
-  /** Mock admin auth is allowed only outside production. */
+  /** Mock admin auth is never allowed on Vercel Production. */
   get allowMockAdminAuth() {
-    return !this.isProduction;
+    return !this.isStrictProduction;
   },
 } as const;
 
@@ -128,4 +149,29 @@ export function isVerificationConfigured(): boolean {
    * Automated NIN provider credentials are optional future capability only.
    */
   return true;
+}
+
+export function isEmailDeliveryConfigured(): boolean {
+  return (
+    serverEnv.emailVerificationProvider === "http" &&
+    Boolean(serverEnv.emailVerificationApiUrl) &&
+    Boolean(serverEnv.emailVerificationApiKey)
+  );
+}
+
+export function isPhoneDeliveryConfigured(): boolean {
+  return (
+    serverEnv.phoneVerificationProvider === "http" &&
+    Boolean(serverEnv.phoneVerificationApiUrl) &&
+    Boolean(serverEnv.phoneVerificationApiKey)
+  );
+}
+
+export function isAdminAuthConfigured(): boolean {
+  return (
+    serverEnv.adminAuthProvider === "http" &&
+    Boolean(serverEnv.adminSessionSecret) &&
+    Boolean(serverEnv.adminAuthApiUrl) &&
+    Boolean(serverEnv.adminAuthApiKey)
+  );
 }

@@ -14,7 +14,7 @@ export class MockAdminAuthProvider implements AdminAuthProvider {
   readonly providerId = "mock";
 
   async authenticate(credentials: AdminLoginCredentials): Promise<AdminUser> {
-    if (serverEnv.isProduction) {
+    if (!serverEnv.allowMockAdminAuth) {
       throw new Error("Mock admin authentication cannot operate in production.");
     }
 

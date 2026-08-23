@@ -57,7 +57,7 @@ export function assertAdminAuthConfigured(): void {
       "Admin authentication is not configured.",
     );
   }
-  if (provider.providerId === "mock" && serverEnv.isProduction) {
+  if (provider.providerId === "mock" && serverEnv.isStrictProduction) {
     throw new AdminAuthenticationError(
       "Mock admin authentication is disabled in production.",
     );
