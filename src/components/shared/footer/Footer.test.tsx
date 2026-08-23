@@ -38,7 +38,10 @@ describe("Footer", () => {
       expect(href).not.toBe("null");
     }
 
-    expect(screen.queryByRole("link", { name: "Register" })).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Register" })).toHaveAttribute(
+      "href",
+      "/esports/register",
+    );
     expect(screen.queryByRole("link", { name: "Instagram" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Privacy Policy" })).not.toBeInTheDocument();
   });

@@ -1,0 +1,160 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import {
+  registrationSchema,
+  requiresGuardian,
+  type RegistrationFormValues,
+} from "@/domain/registration";
+import { TOURNAMENT_EVENT_ID } from "@/data/mocks/tournaments";
+import { services } from "@/services";
+import { Button } from "@/components/ui";
+import { PlayerInformation } from "./PlayerInformation";
+import { GamingInformation } from "./GamingInformation";
+import { AvailabilityInformation } from "./AvailabilityInformation";
+import { SocialInformation } from "./SocialInformation";
+import { ConsentSection } from "./ConsentSection";
+import { GuardianInformation } from "./GuardianInformation";
+import { RegistrationSuccess } from "./RegistrationSuccess";
+import { RegistrationError } from "./RegistrationError";
+
+type FormStatus = "idle" | "submitting" | "success" | "failure";
+
+const defaultValues: RegistrationFormValues = {
+  fullName: "",
+  dateOfBirth: "",
+  country: "",
+  city: "",
+  email: "",
+  phone: "",
+  gamerTag: "",
+  game: "eFootball Mobile",
+  platform: "",
+  gamingProfile: "",
+  timezone: "",
+  availability: [],
+  socialHandles: {
+    instagram: "",
+    tiktok: "",
+    youtube: "",
+  },
+  consents: {
+    rules: false as unknown as true,
+    terms: false as unknown as true,
+    privacy: false as unknown as true,
+    codeOfConduct: false as unknown as true,
+    mediaConsent: false as unknown as true,
+  },
+  eventId: TOURNAMENT_EVENT_ID,
+};
+
+export function RegistrationForm() {
+  const [status, setStatus] = useState<FormStatus>("idle");
+
+  const {
+    register,
+    control,
+    handleSubmit,
+    watch,
+    setValue,
+    formState: { errors, isSubmitting, isDirty },
+  } = useForm<RegistrationFormValues>({
+    resolver: zodResolver(registrationSchema),
+    defaultValues,
+    mode: "onBlur",
+    reValidateMode: "onChange",
+  });
+
+  const dateOfBirth = watch("dateOfBirth");
+  const showGuardian = requiresGuardian(dateOfBirth);
+
+  useEffect(() => {
+    if (!showGuardian) {
+      setValue("guardian", undefined);
+    }
+  }, [showGuardian, setValue]);
+
+  const onSubmit = async (data: RegistrationFormValues) => {
+    setStatus("submitting");
+    try {
+      const payload: RegistrationFormValues = {
+        ...data,
+        guardian: showGuardian ? data.guardian : undefined,
+        socialHandles: {
+          instagram: data.socialHandles?.instagram || undefined,
+          tiktok: data.socialHandles?.tiktok || undefined,
+          youtube: data.socialHandles?.youtube || undefined,
+        },
+      };
+
+      const result = await services.registration.submit(payload);
+
+      if (result.success) {
+        setStatus("success");
+      } else {
+        setStatus("failure");
+      }
+    } catch (error) {
+      if (process.env.NODE_ENV === "development") {
+        console.error("Registration submission failed", error);
+      }
+      setStatus("failure");
+    }
+  };
+
+  const handleRetry = () => {
+    setStatus("idle");
+  };
+
+  if (status === "success") {
+    return <RegistrationSuccess />;
+  }
+
+  if (status === "failure") {
+    return <RegistrationError onRetry={handleRetry} />;
+  }
+
+  const formStatusLabel = isSubmitting
+    ? "Submitting application"
+    : isDirty
+      ? "Editing application"
+      : "Registration form";
+
+  return (
+    <form
+      onSubmit={handleSubmit(onSubmit)}
+      className="mx-auto flex max-w-2xl flex-col gap-10"
+      noValidate
+      aria-label="KIRAKITAH Gaming 2026 registration"
+    >
+      <p className="sr-only" role="status" aria-live="polite">
+        {formStatusLabel}
+      </p>
+
+      <PlayerInformation register={register} control={control} errors={errors} />
+      <GamingInformation register={register} control={control} errors={errors} />
+      <AvailabilityInformation register={register} control={control} errors={errors} />
+      <SocialInformation register={register} control={control} errors={errors} />
+
+      {showGuardian && (
+        <GuardianInformation register={register} control={control} errors={errors} />
+      )}
+
+      <ConsentSection register={register} control={control} errors={errors} />
+
+      <input type="hidden" {...register("eventId")} />
+      <input type="hidden" {...register("game")} />
+
+      <Button
+        type="submit"
+        size="lg"
+        loading={isSubmitting || status === "submitting"}
+        disabled={isSubmitting}
+      >
+        SUBMIT APPLICATION
+      </Button>
+    </form>
+  );
+}

@@ -5,6 +5,7 @@ export interface GuardianInfo {
   relationship: string;
   email: string;
   phone: string;
+  consent: boolean;
 }
 
 export interface RegistrationConsents {
@@ -39,7 +40,9 @@ export interface RegistrationResult {
   referenceId: string;
 }
 
-function calculateAge(dateOfBirth: string): number {
+export const MINIMUM_TOURNAMENT_AGE = 10;
+
+export function calculateAge(dateOfBirth: string): number {
   const birthDate = new Date(dateOfBirth);
   const today = new Date();
   let age = today.getFullYear() - birthDate.getFullYear();
@@ -55,11 +58,20 @@ function calculateAge(dateOfBirth: string): number {
   return age;
 }
 
+export function requiresGuardian(dateOfBirth: string): boolean {
+  if (!dateOfBirth) return false;
+  const age = calculateAge(dateOfBirth);
+  return age >= MINIMUM_TOURNAMENT_AGE && age < 18;
+}
+
 export const guardianSchema = z.object({
   fullName: z.string().min(1, "Guardian full name is required"),
   relationship: z.string().min(1, "Guardian relationship is required"),
   email: z.string().email("Guardian email must be valid"),
   phone: z.string().min(1, "Guardian phone is required"),
+  consent: z.literal(true, {
+    errorMap: () => ({ message: "Guardian consent is required" }),
+  }),
 });
 
 export const registrationSchema = z
@@ -78,7 +90,13 @@ export const registrationSchema = z
     availability: z
       .array(z.string())
       .min(1, "At least one availability slot is required"),
-    socialHandles: z.record(z.string()).optional(),
+    socialHandles: z
+      .object({
+        instagram: z.string().optional(),
+        tiktok: z.string().optional(),
+        youtube: z.string().optional(),
+      })
+      .optional(),
     guardian: guardianSchema.optional(),
     consents: z.object({
       rules: z.literal(true, {
@@ -102,7 +120,15 @@ export const registrationSchema = z
   .superRefine((data, ctx) => {
     const age = calculateAge(data.dateOfBirth);
 
-    if (age < 18 && !data.guardian) {
+    if (age < MINIMUM_TOURNAMENT_AGE) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `You must be at least ${MINIMUM_TOURNAMENT_AGE} years old to participate`,
+        path: ["dateOfBirth"],
+      });
+    }
+
+    if (age < 18 && age >= MINIMUM_TOURNAMENT_AGE && !data.guardian) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message: "Guardian information is required for participants under 18",

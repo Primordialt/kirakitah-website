@@ -1,0 +1,13 @@
+export { EsportsHero } from "./EsportsHero";
+export { TournamentStats } from "./TournamentStats";
+export { TournamentIntro } from "./TournamentIntro";
+export { TournamentDetails } from "./TournamentDetails";
+export { TournamentJourney } from "./TournamentJourney";
+export { Qualification } from "./Qualification";
+export { KnockoutStage } from "./KnockoutStage";
+export { TournamentTechnology } from "./TournamentTechnology";
+export { WatchAction } from "./WatchAction";
+export { MatchHighlights } from "./MatchHighlights";
+export { RulesPreview } from "./RulesPreview";
+export { FAQPreview } from "./FAQPreview";
+export { EsportsFinalCTA } from "./EsportsFinalCTA";

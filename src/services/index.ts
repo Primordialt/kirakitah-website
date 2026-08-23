@@ -4,6 +4,7 @@ import { MockFAQService } from "./faqs/mock";
 import { MockInitiativeService } from "./initiatives/mock";
 import { MockRegistrationService } from "./registration/mock";
 import { MockStoryService } from "./stories/mock";
+import { MockTournamentService } from "./tournaments/mock";
 
 function createServices() {
   const dataSource = getDataSource();
@@ -20,6 +21,7 @@ function createServices() {
     stories: new MockStoryService(),
     faqs: new MockFAQService(),
     registration: new MockRegistrationService(),
+    tournaments: new MockTournamentService(),
   };
 }
 
@@ -30,3 +32,4 @@ export type { IFAQService } from "./faqs/types";
 export type { IInitiativeService } from "./initiatives/types";
 export type { IRegistrationService } from "./registration/types";
 export type { IStoryService } from "./stories/types";
+export type { ITournamentService } from "./tournaments/types";

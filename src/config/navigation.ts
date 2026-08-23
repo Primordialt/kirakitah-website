@@ -67,9 +67,9 @@ export const footerColumns: FooterColumn[] = [
   {
     title: "Participate",
     links: [
-      { label: "Register", href: null },
-      { label: "Tournament Rules", href: null },
-      { label: "FAQ", href: null },
+      { label: "Register", href: "/esports/register" },
+      { label: "Tournament Rules", href: "/esports/rules" },
+      { label: "FAQ", href: "/esports/faq" },
     ],
   },
   {
