@@ -119,8 +119,6 @@ export const esportsQualification = {
   howItWorksHeading: "HOW QUALIFICATION WORKS",
   howItWorksParagraphs: [
     "All verified players begin the tournament in the qualification stage.",
-    "Because eFootball Mobile Custom Tournament rooms have a limited participant capacity, KIRAKITAH will organise players into controlled qualification groups.",
-    "Each group is managed by a KIRAKITAH host. The host occupies the host position in the Custom Tournament and does not compete as a player. The player matched against the host automatically advances from that matchup. The remaining players compete through the assigned qualification matches.",
     "The qualification stage continues until 32 players have earned their place in the KIRAKITAH Top 32.",
     "From there, the competition becomes a straight knockout journey to the Grand Final.",
   ],
