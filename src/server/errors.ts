@@ -1,0 +1,51 @@
+/**
+ * Standard API error shapes for Route Handlers.
+ * @see docs/backend/ARCHITECTURE.md
+ */
+
+export type ApiErrorCode =
+  | "VALIDATION_ERROR"
+  | "NOT_FOUND"
+  | "RATE_LIMITED"
+  | "CONFLICT"
+  | "UNAUTHORIZED"
+  | "FORBIDDEN"
+  | "INTERNAL_ERROR"
+  | "NOT_IMPLEMENTED"
+  | "VERIFICATION_INVALID"
+  | "VERIFICATION_EXPIRED"
+  | "VERIFICATION_EXHAUSTED"
+  | "VERIFICATION_NOT_FOUND"
+  | "VERIFICATION_ALREADY_USED"
+  | "VERIFICATION_RATE_LIMITED"
+  | "VERIFICATION_NOT_CONFIGURED"
+  | "VERIFICATION_ALREADY_VERIFIED"
+  | "VERIFICATION_COOLDOWN"
+  | "PROVIDER_UNAVAILABLE";
+
+export interface ApiErrorDetail {
+  path: string;
+  message: string;
+}
+
+export interface ApiErrorBody {
+  error: {
+    code: ApiErrorCode;
+    message: string;
+    details?: ApiErrorDetail[];
+  };
+}
+
+export function apiError(
+  code: ApiErrorCode,
+  message: string,
+  details?: ApiErrorDetail[],
+): ApiErrorBody {
+  return {
+    error: {
+      code,
+      message,
+      ...(details?.length ? { details } : {}),
+    },
+  };
+}

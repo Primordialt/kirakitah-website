@@ -6,8 +6,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import {
   registrationSchema,
   requiresGuardian,
-  toRegistrationSubmission,
   type RegistrationFormValues,
+  type RegistrationResult,
 } from "@/domain/registration";
 import { TOURNAMENT_EVENT_ID } from "@/data/mocks/tournaments";
 import { COMPETITION_NAME } from "@/config/competition";
@@ -33,7 +33,8 @@ const defaultValues: RegistrationFormValues = {
   email: "",
   phone: "",
   identityVerification: {
-    governmentId: undefined,
+    identificationType: "",
+    identificationNumber: "",
     playerPhoto: undefined,
   },
   gamerTag: "",
@@ -59,6 +60,10 @@ const defaultValues: RegistrationFormValues = {
 
 export function RegistrationForm() {
   const [status, setStatus] = useState<FormStatus>("idle");
+  const [referenceId, setReferenceId] = useState<string | null>(null);
+  const [contactVerification, setContactVerification] = useState<
+    RegistrationResult["contactVerification"] | undefined
+  >(undefined);
 
   const {
     register,
@@ -86,11 +91,13 @@ export function RegistrationForm() {
   const onSubmit = async (data: RegistrationFormValues) => {
     setStatus("submitting");
     try {
-      const payload = toRegistrationSubmission(data, { includeGuardian: showGuardian });
-
-      const result = await services.registration.submit(payload);
+      const result = await services.registration.submit(data, {
+        includeGuardian: showGuardian,
+      });
 
       if (result.success) {
+        setReferenceId(result.referenceId);
+        setContactVerification(result.contactVerification);
         setStatus("success");
       } else {
         setStatus("failure");
@@ -108,7 +115,12 @@ export function RegistrationForm() {
   };
 
   if (status === "success") {
-    return <RegistrationSuccess />;
+    return (
+      <RegistrationSuccess
+        referenceId={referenceId ?? undefined}
+        contactVerification={contactVerification}
+      />
+    );
   }
 
   if (status === "failure") {
@@ -143,7 +155,12 @@ export function RegistrationForm() {
       </p>
 
       <PlayerInformation register={register} control={control} errors={errors} />
-      <IdentityVerification register={register} control={control} errors={errors} />
+      <IdentityVerification
+        register={register}
+        control={control}
+        errors={errors}
+        setValue={setValue}
+      />
       <GamingInformation register={register} control={control} errors={errors} />
       <AvailabilityInformation register={register} control={control} errors={errors} />
       <SocialInformation register={register} control={control} errors={errors} />

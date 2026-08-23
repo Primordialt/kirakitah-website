@@ -1,8 +1,10 @@
-import type {
-  IdentityDocumentMetadata,
-} from "@/lib/identity-upload";
+import type { IdentificationType } from "@/lib/identification";
 import {
-  GOVERNMENT_ID_ACCEPTED_TYPES,
+  normalizeIdentificationNumber,
+  validateIdentificationNumber,
+} from "@/lib/identification";
+import type { IdentityDocumentMetadata } from "@/lib/identity-upload";
+import {
   MAX_IDENTITY_FILE_SIZE_BYTES,
   PLAYER_PHOTO_ACCEPTED_TYPES,
   formatAcceptedTypes,
@@ -29,7 +31,8 @@ export interface RegistrationConsents {
 }
 
 export interface IdentityVerificationSubmission {
-  governmentId: IdentityDocumentMetadata;
+  identificationType: IdentificationType;
+  identificationNumber: string;
   playerPhoto: IdentityDocumentMetadata;
 }
 
@@ -56,6 +59,22 @@ export interface RegistrationSubmission {
 export interface RegistrationResult {
   success: boolean;
   referenceId: string;
+  contactVerification?: {
+    email: ContactChannelVerificationState;
+    phone: ContactChannelVerificationState;
+  };
+}
+
+export type ContactChannelVerificationStatus =
+  | "pending"
+  | "verified"
+  | "skipped"
+  | "unavailable";
+
+export interface ContactChannelVerificationState {
+  status: ContactChannelVerificationStatus;
+  challengeId?: string;
+  resendAvailableAt?: string;
 }
 
 export const MINIMUM_TOURNAMENT_AGE = 10;
@@ -92,27 +111,38 @@ export const guardianSchema = z.object({
   }),
 });
 
-const identityFileSchema = (
-  label: string,
-  acceptedTypes: readonly string[],
-) =>
-  z
-    .instanceof(File, { message: `${label} is required` })
-    .refine((file) => file.size > 0, { message: `${label} is required` })
-    .refine((file) => isAcceptedFileType(file, acceptedTypes), {
-      message: `${label} must be ${formatAcceptedTypes(acceptedTypes)}`,
-    })
-    .refine((file) => file.size <= MAX_IDENTITY_FILE_SIZE_BYTES, {
-      message: `${label} must be ${formatFileSize(MAX_IDENTITY_FILE_SIZE_BYTES)} or smaller`,
-    });
+const playerPhotoFileSchema = z
+  .instanceof(File, { message: "Player photo is required" })
+  .refine((file) => file.size > 0, { message: "Player photo is required" })
+  .refine((file) => isAcceptedFileType(file, PLAYER_PHOTO_ACCEPTED_TYPES), {
+    message: `Player photo must be ${formatAcceptedTypes(PLAYER_PHOTO_ACCEPTED_TYPES)}`,
+  })
+  .refine((file) => file.size <= MAX_IDENTITY_FILE_SIZE_BYTES, {
+    message: `Player photo must be ${formatFileSize(MAX_IDENTITY_FILE_SIZE_BYTES)} or smaller`,
+  });
 
-export const identityVerificationFormSchema = z.object({
-  governmentId: identityFileSchema(
-    "Government-issued ID",
-    GOVERNMENT_ID_ACCEPTED_TYPES,
-  ),
-  playerPhoto: identityFileSchema("Player photo", PLAYER_PHOTO_ACCEPTED_TYPES),
-});
+export const identityVerificationFormSchema = z
+  .object({
+    identificationType: z.enum(["nin", "passport"], {
+      errorMap: () => ({ message: "Identification type is required" }),
+    }),
+    identificationNumber: z.string().min(1, "Identification number is required"),
+    playerPhoto: playerPhotoFileSchema,
+  })
+  .superRefine((data, ctx) => {
+    const message = validateIdentificationNumber(
+      data.identificationType,
+      data.identificationNumber,
+    );
+
+    if (message) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message,
+        path: ["identificationNumber"],
+      });
+    }
+  });
 
 export const registrationSchema = z
   .object({
@@ -196,6 +226,8 @@ export function toRegistrationSubmission(
     ),
   );
 
+  const { identificationType, identificationNumber } = data.identityVerification;
+
   return {
     fullName: data.fullName,
     dateOfBirth: data.dateOfBirth,
@@ -204,7 +236,11 @@ export function toRegistrationSubmission(
     email: data.email,
     phone: data.phone,
     identityVerification: {
-      governmentId: toIdentityDocumentMetadata(data.identityVerification.governmentId),
+      identificationType,
+      identificationNumber: normalizeIdentificationNumber(
+        identificationType,
+        identificationNumber,
+      ),
       playerPhoto: toIdentityDocumentMetadata(data.identityVerification.playerPhoto),
     },
     gamerTag: data.gamerTag,

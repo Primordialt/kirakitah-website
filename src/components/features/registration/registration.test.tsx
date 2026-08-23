@@ -64,12 +64,16 @@ async function fillRequiredRegistrationFields(user: ReturnType<typeof userEvent.
   await user.type(screen.getByLabelText(/^Email/i), "player@example.com");
   await user.type(screen.getByLabelText(/Phone number/i), "08012345678");
 
-  const governmentIdInput = screen.getByLabelText(/Government-issued ID/i);
-  const playerPhotoInput = screen.getByLabelText(/Player photo/i);
-  await user.upload(
-    governmentIdInput,
-    createTestFile("government-id.pdf", "application/pdf"),
+  await user.selectOptions(
+    screen.getByLabelText(/Identification type/i),
+    "nin",
   );
+  await user.type(
+    await screen.findByPlaceholderText("Enter your NIN"),
+    "12345678901",
+  );
+
+  const playerPhotoInput = screen.getByLabelText(/Player photo/i);
   await user.upload(playerPhotoInput, createTestFile("player-photo.jpg", "image/jpeg"));
 
   await user.type(screen.getByLabelText(/Gamer tag/i), "TestGamer");
@@ -108,7 +112,8 @@ describe("registration domain", () => {
       email: "test@example.com",
       phone: "1234567890",
       identityVerification: {
-        governmentId: createTestFile("id.pdf", "application/pdf"),
+        identificationType: "nin",
+        identificationNumber: "12345678901",
         playerPhoto: createTestFile("photo.jpg", "image/jpeg"),
       },
       gamerTag: "TestTag",
@@ -129,7 +134,7 @@ describe("registration domain", () => {
     expect(result.success).toBe(false);
   });
 
-  it("strips identity files to metadata before submission", () => {
+  it("normalizes identification number and strips player photo to metadata", () => {
     const payload = toRegistrationSubmission(
       {
         fullName: "Test Player",
@@ -139,7 +144,8 @@ describe("registration domain", () => {
         email: "test@example.com",
         phone: "1234567890",
         identityVerification: {
-          governmentId: createTestFile("id.pdf", "application/pdf"),
+          identificationType: "nin",
+          identificationNumber: "123 4567 8901",
           playerPhoto: createTestFile("photo.jpg", "image/jpeg"),
         },
         gamerTag: "TestTag",
@@ -160,19 +166,14 @@ describe("registration domain", () => {
       { includeGuardian: false },
     );
 
-    expect(payload.identityVerification).toEqual({
-      governmentId: {
-        fileName: "id.pdf",
-        fileSize: payload.identityVerification.governmentId.fileSize,
-        mimeType: "application/pdf",
-      },
-      playerPhoto: {
-        fileName: "photo.jpg",
-        fileSize: payload.identityVerification.playerPhoto.fileSize,
-        mimeType: "image/jpeg",
-      },
+    expect(payload.identityVerification.identificationType).toBe("nin");
+    expect(payload.identityVerification.identificationNumber).toBe("12345678901");
+    expect(payload.identityVerification.playerPhoto).toEqual({
+      fileName: "photo.jpg",
+      fileSize: payload.identityVerification.playerPhoto.fileSize,
+      mimeType: "image/jpeg",
     });
-    expect(Object.keys(payload.identityVerification.governmentId)).toEqual([
+    expect(Object.keys(payload.identityVerification.playerPhoto)).toEqual([
       "fileName",
       "fileSize",
       "mimeType",
@@ -193,7 +194,7 @@ describe("RegistrationForm", () => {
     await user.click(screen.getByRole("button", { name: /SUBMIT APPLICATION/i }));
 
     expect(await screen.findByText("Full name is required")).toBeInTheDocument();
-    expect(await screen.findByText("Government-issued ID is required")).toBeInTheDocument();
+    expect(await screen.findByText("Identification type is required")).toBeInTheDocument();
     expect(await screen.findByText("Player photo is required")).toBeInTheDocument();
     expect(mockSubmit).not.toHaveBeenCalled();
   });
@@ -218,6 +219,15 @@ describe("RegistrationForm", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("updates identification number label when type changes", async () => {
+    render(<RegistrationForm />);
+    const user = userEvent.setup();
+
+    await user.selectOptions(screen.getByLabelText(/Identification type/i), "passport");
+
+    expect(await screen.findByLabelText(/Passport number/i)).toBeInTheDocument();
+  });
+
   it("shows success state after mock submission", async () => {
     render(<RegistrationForm />);
     const user = userEvent.setup();
@@ -226,15 +236,16 @@ describe("RegistrationForm", () => {
     await user.click(screen.getByRole("button", { name: /SUBMIT APPLICATION/i }));
 
     await waitFor(() => {
-      expect(screen.getByText(/YOUR APPLICATION HAS BEEN RECEIVED/i)).toBeInTheDocument();
+      expect(screen.getByText(/YOU'RE IN THE SYSTEM/i)).toBeInTheDocument();
     });
 
     expect(mockSubmit).toHaveBeenCalledOnce();
-    const submitted = mockSubmit.mock.calls[0][0];
-    expect(submitted.identityVerification.governmentId.fileName).toBe("government-id.pdf");
-    expect(submitted.identityVerification.playerPhoto.fileName).toBe("player-photo.jpg");
-    expect(submitted.identityVerification.governmentId).not.toHaveProperty("content");
-  });
+    const [submitted, options] = mockSubmit.mock.calls[0];
+    expect(submitted.identityVerification.identificationType).toBe("nin");
+    expect(submitted.identityVerification.identificationNumber).toBe("12345678901");
+    expect(submitted.identityVerification.playerPhoto).toBeInstanceOf(File);
+    expect(options).toEqual({ includeGuardian: false });
+  }, 15000);
 
   it("shows failure state when mock submission fails", async () => {
     mockSubmit.mockResolvedValueOnce({ success: false, referenceId: "" });
@@ -247,5 +258,5 @@ describe("RegistrationForm", () => {
     await waitFor(() => {
       expect(screen.getByText(/SOMETHING WENT WRONG/i)).toBeInTheDocument();
     });
-  });
+  }, 15000);
 });

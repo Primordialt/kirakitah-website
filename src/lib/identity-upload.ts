@@ -1,19 +1,11 @@
 export const MAX_IDENTITY_FILE_SIZE_BYTES = 5 * 1024 * 1024;
 
-export const GOVERNMENT_ID_ACCEPTED_TYPES = [
-  "image/jpeg",
-  "image/png",
-  "image/webp",
-  "application/pdf",
-] as const;
-
 export const PLAYER_PHOTO_ACCEPTED_TYPES = [
   "image/jpeg",
   "image/png",
   "image/webp",
 ] as const;
 
-export type GovernmentIdMimeType = (typeof GOVERNMENT_ID_ACCEPTED_TYPES)[number];
 export type PlayerPhotoMimeType = (typeof PLAYER_PHOTO_ACCEPTED_TYPES)[number];
 
 export interface IdentityDocumentMetadata {
@@ -24,7 +16,6 @@ export interface IdentityDocumentMetadata {
 
 export function formatAcceptedTypes(types: readonly string[]): string {
   const labels = types.map((type) => {
-    if (type === "application/pdf") return "PDF";
     if (type === "image/jpeg") return "JPEG";
     if (type === "image/png") return "PNG";
     if (type === "image/webp") return "WebP";

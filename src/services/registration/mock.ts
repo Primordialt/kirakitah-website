@@ -1,36 +1,41 @@
 import type {
+  RegistrationFormValues,
   RegistrationResult,
-  RegistrationSubmission,
 } from "@/domain/registration";
+import { toRegistrationSubmission } from "@/domain/registration";
 import type { IRegistrationService } from "./types";
 
 const MOCK_DELAY_MS = 500;
 
 const MOCK_FAILURE_EMAIL = "fail@kirakitah.test";
 
-function assertIdentityMetadataOnly(data: RegistrationSubmission): void {
-  const { governmentId, playerPhoto } = data.identityVerification;
+function assertPlayerPhotoMetadataOnly(
+  data: ReturnType<typeof toRegistrationSubmission>,
+): void {
+  const { playerPhoto } = data.identityVerification;
+  const keys = Object.keys(playerPhoto);
 
-  for (const document of [governmentId, playerPhoto]) {
-    const keys = Object.keys(document);
-    if (
-      keys.length !== 3 ||
-      !keys.includes("fileName") ||
-      !keys.includes("fileSize") ||
-      !keys.includes("mimeType")
-    ) {
-      throw new Error("Identity documents must be submitted as metadata only");
-    }
+  if (
+    keys.length !== 3 ||
+    !keys.includes("fileName") ||
+    !keys.includes("fileSize") ||
+    !keys.includes("mimeType")
+  ) {
+    throw new Error("Player photo must be submitted as metadata only");
   }
 }
 
 export class MockRegistrationService implements IRegistrationService {
-  async submit(data: RegistrationSubmission): Promise<RegistrationResult> {
+  async submit(
+    data: RegistrationFormValues,
+    options: { includeGuardian: boolean },
+  ): Promise<RegistrationResult> {
     await new Promise((resolve) => setTimeout(resolve, MOCK_DELAY_MS));
 
-    assertIdentityMetadataOnly(data);
+    const submission = toRegistrationSubmission(data, options);
+    assertPlayerPhotoMetadataOnly(submission);
 
-    if (data.email.toLowerCase() === MOCK_FAILURE_EMAIL) {
+    if (submission.email.toLowerCase() === MOCK_FAILURE_EMAIL) {
       return {
         success: false,
         referenceId: "",
@@ -39,7 +44,11 @@ export class MockRegistrationService implements IRegistrationService {
 
     return {
       success: true,
-      referenceId: `MOCK-${data.eventId.toUpperCase()}-${Date.now()}`,
+      referenceId: `MOCK-${submission.eventId.toUpperCase()}-${Date.now()}`,
+      contactVerification: {
+        email: { status: "unavailable" },
+        phone: { status: "unavailable" },
+      },
     };
   }
 }

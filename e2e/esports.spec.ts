@@ -42,7 +42,9 @@ test.describe("eSports experience", () => {
 test.describe("Registration", () => {
   test("minor age triggers guardian fields", async ({ page }) => {
     await page.goto("/esports/register");
-    await page.getByLabel("Date of birth").fill("2012-03-10");
+    const dob = page.getByLabel("Date of birth");
+    await dob.fill("2012-03-10");
+    await dob.blur();
     await expect(
       page.getByRole("group", { name: /IDENTITY VERIFICATION/i }),
     ).toBeVisible();
@@ -75,11 +77,8 @@ test.describe("Registration", () => {
     await page.getByLabel(/^Email/i).fill("e2e.player@example.com");
     await page.getByLabel("Phone number").fill("08000000000");
 
-    await page.getByLabel("Government-issued ID").setInputFiles({
-      name: "government-id.pdf",
-      mimeType: "application/pdf",
-      buffer: Buffer.from("mock-id-document"),
-    });
+    await page.getByLabel("Identification type").selectOption("nin");
+    await page.getByRole("textbox", { name: "NIN" }).fill("12345678901");
     await page.getByLabel("Player photo").setInputFiles({
       name: "player-photo.jpg",
       mimeType: "image/jpeg",
@@ -98,7 +97,7 @@ test.describe("Registration", () => {
 
     await page.getByRole("button", { name: /SUBMIT APPLICATION/i }).click();
 
-    await expect(page.getByText(/YOUR APPLICATION HAS BEEN RECEIVED/i)).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText(/YOU'RE IN THE SYSTEM/i)).toBeVisible({ timeout: 10000 });
   });
 
   test("invalid submission is blocked", async ({ page }) => {

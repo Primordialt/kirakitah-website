@@ -17,3 +17,8 @@ export type {
   RegistrationSubmission,
 } from "./registration";
 export { guardianSchema, registrationSchema } from "./registration";
+export type {
+  RegistrationApplicationRecord,
+  RegistrationApplicationStatus,
+  RegistrationGuardianRecord,
+} from "./registration-application";

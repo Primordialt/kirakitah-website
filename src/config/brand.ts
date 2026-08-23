@@ -23,6 +23,16 @@ export const brandAssets = {
     height: 512,
     alt: "KIRAKITAH",
   },
+  /**
+   * Purple brand mark for social / Open Graph / Twitter cards.
+   * Prefer this over white marks so previews remain visible on light surfaces.
+   */
+  socialLogo: {
+    src: "/brand/logo-mark.png",
+    width: 512,
+    height: 512,
+    alt: "KIRAKITAH",
+  },
 } as const;
 
 export type BrandAssetTone = "brand" | "white";
