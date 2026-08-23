@@ -45,6 +45,10 @@ export class MockRegistrationService implements IRegistrationService {
     return {
       success: true,
       referenceId: `MOCK-${submission.eventId.toUpperCase()}-${Date.now()}`,
+      contactVerification: {
+        email: { status: "unavailable" },
+        phone: { status: "unavailable" },
+      },
     };
   }
 }

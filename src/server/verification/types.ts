@@ -1,3 +1,5 @@
+import type { ApiErrorCode } from "@/server/errors";
+
 export type IdentityVerificationOutcome =
   | "verified"
   | "mismatch"
@@ -7,7 +9,11 @@ export type IdentityVerificationOutcome =
 
 export type ContactVerificationChannel = "email" | "phone";
 
-export type ContactVerificationStatus = "pending" | "verified" | "expired" | "failed";
+export type ContactChannelStatus =
+  | "pending"
+  | "verified"
+  | "skipped"
+  | "unavailable";
 
 export interface IdentityVerificationResult {
   outcome: IdentityVerificationOutcome;
@@ -30,14 +36,33 @@ export interface PassportLookupResult {
   message: string;
 }
 
-export interface SendVerificationChallengeResult {
-  status: "sent" | "skipped" | "unavailable";
+export interface DeliveryResult {
+  status: "sent" | "unavailable" | "skipped";
   provider: string;
-  challengeId?: string;
   message?: string;
 }
 
+/** @deprecated Prefer DeliveryResult — kept for older provider method signatures */
+export type SendVerificationChallengeResult = DeliveryResult & {
+  challengeId?: string;
+};
+
 export interface VerifyChallengeResult {
-  status: "verified" | "invalid" | "expired" | "too_many_attempts";
+  status:
+    | "verified"
+    | "invalid"
+    | "expired"
+    | "too_many_attempts"
+    | "already_used"
+    | "not_found";
   message?: string;
+  code?: ApiErrorCode;
+}
+
+export interface ContactChannelInitResult {
+  status: ContactChannelStatus;
+  challengeId?: string;
+  provider: string;
+  message?: string;
+  resendAvailableAt?: string;
 }

@@ -1,93 +1,97 @@
 import { eq } from "drizzle-orm";
 import { getDb } from "@/server/db";
+import { registrationApplications } from "@/server/db/schema";
 import {
-  registrationApplications,
-  registrationVerificationChallenges,
-} from "@/server/db/schema";
-import { getVerificationProviders } from "@/server/verification";
+  ContactVerificationError,
+  createAndDeliverChallenge,
+} from "@/server/verification/contact/challenges";
+import type { ContactChannelInitResult } from "@/server/verification/types";
 
+export interface InitiateContactVerificationResult {
+  email: ContactChannelInitResult;
+  phone: ContactChannelInitResult;
+}
+
+/**
+ * Starts email and phone ownership challenges after registration persistence.
+ * Identity verification remains independent (pending_review / manual).
+ */
 export async function initiateContactVerification(options: {
   applicationId: string;
   referenceId: string;
   email: string;
   phone: string;
-}): Promise<void> {
-  const providers = getVerificationProviders();
+}): Promise<InitiateContactVerificationResult> {
   const db = getDb();
 
-  const emailResult = await providers.email.sendChallenge({
-    applicationId: options.applicationId,
-    referenceId: options.referenceId,
-    email: options.email,
-  });
+  let emailResult: ContactChannelInitResult;
+  try {
+    emailResult = await createAndDeliverChallenge({
+      applicationId: options.applicationId,
+      referenceId: options.referenceId,
+      channel: "email",
+      email: options.email,
+      phone: options.phone,
+      supersedePrevious: true,
+    });
+  } catch (error) {
+    if (error instanceof ContactVerificationError) {
+      emailResult = {
+        status: "unavailable",
+        provider: "rate-limited",
+        message: error.message,
+        resendAvailableAt: error.resendAvailableAt,
+      };
+    } else {
+      emailResult = {
+        status: "unavailable",
+        provider: "error",
+        message: "Unable to start email verification.",
+      };
+    }
+  }
 
-  const phoneResult = await providers.phone.sendChallenge({
-    applicationId: options.applicationId,
-    referenceId: options.referenceId,
-    phone: options.phone,
-  });
+  let phoneResult: ContactChannelInitResult;
+  try {
+    phoneResult = await createAndDeliverChallenge({
+      applicationId: options.applicationId,
+      referenceId: options.referenceId,
+      channel: "phone",
+      email: options.email,
+      phone: options.phone,
+      supersedePrevious: true,
+    });
+  } catch (error) {
+    if (error instanceof ContactVerificationError) {
+      phoneResult = {
+        status: "unavailable",
+        provider: "rate-limited",
+        message: error.message,
+        resendAvailableAt: error.resendAvailableAt,
+      };
+    } else {
+      phoneResult = {
+        status: "unavailable",
+        provider: "error",
+        message: "Unable to start phone verification.",
+      };
+    }
+  }
 
   await db
     .update(registrationApplications)
     .set({
-      emailVerificationStatus:
-        emailResult.status === "sent" ? "pending" : "skipped",
-      phoneVerificationStatus:
-        phoneResult.status === "sent" ? "pending" : "skipped",
+      emailVerificationStatus: emailResult.status,
+      phoneVerificationStatus: phoneResult.status,
       updatedAt: new Date().toISOString(),
     })
     .where(eq(registrationApplications.id, options.applicationId));
+
+  return { email: emailResult, phone: phoneResult };
 }
 
-export async function verifyContactChallenge(options: {
-  referenceId: string;
-  channel: "email" | "phone";
-  challengeId: string;
-  code: string;
-}): Promise<{ verified: boolean; message?: string }> {
-  const db = getDb();
-  const [application] = await db
-    .select({ id: registrationApplications.id })
-    .from(registrationApplications)
-    .where(eq(registrationApplications.referenceId, options.referenceId))
-    .limit(1);
-
-  if (!application) {
-    return { verified: false, message: "Application not found" };
-  }
-
-  const [challenge] = await db
-    .select()
-    .from(registrationVerificationChallenges)
-    .where(eq(registrationVerificationChallenges.id, options.challengeId))
-    .limit(1);
-
-  if (!challenge || challenge.applicationId !== application.id) {
-    return { verified: false, message: "Verification challenge not found" };
-  }
-
-  if (challenge.channel !== options.channel) {
-    return { verified: false, message: "Verification channel mismatch" };
-  }
-
-  const providers = getVerificationProviders();
-  const provider =
-    options.channel === "email" ? providers.email : providers.phone;
-  const result = await provider.verifyChallenge(options.challengeId, options.code);
-
-  if (result.status !== "verified") {
-    return { verified: false, message: result.message ?? "Verification failed" };
-  }
-
-  await db
-    .update(registrationApplications)
-    .set({
-      ...(options.channel === "email"
-        ? { emailVerificationStatus: "verified" as const }
-        : { phoneVerificationStatus: "verified" as const }),
-      updatedAt: new Date().toISOString(),
-    })
-    .where(eq(registrationApplications.id, application.id));
-
-  return { verified: true };
-}
+export {
+  verifyContactChallenge,
+  resendContactChallenge,
+  ContactVerificationError,
+} from "@/server/verification/contact/challenges";

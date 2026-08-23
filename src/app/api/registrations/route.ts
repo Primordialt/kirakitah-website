@@ -101,6 +101,7 @@ export async function POST(request: Request) {
         success: true,
         referenceId: result.referenceId,
         status: result.status,
+        contactVerification: result.contactVerification,
       },
       201,
     );

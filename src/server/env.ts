@@ -9,7 +9,7 @@ function readEnv(key: string): string | undefined {
 }
 
 export type NinVerificationProviderMode = "mock" | "authorized";
-export type ContactVerificationProviderMode = "mock" | "none";
+export type ContactVerificationProviderMode = "mock" | "none" | "http";
 
 export const serverEnv = {
   get databaseUrl() {
@@ -41,12 +41,34 @@ export const serverEnv = {
 
   get emailVerificationProvider(): ContactVerificationProviderMode {
     const value = readEnv("EMAIL_VERIFICATION_PROVIDER");
-    return value === "none" ? "none" : "mock";
+    if (value === "none") return "none";
+    if (value === "http") return "http";
+    if (value === "mock") return "mock";
+    return this.isProduction ? "http" : "mock";
+  },
+
+  get emailVerificationApiUrl() {
+    return readEnv("EMAIL_VERIFICATION_API_URL");
+  },
+
+  get emailVerificationApiKey() {
+    return readEnv("EMAIL_VERIFICATION_API_KEY");
   },
 
   get phoneVerificationProvider(): ContactVerificationProviderMode {
     const value = readEnv("PHONE_VERIFICATION_PROVIDER");
-    return value === "none" ? "none" : "mock";
+    if (value === "none") return "none";
+    if (value === "http") return "http";
+    if (value === "mock") return "mock";
+    return this.isProduction ? "http" : "mock";
+  },
+
+  get phoneVerificationApiUrl() {
+    return readEnv("PHONE_VERIFICATION_API_URL");
+  },
+
+  get phoneVerificationApiKey() {
+    return readEnv("PHONE_VERIFICATION_API_KEY");
   },
 
   get nodeEnv() {
@@ -55,6 +77,15 @@ export const serverEnv = {
 
   get isProduction() {
     return this.nodeEnv === "production";
+  },
+
+  get isTest() {
+    return this.nodeEnv === "test" || process.env.VITEST === "true";
+  },
+
+  /** Mock contact providers are allowed only outside production. */
+  get allowMockContactProviders() {
+    return !this.isProduction;
   },
 } as const;
 

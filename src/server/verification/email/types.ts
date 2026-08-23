@@ -1,19 +1,30 @@
-import type {
-  SendVerificationChallengeResult,
-  VerifyChallengeResult,
-} from "@/server/verification/types";
+import type { DeliveryResult } from "@/server/verification/types";
 
-export interface EmailVerificationRequest {
+export interface EmailDeliveryRequest {
   email: string;
-  applicationId: string;
   referenceId: string;
+  code: string;
+  expiresInMinutes: number;
 }
 
-export interface IEmailVerificationProvider {
+/**
+ * Delivery-only email provider.
+ * Challenge persistence is owned by the contact challenge lifecycle service.
+ */
+export interface IEmailDeliveryProvider {
   readonly providerId: string;
-  sendChallenge(request: EmailVerificationRequest): Promise<SendVerificationChallengeResult>;
-  verifyChallenge(
+  sendVerificationEmail(request: EmailDeliveryRequest): Promise<DeliveryResult>;
+}
+
+/** @deprecated Use IEmailDeliveryProvider */
+export type IEmailVerificationProvider = IEmailDeliveryProvider & {
+  sendChallenge?(request: {
+    email: string;
+    applicationId: string;
+    referenceId: string;
+  }): Promise<DeliveryResult & { challengeId?: string }>;
+  verifyChallenge?(
     challengeId: string,
     code: string,
-  ): Promise<VerifyChallengeResult>;
-}
+  ): Promise<{ status: string; message?: string }>;
+};

@@ -1,19 +1,30 @@
-import type {
-  SendVerificationChallengeResult,
-  VerifyChallengeResult,
-} from "@/server/verification/types";
+import type { DeliveryResult } from "@/server/verification/types";
 
-export interface PhoneVerificationRequest {
+export interface PhoneDeliveryRequest {
   phone: string;
-  applicationId: string;
   referenceId: string;
+  code: string;
+  expiresInMinutes: number;
 }
 
-export interface IPhoneVerificationProvider {
+/**
+ * Delivery-only SMS provider.
+ * Challenge persistence is owned by the contact challenge lifecycle service.
+ */
+export interface IPhoneDeliveryProvider {
   readonly providerId: string;
-  sendChallenge(request: PhoneVerificationRequest): Promise<SendVerificationChallengeResult>;
-  verifyChallenge(
+  sendVerificationSms(request: PhoneDeliveryRequest): Promise<DeliveryResult>;
+}
+
+/** @deprecated Use IPhoneDeliveryProvider */
+export type IPhoneVerificationProvider = IPhoneDeliveryProvider & {
+  sendChallenge?(request: {
+    phone: string;
+    applicationId: string;
+    referenceId: string;
+  }): Promise<DeliveryResult & { challengeId?: string }>;
+  verifyChallenge?(
     challengeId: string,
     code: string,
-  ): Promise<VerifyChallengeResult>;
-}
+  ): Promise<{ status: string; message?: string }>;
+};

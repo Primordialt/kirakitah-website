@@ -59,6 +59,22 @@ export interface RegistrationSubmission {
 export interface RegistrationResult {
   success: boolean;
   referenceId: string;
+  contactVerification?: {
+    email: ContactChannelVerificationState;
+    phone: ContactChannelVerificationState;
+  };
+}
+
+export type ContactChannelVerificationStatus =
+  | "pending"
+  | "verified"
+  | "skipped"
+  | "unavailable";
+
+export interface ContactChannelVerificationState {
+  status: ContactChannelVerificationStatus;
+  challengeId?: string;
+  resendAvailableAt?: string;
 }
 
 export const MINIMUM_TOURNAMENT_AGE = 10;

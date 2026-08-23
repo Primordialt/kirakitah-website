@@ -1,6 +1,6 @@
 # KIRAKITAH Backend — Architecture & Foundation Audit
 
-**Phase:** Backend Step 1 (audit and foundation only)  
+**Phase:** Backend Steps 1–4 (registration + contact verification + admin foundation)  
 **Date:** August 23, 2026  
 **Repository:** [kirakitah-website](https://github.com/Primordialt/kirakitah-website)  
 **Deployment:** Vercel (Next.js 15 App Router, Node 22, region `iad1`)
@@ -9,13 +9,13 @@
 
 ## Executive summary
 
-The KIRAKITAH frontend is production-ready and intentionally built with a **service abstraction layer** that can swap mock implementations for real API clients without redesigning pages or forms.
+The KIRAKITAH frontend is production-ready with a **service abstraction layer**. Registration now has a real Neon + Blob backend, manual identity review, and email/phone ownership verification challenges.
 
-**Today:** 100% mock-backed. No `src/app/api/` business routes. No database, storage, auth, or email integrations.
+**Today:** Registration API implemented; contact verification lifecycle implemented; identity remains manual (`pending_review`). Admin dashboard is **not** built — only server-side repository boundaries exist.
 
-**Next implementation priority:** **Registration** — player applications, identity documents, guardian data, consent records, and administrative review.
+**Next implementation priority:** **Backend Step 5 — Registration Administration & Secure Reviewer Workflow**.
 
-This document audits the current frontend, defines backend requirements, proposes architecture, and describes repository foundation added in Step 1.
+This document audits the frontend foundations and tracks backend architecture evolution.
 
 ---
 

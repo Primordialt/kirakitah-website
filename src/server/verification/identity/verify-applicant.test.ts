@@ -35,8 +35,8 @@ describe("verifyApplicantIdentity", () => {
         }),
       },
       passport: { providerId: "manual-review", assess: vi.fn() },
-      email: { providerId: "none", sendChallenge: vi.fn(), verifyChallenge: vi.fn() },
-      phone: { providerId: "none", sendChallenge: vi.fn(), verifyChallenge: vi.fn() },
+      email: { providerId: "none", sendVerificationEmail: vi.fn() },
+      phone: { providerId: "none", sendVerificationSms: vi.fn() },
     });
 
     const result = await verifyApplicantIdentity({
@@ -59,8 +59,8 @@ describe("verifyApplicantIdentity", () => {
         }),
       },
       passport: { providerId: "manual-review", assess: vi.fn() },
-      email: { providerId: "none", sendChallenge: vi.fn(), verifyChallenge: vi.fn() },
-      phone: { providerId: "none", sendChallenge: vi.fn(), verifyChallenge: vi.fn() },
+      email: { providerId: "none", sendVerificationEmail: vi.fn() },
+      phone: { providerId: "none", sendVerificationSms: vi.fn() },
     });
 
     const result = await verifyApplicantIdentity({
@@ -84,8 +84,8 @@ describe("verifyApplicantIdentity", () => {
           message: "Manual review required",
         }),
       },
-      email: { providerId: "none", sendChallenge: vi.fn(), verifyChallenge: vi.fn() },
-      phone: { providerId: "none", sendChallenge: vi.fn(), verifyChallenge: vi.fn() },
+      email: { providerId: "none", sendVerificationEmail: vi.fn() },
+      phone: { providerId: "none", sendVerificationSms: vi.fn() },
     });
 
     const result = await verifyApplicantIdentity({

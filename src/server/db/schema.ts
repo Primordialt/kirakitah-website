@@ -35,11 +35,20 @@ export const contactVerificationStatusEnum = pgEnum("contact_verification_status
   "pending",
   "verified",
   "skipped",
+  "unavailable",
 ]);
 
 export const verificationChallengeChannelEnum = pgEnum("verification_challenge_channel", [
   "email",
   "phone",
+]);
+
+export const registrationAuditEventTypeEnum = pgEnum("registration_audit_event_type", [
+  "EMAIL_VERIFIED",
+  "PHONE_VERIFIED",
+  "IDENTITY_REVIEW_APPROVED",
+  "IDENTITY_REVIEW_REJECTED",
+  "APPLICATION_STATUS_CHANGED",
 ]);
 
 export interface PlayerPhotoMeta {
@@ -105,6 +114,20 @@ export const registrationApplications = pgTable(
     phoneVerificationStatus: contactVerificationStatusEnum("phone_verification_status")
       .notNull()
       .default("skipped"),
+    emailVerifiedAt: timestamp("email_verified_at", {
+      withTimezone: true,
+      mode: "string",
+    }),
+    phoneVerifiedAt: timestamp("phone_verified_at", {
+      withTimezone: true,
+      mode: "string",
+    }),
+    identityReviewedAt: timestamp("identity_reviewed_at", {
+      withTimezone: true,
+      mode: "string",
+    }),
+    identityReviewedBy: text("identity_reviewed_by"),
+    identityReviewNotes: text("identity_review_notes"),
     submitIpHash: text("submit_ip_hash"),
     createdAt: timestamp("created_at", { withTimezone: true, mode: "string" })
       .notNull()
@@ -147,10 +170,29 @@ export const registrationVerificationChallenges = pgTable(
     destinationHash: text("destination_hash").notNull(),
     codeHash: text("code_hash").notNull(),
     attempts: integer("attempts").notNull().default(0),
+    maxAttempts: integer("max_attempts").notNull().default(5),
     expiresAt: timestamp("expires_at", { withTimezone: true, mode: "string" }).notNull(),
     verifiedAt: timestamp("verified_at", { withTimezone: true, mode: "string" }),
+    supersededAt: timestamp("superseded_at", { withTimezone: true, mode: "string" }),
     createdAt: timestamp("created_at", { withTimezone: true, mode: "string" })
       .notNull()
       .defaultNow(),
   },
 );
+
+/**
+ * Administrative audit trail — never store OTP, NIN, passport, email, phone,
+ * or guardian contacts in metadata payloads.
+ */
+export const registrationAuditEvents = pgTable("registration_audit_events", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  applicationId: uuid("application_id")
+    .notNull()
+    .references(() => registrationApplications.id, { onDelete: "cascade" }),
+  eventType: registrationAuditEventTypeEnum("event_type").notNull(),
+  actor: text("actor"),
+  metadata: jsonb("metadata").$type<Record<string, string | number | boolean | null>>(),
+  createdAt: timestamp("created_at", { withTimezone: true, mode: "string" })
+    .notNull()
+    .defaultNow(),
+});

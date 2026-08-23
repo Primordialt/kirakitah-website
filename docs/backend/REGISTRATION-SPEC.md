@@ -1,8 +1,8 @@
-# Registration Backend — Step 2 Specification
+# Registration Backend — Specification
 
-**Status:** Implemented (Step 2)  
+**Status:** Implemented through Step 4 (contact verification + admin foundation)  
 **Stack:** Neon PostgreSQL + Vercel Blob (private)  
-**Depends on:** Backend Step 1 foundation  
+**Depends on:** Backend Steps 1–3A  
 **Frontend route:** `/esports/register`  
 **Competition:** KIRAKITAH GAMING 926 (`event-kg926`)
 
@@ -15,7 +15,9 @@ Replace `MockRegistrationService` with a real registration pipeline that:
 1. Accepts player applications with identification details and **player photo upload**
 2. Persists application data and photo reference securely
 3. Returns a **reference ID** to the applicant
-4. Supports an administrative review workflow
+4. Supports email/phone ownership verification challenges
+5. Keeps identity verification **manual** (`pending_review`)
+6. Prepares server-only administrative review boundaries (no public admin UI yet)
 
 The frontend form UX and field order remain unchanged.
 
@@ -195,5 +197,25 @@ Mock path remains for local development and tests.
 - Integration: POST with valid multipart → 201 + DB row + blob objects
 - Integration: reject invalid file type / oversize file
 - Integration: reject under-10 age
+
+---
+
+## Step 4 — Contact verification & admin foundation
+
+| Capability | Status |
+|------------|--------|
+| Email ownership challenges | IMPLEMENTED |
+| Phone ownership challenges | IMPLEMENTED |
+| `email_verified_at` / `phone_verified_at` | IMPLEMENTED |
+| Resend + 60s cooldown | IMPLEMENTED |
+| Production mock fail-closed | IMPLEMENTED |
+| Real email/SMS provider credentials | PENDING PROVIDER |
+| Admin repository (server-only) | IMPLEMENTED |
+| Admin dashboard / auth | FUTURE (Step 5) |
+| Guardian OTP | FUTURE (product decision) |
+
+Identity remains manual. Email/phone verification never auto-approves applications.
+
+See `docs/backend/VERIFICATION-ARCHITECTURE.md`.
 - E2E: full form submit against API mode (CI with test DB or mocked storage)
 - Security: confirm guardian not in any public GET response

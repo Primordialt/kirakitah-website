@@ -1,6 +1,6 @@
 import {
   ContactVerificationError,
-  verifyContactChallenge,
+  resendContactChallenge,
 } from "@/server/verification/contact/initiate";
 import { isRegistrationBackendConfigured } from "@/server/env";
 import { apiError } from "@/server/errors";
@@ -14,11 +14,9 @@ import { z } from "zod";
 
 export const runtime = "nodejs";
 
-const verifySchema = z.object({
+const resendSchema = z.object({
   referenceId: z.string().min(1),
   channel: z.enum(["email", "phone"]),
-  challengeId: z.string().uuid(),
-  code: z.string().min(4).max(12),
 });
 
 function jsonResponse(body: unknown, status: number, requestId: string) {
@@ -32,8 +30,7 @@ function jsonResponse(body: unknown, status: number, requestId: string) {
 }
 
 /**
- * Confirms email or phone ownership using a verification challenge.
- * Keeps the challengeId-based contract for secure challenge lookup.
+ * Resends an email or phone ownership challenge with cooldown and rate limits.
  */
 export async function POST(request: Request) {
   const requestId = getOrCreateRequestId(request);
@@ -57,21 +54,25 @@ export async function POST(request: Request) {
     );
   }
 
-  const parsed = verifySchema.safeParse(body);
+  const parsed = resendSchema.safeParse(body);
   if (!parsed.success) {
     return jsonResponse(
-      apiError("VALIDATION_ERROR", "Invalid verification request."),
+      apiError("VALIDATION_ERROR", "Invalid resend request."),
       400,
       requestId,
     );
   }
 
   try {
-    await verifyContactChallenge(parsed.data);
+    const result = await resendContactChallenge(parsed.data);
+
     return jsonResponse(
       {
         success: true,
         channel: parsed.data.channel,
+        status: result.status,
+        challengeId: result.challengeId,
+        resendAvailableAt: result.resendAvailableAt,
         requestId,
       },
       200,
@@ -80,18 +81,28 @@ export async function POST(request: Request) {
   } catch (error) {
     if (error instanceof ContactVerificationError) {
       const status =
-        error.code === "VERIFICATION_RATE_LIMITED"
+        error.code === "VERIFICATION_RATE_LIMITED" ||
+        error.code === "VERIFICATION_COOLDOWN"
           ? 429
           : error.code === "VERIFICATION_NOT_CONFIGURED" ||
               error.code === "PROVIDER_UNAVAILABLE"
             ? 503
             : 400;
 
-      return jsonResponse(apiError(error.code, error.message), status, requestId);
+      return jsonResponse(
+        {
+          ...apiError(error.code, error.message),
+          ...(error.resendAvailableAt
+            ? { resendAvailableAt: error.resendAvailableAt }
+            : {}),
+        },
+        status,
+        requestId,
+      );
     }
 
     return jsonResponse(
-      apiError("INTERNAL_ERROR", "Unable to complete verification."),
+      apiError("INTERNAL_ERROR", "Unable to resend verification code."),
       500,
       requestId,
     );

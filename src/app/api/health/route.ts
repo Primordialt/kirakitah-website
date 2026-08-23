@@ -9,10 +9,15 @@ export async function GET() {
   return NextResponse.json(
     {
       status: "ok",
-      phase: "manual-identity-review",
+      phase: "contact-verification",
       registrationBackendConfigured: isRegistrationBackendConfigured(),
       identityVerificationMode: "manual",
       automatedNinLookupEnabled: false,
+      contactVerification: {
+        emailProvider: process.env.EMAIL_VERIFICATION_PROVIDER ?? "default",
+        phoneProvider: process.env.PHONE_VERIFICATION_PROVIDER ?? "default",
+        mockAllowedInProduction: false,
+      },
     },
     {
       status: 200,

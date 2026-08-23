@@ -76,7 +76,7 @@ test.describe("Registration", () => {
     await page.getByLabel("Phone number").fill("08000000000");
 
     await page.getByLabel("Identification type").selectOption("nin");
-    await page.getByLabel("NIN").fill("12345678901");
+    await page.getByRole("textbox", { name: "NIN" }).fill("12345678901");
     await page.getByLabel("Player photo").setInputFiles({
       name: "player-photo.jpg",
       mimeType: "image/jpeg",

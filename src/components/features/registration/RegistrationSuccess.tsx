@@ -2,8 +2,19 @@
 
 import { useEffect, useRef } from "react";
 import { Button } from "@/components/ui";
+import type { ContactChannelVerificationState } from "@/domain/registration";
+import { ContactVerificationPanel } from "./ContactVerificationPanel";
 
-export function RegistrationSuccess({ referenceId }: { referenceId?: string }) {
+export function RegistrationSuccess({
+  referenceId,
+  contactVerification,
+}: {
+  referenceId?: string;
+  contactVerification?: {
+    email: ContactChannelVerificationState;
+    phone: ContactChannelVerificationState;
+  };
+}) {
   const headingRef = useRef<HTMLHeadingElement>(null);
 
   useEffect(() => {
@@ -24,8 +35,11 @@ export function RegistrationSuccess({ referenceId }: { referenceId?: string }) {
         YOU&apos;RE IN THE SYSTEM.
       </h2>
       <p className="text-body-lg text-text-secondary">
-        Your KIRAKITAH Gaming application has been received. We&apos;ll review
-        your information and contact you with the next steps.
+        Your application has been received.
+      </p>
+      <p className="text-body-sm text-text-secondary">
+        Complete the required contact verification steps when available. Your
+        identity information will be reviewed manually by the KIRAKITAH team.
       </p>
       {referenceId ? (
         <p className="text-body-sm text-text-muted">
@@ -33,6 +47,14 @@ export function RegistrationSuccess({ referenceId }: { referenceId?: string }) {
           <span className="font-medium text-text-primary">{referenceId}</span>
         </p>
       ) : null}
+
+      {referenceId ? (
+        <ContactVerificationPanel
+          referenceId={referenceId}
+          contactVerification={contactVerification}
+        />
+      ) : null}
+
       <Button href="/esports" variant="outline" size="lg">
         BACK TO TOURNAMENT
       </Button>

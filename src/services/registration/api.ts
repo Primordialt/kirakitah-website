@@ -8,6 +8,7 @@ interface ApiRegistrationSuccessResponse {
   success: true;
   referenceId: string;
   status: string;
+  contactVerification?: RegistrationResult["contactVerification"];
 }
 
 interface ApiRegistrationErrorResponse {
@@ -101,6 +102,7 @@ export class ApiRegistrationService implements IRegistrationService {
     return {
       success: true,
       referenceId: payload.referenceId,
+      contactVerification: payload.contactVerification,
     };
   }
 }

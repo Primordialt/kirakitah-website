@@ -118,6 +118,18 @@ async function assertNoActiveDuplicate(
 export interface CreateRegistrationResult {
   referenceId: string;
   status: "received";
+  contactVerification: {
+    email: {
+      status: string;
+      challengeId?: string;
+      resendAvailableAt?: string;
+    };
+    phone: {
+      status: string;
+      challengeId?: string;
+      resendAvailableAt?: string;
+    };
+  };
 }
 
 export async function createRegistrationApplication(
@@ -227,7 +239,7 @@ export async function createRegistrationApplication(
     throw error;
   }
 
-  await initiateContactVerification({
+  const contactVerification = await initiateContactVerification({
     applicationId,
     referenceId,
     email: input.email,
@@ -237,5 +249,17 @@ export async function createRegistrationApplication(
   return {
     referenceId,
     status: "received",
+    contactVerification: {
+      email: {
+        status: contactVerification.email.status,
+        challengeId: contactVerification.email.challengeId,
+        resendAvailableAt: contactVerification.email.resendAvailableAt,
+      },
+      phone: {
+        status: contactVerification.phone.status,
+        challengeId: contactVerification.phone.challengeId,
+        resendAvailableAt: contactVerification.phone.resendAvailableAt,
+      },
+    },
   };
 }

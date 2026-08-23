@@ -1,115 +1,40 @@
-import { randomInt } from "crypto";
-import { getDb } from "@/server/db";
-import { registrationVerificationChallenges } from "@/server/db/schema";
 import { serverEnv } from "@/server/env";
-import { hashSensitiveValue } from "@/server/registration/pii";
-import { eq } from "drizzle-orm";
-import type { IPhoneVerificationProvider, PhoneVerificationRequest } from "./types";
-import type {
-  SendVerificationChallengeResult,
-  VerifyChallengeResult,
-} from "@/server/verification/types";
+import { buildPhoneVerificationSms } from "@/server/verification/templates/contact-verification";
+import type { IPhoneDeliveryProvider, PhoneDeliveryRequest } from "./types";
+import type { DeliveryResult } from "@/server/verification/types";
 
-const CHALLENGE_TTL_MS = 15 * 60 * 1000;
-const MAX_ATTEMPTS = 5;
-
-function generateCode(): string {
-  return randomInt(100_000, 1_000_000).toString();
-}
-
-export class MockPhoneVerificationProvider implements IPhoneVerificationProvider {
+/**
+ * Development / CI / test SMS delivery only.
+ * Must never be used in production.
+ */
+export class MockPhoneDeliveryProvider implements IPhoneDeliveryProvider {
   readonly providerId = "mock";
 
-  async sendChallenge(
-    request: PhoneVerificationRequest,
-  ): Promise<SendVerificationChallengeResult> {
-    const encryptionKey = serverEnv.registrationPiiEncryptionKey;
-    if (!encryptionKey) {
+  async sendVerificationSms(
+    request: PhoneDeliveryRequest,
+  ): Promise<DeliveryResult> {
+    if (serverEnv.isProduction) {
       return {
         status: "unavailable",
         provider: this.providerId,
-        message: "Verification encryption key is not configured",
+        message: "Mock phone provider cannot operate in production.",
       };
     }
 
-    const code = generateCode();
-    const expiresAt = new Date(Date.now() + CHALLENGE_TTL_MS).toISOString();
-    const db = getDb();
-
-    const [challenge] = await db
-      .insert(registrationVerificationChallenges)
-      .values({
-        applicationId: request.applicationId,
-        channel: "phone",
-        destinationHash: hashSensitiveValue(request.phone, encryptionKey),
-        codeHash: hashSensitiveValue(code, encryptionKey),
-        expiresAt,
-      })
-      .returning({ id: registrationVerificationChallenges.id });
+    const message = buildPhoneVerificationSms({
+      code: request.code,
+      expiresInMinutes: request.expiresInMinutes,
+    });
 
     if (serverEnv.nodeEnv === "development") {
       console.info(
-        `[mock-phone-verification] reference=${request.referenceId} code=${code}`,
+        `[mock-phone-verification] reference=${request.referenceId} message=${message}`,
       );
     }
 
-    return {
-      status: "sent",
-      provider: this.providerId,
-      challengeId: challenge.id,
-    };
-  }
-
-  async verifyChallenge(
-    challengeId: string,
-    code: string,
-  ): Promise<VerifyChallengeResult> {
-    const encryptionKey = serverEnv.registrationPiiEncryptionKey;
-    if (!encryptionKey) {
-      return { status: "invalid", message: "Verification is unavailable" };
-    }
-
-    const db = getDb();
-    const [challenge] = await db
-      .select()
-      .from(registrationVerificationChallenges)
-      .where(eq(registrationVerificationChallenges.id, challengeId))
-      .limit(1);
-
-    if (!challenge) {
-      return { status: "invalid", message: "Verification challenge not found" };
-    }
-
-    if (challenge.verifiedAt) {
-      return { status: "verified" };
-    }
-
-    if (new Date(challenge.expiresAt).getTime() < Date.now()) {
-      return { status: "expired", message: "Verification code has expired" };
-    }
-
-    if (challenge.attempts >= MAX_ATTEMPTS) {
-      return { status: "too_many_attempts", message: "Too many verification attempts" };
-    }
-
-    const codeMatches =
-      challenge.codeHash === hashSensitiveValue(code, encryptionKey);
-
-    await db
-      .update(registrationVerificationChallenges)
-      .set({ attempts: challenge.attempts + 1 })
-      .where(eq(registrationVerificationChallenges.id, challengeId));
-
-    if (!codeMatches) {
-      return { status: "invalid", message: "Invalid verification code" };
-    }
-
-    const verifiedAt = new Date().toISOString();
-    await db
-      .update(registrationVerificationChallenges)
-      .set({ verifiedAt })
-      .where(eq(registrationVerificationChallenges.id, challengeId));
-
-    return { status: "verified" };
+    return { status: "sent", provider: this.providerId };
   }
 }
+
+/** @deprecated Prefer MockPhoneDeliveryProvider */
+export const MockPhoneVerificationProvider = MockPhoneDeliveryProvider;
