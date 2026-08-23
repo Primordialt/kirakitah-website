@@ -1,6 +1,6 @@
 # KIRAKITAH Backend — Architecture & Foundation Audit
 
-**Phase:** Backend Steps 1–9 (registration + admin + eligibility + competition + qualification + knockout)  
+**Phase:** Backend Steps 1–10 (registration + admin + eligibility + competition + qualification + knockout + scheduling/policy)  
 **Date:** August 23, 2026  
 **Repository:** [kirakitah-website](https://github.com/Primordialt/kirakitah-website)  
 **Deployment:** Vercel (Next.js 15 App Router, Node 22, region `iad1`)
@@ -11,16 +11,18 @@
 
 The KIRAKITAH frontend is production-ready with a **service abstraction layer**. Registration now has a real Neon + Blob backend, manual identity review, and email/phone ownership verification challenges.
 
-**Today:** Registration API, contact verification, manual identity review, secure admin reviewer workflow, tournament eligibility/participation, competition operations foundation, KG926 qualification engine, and **KG926 knockout execution** (manual R32 pairing, bracket, progression, champion) are implemented.
+**Today:** Registration through KG926 knockout execution, plus **manual match scheduling** and a centralized **competition policy** boundary (FINALIZED vs PENDING), are implemented.
 
-**Next implementation priority:** **Backend Step 10 — Tournament Scheduling, Match Rules & Competition Policy Finalization**.
+**Next implementation priority:** **Backend Step 11 — Production Provider Integration, Notifications & Operational Readiness**.
 
 Admin reviewer workflow (Step 5) is implemented with production auth **PENDING PROVIDER**.
 
 Tournament eligibility (Step 6): [TOURNAMENT-ELIGIBILITY.md](./TOURNAMENT-ELIGIBILITY.md).  
 Competition operations (Step 7): [TOURNAMENT-OPERATIONS.md](./TOURNAMENT-OPERATIONS.md).  
 Qualification engine (Step 8): [QUALIFICATION-SYSTEM.md](./QUALIFICATION-SYSTEM.md).  
-Knockout execution (Step 9): [KNOCKOUT-SYSTEM.md](./KNOCKOUT-SYSTEM.md).
+Knockout execution (Step 9): [KNOCKOUT-SYSTEM.md](./KNOCKOUT-SYSTEM.md).  
+Competition policy (Step 10): [COMPETITION-POLICY.md](./COMPETITION-POLICY.md).  
+Scheduling (Step 10): [SCHEDULING-SYSTEM.md](./SCHEDULING-SYSTEM.md).
 
 This document audits the frontend foundations and tracks backend architecture evolution.
 

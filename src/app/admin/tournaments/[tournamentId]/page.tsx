@@ -119,6 +119,13 @@ export default async function AdminTournamentDetailPage({
         >
           Manage knockout
         </Link>
+        {" · "}
+        <Link
+          href={`/admin/tournaments/${tournamentId}/policy`}
+          className="mt-3 inline-block text-accent underline"
+        >
+          Competition policy
+        </Link>
       </section>
 
       <section className="mt-6 rounded-xl border border-border bg-surface-elevated p-4">

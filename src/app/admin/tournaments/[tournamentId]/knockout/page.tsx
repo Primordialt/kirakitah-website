@@ -4,6 +4,7 @@ import {
   KnockoutGenerateButton,
   KnockoutMatchResultForm,
   KnockoutPairingForm,
+  MatchScheduleForm,
 } from "@/components/admin/KnockoutActions";
 import { roleHasPermission } from "@/server/admin/authorization/permissions";
 import { isRegistrationBackendConfigured } from "@/server/env";
@@ -35,6 +36,7 @@ export default async function AdminKnockoutPage({
 
   const canManage = roleHasPermission(session.user.role, "tournament:knockout_manage");
   const canRecord = roleHasPermission(session.user.role, "tournament:result_record");
+  const canSchedule = roleHasPermission(session.user.role, "tournament:match_schedule");
   const bracketGenerated = dashboard.bracketStatus !== "not_generated";
 
   return (
@@ -42,6 +44,13 @@ export default async function AdminKnockoutPage({
       <p className="text-body-sm text-text-muted">
         <Link href={`/admin/tournaments/${tournamentId}`} className="text-accent underline">
           Tournament
+        </Link>
+        {" · "}
+        <Link
+          href={`/admin/tournaments/${tournamentId}/policy`}
+          className="text-accent underline"
+        >
+          Competition policy
         </Link>
       </p>
       <h1 className="mt-2 text-h2">Knockout — KIRAKITAH TOP 32</h1>
@@ -144,6 +153,19 @@ export default async function AdminKnockoutPage({
                   {match.participantBCode ??
                     (match.slotBType === "match_winner" ? "Winner TBD" : "—")}
                 </p>
+                <MatchScheduleForm
+                  matchId={match.id}
+                  canSchedule={canSchedule}
+                  schedulingStatus={match.schedulingStatus}
+                  scheduledAt={match.scheduledAt}
+                  timezone={match.timezone}
+                  participantsReady={Boolean(
+                    match.participantAId && match.participantBId,
+                  )}
+                  matchResolved={
+                    match.status === "completed" || match.status === "forfeited"
+                  }
+                />
                 {match.scoreA != null && match.scoreB != null ? (
                   <p className="mt-1 text-body-sm">
                     Result: {match.scoreA} - {match.scoreB}
