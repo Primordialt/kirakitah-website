@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
 import {
+  type AnyPgColumn,
   boolean,
   date,
   index,
@@ -236,6 +237,18 @@ export const adminAuditEventTypeEnum = pgEnum("admin_audit_event_type", [
   "QUALIFICATION_AUTO_ADVANCED",
   "QUALIFICATION_POD_COMPLETED",
   "QUALIFICATION_TOP32_ADVANCED",
+  "KNOCKOUT_PAIRINGS_CONFIGURED",
+  "KNOCKOUT_PAIRINGS_REVISED",
+  "KNOCKOUT_BRACKET_GENERATED",
+  "KNOCKOUT_MATCH_CREATED",
+  "KNOCKOUT_RESULT_RECORDED",
+  "KNOCKOUT_MATCH_RESOLVED",
+  "KNOCKOUT_RESULT_CORRECTED",
+  "KNOCKOUT_MATCH_DISPUTED",
+  "KNOCKOUT_FORFEIT_RECORDED",
+  "KNOCKOUT_ROUND_COMPLETED",
+  "TOURNAMENT_COMPLETED",
+  "CHAMPION_RECORDED",
 ]);
 
 export const tournamentPhaseTypeEnum = pgEnum("tournament_phase_type", [
@@ -291,6 +304,19 @@ export const knockoutRoundStatusEnum = pgEnum("knockout_round_status", [
   "active",
   "completed",
   "cancelled",
+]);
+
+export const knockoutPairingSetStatusEnum = pgEnum("knockout_pairing_set_status", [
+  "draft",
+  "confirmed",
+  "superseded",
+]);
+
+export const knockoutBracketStatusEnum = pgEnum("knockout_bracket_status", [
+  "not_generated",
+  "generated",
+  "active",
+  "completed",
 ]);
 
 export const qualificationPodStatusEnum = pgEnum("qualification_pod_status", [
@@ -360,6 +386,14 @@ export const tournaments = pgTable("tournaments", {
     .$type<Record<string, unknown>>()
     .notNull(),
   competitionRules: jsonb("competition_rules").$type<Record<string, unknown>>(),
+  championParticipantId: uuid("champion_participant_id").references(
+    (): AnyPgColumn => tournamentParticipants.id,
+    { onDelete: "set null" },
+  ),
+  knockoutBracketStatus: knockoutBracketStatusEnum("knockout_bracket_status")
+    .notNull()
+    .default("not_generated"),
+  completedAt: timestamp("completed_at", { withTimezone: true, mode: "string" }),
   createdAt: timestamp("created_at", { withTimezone: true, mode: "string" })
     .notNull()
     .defaultNow(),
@@ -560,6 +594,95 @@ export const knockoutRounds = pgTable(
   ],
 );
 
+export const knockoutPairingSets = pgTable(
+  "knockout_pairing_sets",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tournamentId: text("tournament_id")
+      .notNull()
+      .references(() => tournaments.id, { onDelete: "cascade" }),
+    phaseId: uuid("phase_id")
+      .notNull()
+      .references(() => tournamentPhases.id, { onDelete: "cascade" }),
+    status: knockoutPairingSetStatusEnum("status").notNull().default("draft"),
+    rulesVersion: text("rules_version").notNull().default("kg926-v1"),
+    confirmedAt: timestamp("confirmed_at", { withTimezone: true, mode: "string" }),
+    confirmedBy: text("confirmed_by"),
+    changeReason: text("change_reason"),
+    supersededAt: timestamp("superseded_at", {
+      withTimezone: true,
+      mode: "string",
+    }),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "string" })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true, mode: "string" })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index("knockout_pairing_sets_tournament_status_idx").on(
+      table.tournamentId,
+      table.status,
+    ),
+  ],
+);
+
+export const knockoutPairings = pgTable(
+  "knockout_pairings",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    pairingSetId: uuid("pairing_set_id")
+      .notNull()
+      .references(() => knockoutPairingSets.id, { onDelete: "cascade" }),
+    slotIndex: integer("slot_index").notNull(),
+    participantAId: uuid("participant_a_id")
+      .notNull()
+      .references(() => tournamentParticipants.id, { onDelete: "restrict" }),
+    participantBId: uuid("participant_b_id")
+      .notNull()
+      .references(() => tournamentParticipants.id, { onDelete: "restrict" }),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "string" })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("knockout_pairings_set_slot_unique").on(
+      table.pairingSetId,
+      table.slotIndex,
+    ),
+  ],
+);
+
+export const knockoutPairingParticipants = pgTable(
+  "knockout_pairing_participants",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    pairingSetId: uuid("pairing_set_id")
+      .notNull()
+      .references(() => knockoutPairingSets.id, { onDelete: "cascade" }),
+    participantId: uuid("participant_id")
+      .notNull()
+      .references(() => tournamentParticipants.id, { onDelete: "restrict" }),
+    slotIndex: integer("slot_index").notNull(),
+    side: text("side").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "string" })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("knockout_pairing_participants_set_participant_unique").on(
+      table.pairingSetId,
+      table.participantId,
+    ),
+    uniqueIndex("knockout_pairing_participants_set_slot_side_unique").on(
+      table.pairingSetId,
+      table.slotIndex,
+      table.side,
+    ),
+  ],
+);
+
 export const qualificationPods = pgTable(
   "qualification_pods",
   {
@@ -688,6 +811,7 @@ export const matches = pgTable(
     ),
     dependsOnMatchAId: uuid("depends_on_match_a_id"),
     dependsOnMatchBId: uuid("depends_on_match_b_id"),
+    bracketSlotIndex: integer("bracket_slot_index"),
     scheduledAt: timestamp("scheduled_at", {
       withTimezone: true,
       mode: "string",
@@ -711,6 +835,10 @@ export const matches = pgTable(
     index("matches_qualification_pod_idx").on(
       table.qualificationPodId,
       table.qualificationRound,
+    ),
+    index("matches_knockout_round_slot_idx").on(
+      table.knockoutRoundId,
+      table.bracketSlotIndex,
     ),
   ],
 );

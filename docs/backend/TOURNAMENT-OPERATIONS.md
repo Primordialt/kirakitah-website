@@ -1,4 +1,4 @@
-# Tournament Competition Operations — Backend Steps 7–8
+# Tournament Competition Operations — Backend Steps 7–9
 
 **Competition:** KIRAKITAH GAMING 926 (`event-kg926`)  
 **Rules version:** `kg926-v1`  
@@ -8,13 +8,13 @@
 
 ## Overview
 
-Backend Step 7 established the **competition-management foundation**:
+Backend Step 7 established the **competition-management foundation**.
 
-Tournament → TournamentPhase → Phase Participants → Matches / Results → Standings
+Backend Step 8 **finalized KG926 qualification** (32 pods). See [QUALIFICATION-SYSTEM.md](./QUALIFICATION-SYSTEM.md).
 
-Backend Step 8 **finalized KG926 qualification mechanics** and built the qualification engine. See [QUALIFICATION-SYSTEM.md](./QUALIFICATION-SYSTEM.md) for full detail.
+Backend Step 9 **implements KIRAKITAH TOP 32 knockout execution**. See [KNOCKOUT-SYSTEM.md](./KNOCKOUT-SYSTEM.md).
 
-Qualification is **single-elimination pods** (128 → 32 pods × 4 → 32 qualifiers). It is **not** round-robin or points-based advancement.
+Qualification is **single-elimination pods**. Knockout is **single-elimination Top 32** with **manual R32 pairing**.
 
 ---
 
@@ -132,19 +132,29 @@ Admins cannot silently edit standings without going through match result correct
 
 ---
 
-## Knockout architecture (IMPLEMENTED structure / FUTURE generation)
+## Knockout architecture (IMPLEMENTED — Step 9)
 
-Table: `knockout_rounds`
+Table: `knockout_rounds` (structure from Step 7)
 
-Seeded rounds:
+Operational engine (`src/server/tournament/knockout/`):
 
-1. Round of 32  
-2. Round of 16  
-3. Quarterfinal  
-4. Semifinal  
-5. Grand Final  
+| Service | Purpose |
+|---------|---------|
+| `readiness-service` | Top 32 validation |
+| `pairing-service` | Manual R32 pairings |
+| `bracket-service` | Bracket generation + admin view |
+| `progression-service` | Results, dependency resolution, round completion |
+| `completion-service` | Champion + tournament completion |
 
-Bracket generation, seeding, and pairing: **PENDING PRODUCT DECISION** / **FUTURE**.
+Seeded rounds: Round of 32 → Round of 16 → Quarterfinal → Semifinal → Grand Final
+
+**FINALIZED PRODUCT RULE:** manual R32 pairing only; single-elimination progression.  
+**PENDING PRODUCT DECISION:** seeding methodology, tie-break, scheduling automation, public bracket.
+
+Admin: `/admin/tournaments/[id]/knockout`  
+Permission: `tournament:knockout_manage`
+
+Migration: `drizzle/0008_knockout_execution.sql`
 
 ---
 
@@ -199,6 +209,7 @@ APIs under `/api/admin/tournaments/[tournamentId]/…` for phases, matches, stan
 | `tournament:forfeit` | ✓ | ✓ | — | — |
 | `tournament:standings_view` | ✓ | ✓ | ✓ | ✓ |
 | `tournament:pod_manage` | ✓ | ✓ | — | — |
+| `tournament:knockout_manage` | ✓ | ✓ | — | — |
 
 ---
 
@@ -235,8 +246,12 @@ Stored in `tournaments.competition_rules`:
     "tieResolution": "pending"
   },
   "knockout": {
+    "format": "single_elimination",
+    "entrantCount": 32,
+    "pairing": "manual",
     "seeding": "pending",
-    "pairing": "pending",
+    "scheduling": "manual",
+    "tieResolution": "pending",
     "rounds": ["round_of_32", "round_of_16", "quarterfinal", "semifinal", "grand_final"]
   }
 }
@@ -294,4 +309,4 @@ Also: `tournaments.competition_rules`, `tournament_participants.public_code`
 
 ## Next step
 
-**Backend Step 9 — Finalize Knockout Mechanics & Tournament Execution**
+**Backend Step 10 — Tournament Scheduling, Match Rules & Competition Policy Finalization**

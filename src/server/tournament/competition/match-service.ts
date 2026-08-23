@@ -417,6 +417,13 @@ export async function correctMatchResult(input: {
     );
   }
 
+  if (match.knockoutRoundId) {
+    const { assertKnockoutCorrectionAllowed } = await import(
+      "@/server/tournament/knockout/progression-service"
+    );
+    await assertKnockoutCorrectionAllowed(match.id);
+  }
+
   const isDraw = scoreA === scoreB;
   const winnerParticipantId = isDraw
     ? null
@@ -483,6 +490,20 @@ export async function correctMatchResult(input: {
     },
   });
 
+  if (match.knockoutRoundId) {
+    await recordAdminAuditEvent({
+      eventType: "KNOCKOUT_RESULT_CORRECTED",
+      actorId: input.actorId,
+      actorRole: input.actorRole,
+      requestId: input.requestId,
+      metadata: {
+        tournamentId: match.tournamentId,
+        matchId: match.id,
+        correctedResultId: corrected.id,
+      },
+    });
+  }
+
   return {
     originalResultId: original.id,
     correctedResultId: corrected.id,
@@ -530,6 +551,19 @@ export async function markMatchDisputed(input: {
       preservedResultId: updated?.authoritativeResultId ?? null,
     },
   });
+
+  if (match.knockoutRoundId) {
+    await recordAdminAuditEvent({
+      eventType: "KNOCKOUT_MATCH_DISPUTED",
+      actorId: input.actorId,
+      actorRole: input.actorRole,
+      requestId: input.requestId,
+      metadata: {
+        tournamentId: match.tournamentId,
+        matchId: match.id,
+      },
+    });
+  }
 
   return { status: "disputed" as const, alreadyDisputed: false };
 }
@@ -630,6 +664,42 @@ export async function forfeitMatch(input: {
       reasonLength: reason.length,
     },
   });
+
+  if (match.knockoutRoundId && winnerParticipantId) {
+    const {
+      advanceWinnerToDependentSlots,
+      evaluateRoundCompletion,
+    } = await import("@/server/tournament/knockout/progression-service");
+
+    await advanceWinnerToDependentSlots({
+      sourceMatchId: match.id,
+      winnerParticipantId,
+      loserParticipantId: input.forfeitingParticipantId,
+      actorId: input.actorId,
+      actorRole: input.actorRole,
+      requestId: input.requestId,
+    });
+
+    await evaluateRoundCompletion({
+      tournamentId: match.tournamentId,
+      knockoutRoundId: match.knockoutRoundId,
+      actorId: input.actorId,
+      actorRole: input.actorRole,
+      requestId: input.requestId,
+    });
+
+    await recordAdminAuditEvent({
+      eventType: "KNOCKOUT_FORFEIT_RECORDED",
+      actorId: input.actorId,
+      actorRole: input.actorRole,
+      requestId: input.requestId,
+      metadata: {
+        tournamentId: match.tournamentId,
+        matchId: match.id,
+        winnerParticipantId,
+      },
+    });
+  }
 
   return { status: "forfeited" as const, alreadyForfeited: false, resultId: result.id };
 }

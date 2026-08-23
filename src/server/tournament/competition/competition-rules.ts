@@ -1,6 +1,7 @@
 /**
- * Finalized KG926 qualification rules — kg926-v1
- * Single-elimination pods: 128 → 32 pods × 4 → 32 qualifiers
+ * Finalized KG926 competition rules — kg926-v1
+ * Qualification: single-elimination pods
+ * Knockout: single-elimination Top 32 with manual R32 pairing
  */
 
 import { KG926_ELIGIBILITY_RULES_VERSION } from "@/server/tournament/eligibility/eligibility-types";
@@ -14,7 +15,17 @@ export const KG926_QUALIFICATION_ENTRANTS = 128;
 export const KG926_MAX_MATCHES_PER_NORMAL_POD = 3;
 export const KG926_MAX_QUALIFICATION_MATCHES = 96;
 
+export const KG926_KNOCKOUT_ENTRANTS = 32;
+export const KG926_R32_MATCH_COUNT = 16;
+export const KG926_R16_MATCH_COUNT = 8;
+export const KG926_QF_MATCH_COUNT = 4;
+export const KG926_SF_MATCH_COUNT = 2;
+export const KG926_FINAL_MATCH_COUNT = 1;
+export const KG926_KNOCKOUT_MATCH_COUNT = 31;
+
 export type TieResolutionPolicy = "pending" | "admin_resolution";
+export type KnockoutPairingStrategy = "manual" | "pending";
+export type KnockoutSchedulingMode = "manual" | "pending";
 
 export interface QualificationHostRuleConfig {
   enabled: boolean;
@@ -37,20 +48,30 @@ export interface QualificationRulesConfig {
   tieResolution: TieResolutionPolicy;
 }
 
+export interface KnockoutRulesConfig {
+  format: "single_elimination";
+  entrantCount: number;
+  /** FINALIZED PRODUCT RULE — only manual pairing is operational */
+  pairing: KnockoutPairingStrategy;
+  /** PENDING PRODUCT DECISION — seeding methodology beyond manual pairing */
+  seeding: "pending";
+  /** FINALIZED boundary — no automatic scheduler; manual only */
+  scheduling: KnockoutSchedulingMode;
+  /** PENDING PRODUCT DECISION — draw/tie resolution */
+  tieResolution: TieResolutionPolicy;
+  rounds: Array<
+    | "round_of_32"
+    | "round_of_16"
+    | "quarterfinal"
+    | "semifinal"
+    | "grand_final"
+  >;
+}
+
 export interface CompetitionRulesConfig {
   rulesVersion: string;
   qualification: QualificationRulesConfig;
-  knockout: {
-    seeding: "pending";
-    pairing: "pending";
-    rounds: Array<
-      | "round_of_32"
-      | "round_of_16"
-      | "quarterfinal"
-      | "semifinal"
-      | "grand_final"
-    >;
-  };
+  knockout: KnockoutRulesConfig;
 }
 
 export const DEFAULT_KG926_COMPETITION_RULES: CompetitionRulesConfig = {
@@ -73,8 +94,12 @@ export const DEFAULT_KG926_COMPETITION_RULES: CompetitionRulesConfig = {
     tieResolution: "pending",
   },
   knockout: {
+    format: "single_elimination",
+    entrantCount: KG926_KNOCKOUT_ENTRANTS,
+    pairing: "manual",
     seeding: "pending",
-    pairing: "pending",
+    scheduling: "manual",
+    tieResolution: "pending",
     rounds: [
       "round_of_32",
       "round_of_16",
@@ -91,6 +116,7 @@ export function parseCompetitionRules(raw: unknown): CompetitionRulesConfig {
   }
   const obj = raw as Partial<CompetitionRulesConfig>;
   const q = obj.qualification as Partial<QualificationRulesConfig> | undefined;
+  const k = obj.knockout as Partial<KnockoutRulesConfig> | undefined;
   return {
     rulesVersion: obj.rulesVersion ?? DEFAULT_KG926_COMPETITION_RULES.rulesVersion,
     qualification: {
@@ -113,13 +139,20 @@ export function parseCompetitionRules(raw: unknown): CompetitionRulesConfig {
     },
     knockout: {
       ...DEFAULT_KG926_COMPETITION_RULES.knockout,
-      ...(obj.knockout ?? {}),
+      ...(k ?? {}),
+      format: "single_elimination",
+      entrantCount: KG926_KNOCKOUT_ENTRANTS,
+      pairing: k?.pairing === "pending" ? "pending" : "manual",
       seeding: "pending",
-      pairing: "pending",
-      rounds:
-        obj.knockout?.rounds ?? DEFAULT_KG926_COMPETITION_RULES.knockout.rounds,
+      scheduling: k?.scheduling === "pending" ? "pending" : "manual",
+      tieResolution: k?.tieResolution === "admin_resolution" ? "admin_resolution" : "pending",
+      rounds: k?.rounds ?? DEFAULT_KG926_COMPETITION_RULES.knockout.rounds,
     },
   };
+}
+
+export function isKnockoutPairingConfigured(rules: CompetitionRulesConfig): boolean {
+  return rules.knockout.pairing === "manual";
 }
 
 /** @deprecated Step 7 boundary — qualification pairing is now finalized as pod single-elimination */

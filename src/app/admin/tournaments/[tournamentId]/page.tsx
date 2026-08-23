@@ -12,6 +12,8 @@ import {
   ensureQualificationPods,
   getQualificationDashboard,
 } from "@/server/tournament/qualification/pod-service";
+import { getKnockoutDashboard } from "@/server/tournament/knockout/readiness-service";
+import { getChampionPublicProjection } from "@/server/tournament/knockout/completion-service";
 
 export default async function AdminTournamentDetailPage({
   params,
@@ -38,6 +40,8 @@ export default async function AdminTournamentDetailPage({
   const rounds = knockout ? await listKnockoutRounds(knockout.id) : [];
   await ensureQualificationPods(tournamentId);
   const qualificationDashboard = await getQualificationDashboard(tournamentId);
+  const knockoutDashboard = await getKnockoutDashboard(tournamentId);
+  const champion = await getChampionPublicProjection(tournamentId);
 
   return (
     <AdminShell session={session}>
@@ -55,8 +59,8 @@ export default async function AdminTournamentDetailPage({
         <h2 className="text-h3">Competition rules</h2>
         <p className="mt-2 text-body-sm text-text-secondary">
           Version {rules.rulesVersion}. Qualification uses 32 single-elimination
-          pods (128 → 32). Knockout seeding and pairing remain pending Product
-          Owner decisions.
+          pods (128 → 32). Knockout uses manual R32 pairing; seeding methodology
+          remains a Product Owner decision.
         </p>
         <ul className="mt-3 list-disc space-y-1 pl-5 text-body-sm">
           <li>Qualification format: {rules.qualification.format}</li>
@@ -64,8 +68,10 @@ export default async function AdminTournamentDetailPage({
           <li>Qualifiers: {rules.qualification.qualificationTarget}</li>
           <li>Assignment: {rules.qualification.assignmentMode}</li>
           <li>Tie resolution: {rules.qualification.tieResolution} (PENDING PRODUCT DECISION)</li>
-          <li>Knockout seeding: {rules.knockout.seeding}</li>
-          <li>Knockout pairing: {rules.knockout.pairing}</li>
+          <li>Knockout format: {rules.knockout.format}</li>
+          <li>Knockout pairing: {rules.knockout.pairing} (manual operational)</li>
+          <li>Knockout seeding: {rules.knockout.seeding} (PENDING PRODUCT DECISION)</li>
+          <li>Knockout scheduling: {rules.knockout.scheduling}</li>
         </ul>
       </section>
 
@@ -88,6 +94,30 @@ export default async function AdminTournamentDetailPage({
           className="mt-3 inline-block text-accent underline"
         >
           Manage qualification
+        </Link>
+      </section>
+
+      <section className="mt-6 rounded-xl border border-border bg-surface-elevated p-4">
+        <h2 className="text-h3">Knockout progress</h2>
+        <p className="mt-2 text-body-sm text-text-secondary">
+          {knockoutDashboard.actual.participants} / {knockoutDashboard.expected.participants}{" "}
+          participants · bracket {knockoutDashboard.bracketStatus}
+        </p>
+        <ul className="mt-3 space-y-1 text-body-sm text-text-muted">
+          <li>
+            R32 {knockoutDashboard.actual.r32}/{knockoutDashboard.expected.r32} · R16{" "}
+            {knockoutDashboard.actual.r16}/{knockoutDashboard.expected.r16} · QF{" "}
+            {knockoutDashboard.actual.qf}/{knockoutDashboard.expected.qf} · SF{" "}
+            {knockoutDashboard.actual.sf}/{knockoutDashboard.expected.sf} · Final{" "}
+            {knockoutDashboard.actual.final}/{knockoutDashboard.expected.final}
+          </li>
+          <li>Champion: {champion?.championPublicCode ?? "—"}</li>
+        </ul>
+        <Link
+          href={`/admin/tournaments/${tournamentId}/knockout`}
+          className="mt-3 inline-block text-accent underline"
+        >
+          Manage knockout
         </Link>
       </section>
 
@@ -116,7 +146,7 @@ export default async function AdminTournamentDetailPage({
 
       {rounds.length > 0 ? (
         <section className="mt-6 rounded-xl border border-border bg-surface-elevated p-4">
-          <h2 className="text-h3">Knockout rounds (structure only)</h2>
+          <h2 className="text-h3">Knockout rounds</h2>
           <ul className="mt-3 space-y-1 text-body-sm">
             {rounds.map((round) => (
               <li key={round.id}>
@@ -125,12 +155,24 @@ export default async function AdminTournamentDetailPage({
             ))}
           </ul>
           <p className="mt-2 text-body-sm text-text-muted">
-            Bracket generation and seeding are not implemented.
+            Manual R32 pairing required before bracket generation.
           </p>
         </section>
       ) : null}
 
       <nav className="mt-6 flex flex-wrap gap-3 text-body-sm">
+        <Link
+          href={`/admin/tournaments/${tournamentId}/qualification`}
+          className="text-accent underline"
+        >
+          Qualification
+        </Link>
+        <Link
+          href={`/admin/tournaments/${tournamentId}/knockout`}
+          className="text-accent underline"
+        >
+          Knockout
+        </Link>
         <Link
           href={`/admin/tournaments/${tournamentId}/matches`}
           className="text-accent underline"

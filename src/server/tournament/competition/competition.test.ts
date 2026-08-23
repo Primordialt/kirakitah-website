@@ -47,6 +47,7 @@ describe("competition rules configuration", () => {
     expect(DEFAULT_KG926_COMPETITION_RULES.qualification.positionsPerPod).toBe(4);
     expect(DEFAULT_KG926_COMPETITION_RULES.qualification.assignmentMode).toBe("manual");
     expect(DEFAULT_KG926_COMPETITION_RULES.knockout.seeding).toBe("pending");
+    expect(DEFAULT_KG926_COMPETITION_RULES.knockout.pairing).toBe("manual");
   });
 
   it("does not invent win/draw point values in config", () => {
@@ -155,6 +156,15 @@ describe("competition RBAC", () => {
   it("denies reviewer and support pod management", () => {
     expect(roleHasPermission("REVIEWER", "tournament:pod_manage")).toBe(false);
     expect(roleHasPermission("SUPPORT", "tournament:pod_manage")).toBe(false);
+  });
+
+  it("grants tournament admin knockout management", () => {
+    expect(roleHasPermission("TOURNAMENT_ADMIN", "tournament:knockout_manage")).toBe(
+      true,
+    );
+    expect(roleHasPermission("SUPER_ADMIN", "tournament:knockout_manage")).toBe(true);
+    expect(roleHasPermission("REVIEWER", "tournament:knockout_manage")).toBe(false);
+    expect(roleHasPermission("SUPPORT", "tournament:knockout_manage")).toBe(false);
   });
 
   it("denies support mutation permissions", () => {

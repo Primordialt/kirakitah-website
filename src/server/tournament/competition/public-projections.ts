@@ -81,6 +81,34 @@ export function toPublicTournamentSummary(row: {
   };
 }
 
+export interface PublicChampion {
+  tournamentName: string;
+  tournamentStatus: string;
+  championPublicCode: string | null;
+  completedAt: string | null;
+}
+
+export interface PublicKnockoutRoundSummary {
+  roundType: string;
+  name: string;
+  status: string;
+  matchCount: number;
+}
+
+export function toPublicChampion(row: {
+  tournamentName: string;
+  tournamentStatus: string;
+  championPublicCode: string | null;
+  completedAt: string | null;
+}): PublicChampion {
+  return {
+    tournamentName: row.tournamentName,
+    tournamentStatus: row.tournamentStatus,
+    championPublicCode: row.championPublicCode,
+    completedAt: row.completedAt,
+  };
+}
+
 export function assertNoSensitivePublicFields(payload: Record<string, unknown>): void {
   const forbidden = [
     "email",

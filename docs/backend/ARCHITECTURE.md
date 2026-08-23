@@ -1,6 +1,6 @@
 # KIRAKITAH Backend — Architecture & Foundation Audit
 
-**Phase:** Backend Steps 1–8 (registration + admin + eligibility + competition + qualification engine)  
+**Phase:** Backend Steps 1–9 (registration + admin + eligibility + competition + qualification + knockout)  
 **Date:** August 23, 2026  
 **Repository:** [kirakitah-website](https://github.com/Primordialt/kirakitah-website)  
 **Deployment:** Vercel (Next.js 15 App Router, Node 22, region `iad1`)
@@ -11,15 +11,16 @@
 
 The KIRAKITAH frontend is production-ready with a **service abstraction layer**. Registration now has a real Neon + Blob backend, manual identity review, and email/phone ownership verification challenges.
 
-**Today:** Registration API, contact verification, manual identity review, secure admin reviewer workflow, tournament eligibility/participation, competition operations foundation, and **KG926 qualification engine** (32 pods, single elimination, host rule, Top 32 advancement) are implemented.
+**Today:** Registration API, contact verification, manual identity review, secure admin reviewer workflow, tournament eligibility/participation, competition operations foundation, KG926 qualification engine, and **KG926 knockout execution** (manual R32 pairing, bracket, progression, champion) are implemented.
 
-**Next implementation priority:** **Backend Step 9 — Finalize Knockout Mechanics & Tournament Execution**.
+**Next implementation priority:** **Backend Step 10 — Tournament Scheduling, Match Rules & Competition Policy Finalization**.
 
 Admin reviewer workflow (Step 5) is implemented with production auth **PENDING PROVIDER**.
 
 Tournament eligibility (Step 6): [TOURNAMENT-ELIGIBILITY.md](./TOURNAMENT-ELIGIBILITY.md).  
 Competition operations (Step 7): [TOURNAMENT-OPERATIONS.md](./TOURNAMENT-OPERATIONS.md).  
-Qualification engine (Step 8): [QUALIFICATION-SYSTEM.md](./QUALIFICATION-SYSTEM.md).
+Qualification engine (Step 8): [QUALIFICATION-SYSTEM.md](./QUALIFICATION-SYSTEM.md).  
+Knockout execution (Step 9): [KNOCKOUT-SYSTEM.md](./KNOCKOUT-SYSTEM.md).
 
 This document audits the frontend foundations and tracks backend architecture evolution.
 
