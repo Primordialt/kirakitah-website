@@ -329,6 +329,9 @@ export async function createRegistrationApplication(
             ? "NIN submitted for manual KIRAKITAH identity review. Automated provider lookup is not enabled."
             : "International passport submitted for manual KIRAKITAH identity review. Automated verification is not available.",
       },
+      // Contact OTP may be deferred (MVP); never mark verified without ownership proof.
+      emailVerificationStatus: "pending",
+      phoneVerificationStatus: "pending",
       submitIpHash,
     });
 

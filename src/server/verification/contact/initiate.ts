@@ -1,4 +1,5 @@
 import { eq } from "drizzle-orm";
+import { registrationPolicy } from "@/config/registration-policy";
 import { getDb } from "@/server/db";
 import { registrationApplications } from "@/server/db/schema";
 import {
@@ -15,6 +16,9 @@ export interface InitiateContactVerificationResult {
 /**
  * Starts email and phone ownership challenges after registration persistence.
  * Identity verification remains independent (pending_review / manual).
+ *
+ * MVP_MANUAL_REVIEW: contact verification is DEFERRED — statuses stay pending,
+ * no OTP is generated or delivered, architecture remains for later activation.
  */
 export async function initiateContactVerification(options: {
   applicationId: string;
@@ -23,6 +27,26 @@ export async function initiateContactVerification(options: {
   phone: string;
 }): Promise<InitiateContactVerificationResult> {
   const db = getDb();
+
+  if (!registrationPolicy.initiateContactVerificationOnSubmit) {
+    const deferred: ContactChannelInitResult = {
+      status: "pending",
+      provider: "deferred",
+      message:
+        "Contact verification is deferred for MVP_MANUAL_REVIEW. The KIRAKITAH team will contact you with next steps.",
+    };
+
+    await db
+      .update(registrationApplications)
+      .set({
+        emailVerificationStatus: "pending",
+        phoneVerificationStatus: "pending",
+        updatedAt: new Date().toISOString(),
+      })
+      .where(eq(registrationApplications.id, options.applicationId));
+
+    return { email: deferred, phone: deferred };
+  }
 
   let emailResult: ContactChannelInitResult;
   try {
@@ -78,16 +102,25 @@ export async function initiateContactVerification(options: {
     }
   }
 
+  // DB enum is pending | verified | skipped — never persist "unavailable".
   await db
     .update(registrationApplications)
     .set({
-      emailVerificationStatus: emailResult.status,
-      phoneVerificationStatus: phoneResult.status,
+      emailVerificationStatus: toPersistedContactStatus(emailResult.status),
+      phoneVerificationStatus: toPersistedContactStatus(phoneResult.status),
       updatedAt: new Date().toISOString(),
     })
     .where(eq(registrationApplications.id, options.applicationId));
 
   return { email: emailResult, phone: phoneResult };
+}
+
+function toPersistedContactStatus(
+  status: ContactChannelInitResult["status"],
+): "pending" | "verified" | "skipped" {
+  if (status === "verified") return "verified";
+  if (status === "skipped") return "skipped";
+  return "pending";
 }
 
 export {

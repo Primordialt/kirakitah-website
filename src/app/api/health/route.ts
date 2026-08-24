@@ -12,8 +12,10 @@ export async function GET() {
   return NextResponse.json(
     {
       status: "ok",
-      phase: "production-launch-verification",
+      phase: "mvp-manual-registration",
       competition: "KIRAKITAH GAMING 926",
+      registrationMode: snapshot.registrationMode,
+      contactVerification: snapshot.contactVerification,
       databaseConfigured: snapshot.databaseConfigured,
       blobConfigured: snapshot.blobConfigured,
       registrationConfigured: snapshot.registrationConfigured,
@@ -24,7 +26,7 @@ export async function GET() {
       dataSource: snapshot.dataSource,
       launchGateHint: snapshot.launchGateHint,
       automatedNinLookupEnabled: false,
-      contactVerification: {
+      contactVerificationProviders: {
         mockAllowedInProduction: false,
       },
     },

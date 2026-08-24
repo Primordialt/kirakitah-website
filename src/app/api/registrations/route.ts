@@ -1,3 +1,4 @@
+import { registrationPolicy } from "@/config/registration-policy";
 import {
   createRegistrationApplication,
   DuplicateRegistrationError,
@@ -139,10 +140,15 @@ export async function POST(request: Request) {
         contactVerification: result.contactVerification,
         nextSteps: {
           applicationReceived: true,
-          emailVerificationRequired: true,
-          phoneVerificationRequired: true,
+          emailVerificationRequired:
+            registrationPolicy.contactVerification === "REQUIRED",
+          phoneVerificationRequired:
+            registrationPolicy.contactVerification === "REQUIRED",
+          contactVerificationDeferred:
+            registrationPolicy.contactVerification === "DEFERRED",
           identityReview: "pending_review",
           tournamentParticipationConfirmed: false,
+          registrationMode: registrationPolicy.mode,
         },
         requestId,
       },

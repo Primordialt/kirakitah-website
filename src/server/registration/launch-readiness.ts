@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
 import { getDataSource } from "@/config/data-source";
+import { registrationPolicy } from "@/config/registration-policy";
 import { getDb } from "@/server/db";
 import {
   isRegistrationBackendConfigured,
@@ -14,25 +15,37 @@ export type CheckStatus =
   | "CONFIGURED"
   | "NOT_CONFIGURED"
   | "ERROR"
-  | "PENDING_PRODUCT_DECISION";
+  | "PENDING_PRODUCT_DECISION"
+  | "DEFERRED";
 
 export interface ReadinessCheck {
   id: string;
   label: string;
   status: CheckStatus;
-  requiredForLaunch: boolean;
+  /** Required for FULL_PRODUCTION REGISTRATION_READY */
+  requiredForFullProduction: boolean;
+  /** Required for MVP_MANUAL_REVIEW MVP_REGISTRATION_READY */
+  requiredForMvp: boolean;
   detail: string;
 }
 
-export type LaunchGateState = "REGISTRATION_READY" | "REGISTRATION_NOT_READY";
+export type LaunchGateState =
+  | "MVP_REGISTRATION_READY"
+  | "REGISTRATION_READY"
+  | "REGISTRATION_NOT_READY";
 
 export interface LaunchReadinessReport {
   gate: LaunchGateState;
+  operatingMode: typeof registrationPolicy.mode;
   identityVerificationMode: "manual";
+  contactVerification: typeof registrationPolicy.contactVerification;
   capacityPolicy: "CAPACITY_POLICY_PENDING";
   dataRetention: "PENDING_PRODUCT_LEGAL_POLICY";
   checks: ReadinessCheck[];
   blockers: string[];
+  /** Distinguishes “applications can be received” vs full provider stack. */
+  applicationsReceivable: boolean;
+  fullProductionVerificationOperational: boolean;
 }
 
 /**
@@ -48,27 +61,29 @@ function isValidPiiEncryptionKey(value: string | undefined): boolean {
 }
 
 function emailProviderStatus(): ReadinessCheck {
+  if (registrationPolicy.contactVerification === "DEFERRED") {
+    return {
+      id: "EMAIL_PROVIDER",
+      label: "EMAIL PROVIDER",
+      status: "DEFERRED",
+      requiredForFullProduction: true,
+      requiredForMvp: false,
+      detail:
+        "EMAIL VERIFICATION DEFERRED (MVP_MANUAL_REVIEW) — architecture intact; not required to accept applications",
+    };
+  }
+
   const configured =
     serverEnv.emailVerificationProvider === "http" &&
     Boolean(serverEnv.emailVerificationApiUrl) &&
     Boolean(serverEnv.emailVerificationApiKey);
 
-  if (serverEnv.emailVerificationProvider === "none") {
-    return {
-      id: "EMAIL_PROVIDER",
-      label: "EMAIL PROVIDER",
-      status: "PENDING_PRODUCT_DECISION",
-      requiredForLaunch: true,
-      detail:
-        "EMAIL_VERIFICATION_PROVIDER=none — Product Owner must decide whether email verification is mandatory before launch",
-    };
-  }
-
   return {
     id: "EMAIL_PROVIDER",
     label: "EMAIL PROVIDER",
     status: configured ? "CONFIGURED" : "NOT_CONFIGURED",
-    requiredForLaunch: true,
+    requiredForFullProduction: true,
+    requiredForMvp: false,
     detail: configured
       ? "HTTP email verification env configured (delivery still requires real-world smoke test)"
       : "PRODUCTION EMAIL PROVIDER REQUIRED — EMAIL DELIVERY = BLOCKED",
@@ -76,27 +91,29 @@ function emailProviderStatus(): ReadinessCheck {
 }
 
 function phoneProviderStatus(): ReadinessCheck {
+  if (registrationPolicy.contactVerification === "DEFERRED") {
+    return {
+      id: "SMS_PROVIDER",
+      label: "SMS PROVIDER",
+      status: "DEFERRED",
+      requiredForFullProduction: true,
+      requiredForMvp: false,
+      detail:
+        "PHONE VERIFICATION DEFERRED (MVP_MANUAL_REVIEW) — architecture intact; not required to accept applications",
+    };
+  }
+
   const configured =
     serverEnv.phoneVerificationProvider === "http" &&
     Boolean(serverEnv.phoneVerificationApiUrl) &&
     Boolean(serverEnv.phoneVerificationApiKey);
 
-  if (serverEnv.phoneVerificationProvider === "none") {
-    return {
-      id: "SMS_PROVIDER",
-      label: "SMS PROVIDER",
-      status: "PENDING_PRODUCT_DECISION",
-      requiredForLaunch: true,
-      detail:
-        "PHONE_VERIFICATION_PROVIDER=none — Product Owner must decide whether phone verification is mandatory before launch",
-    };
-  }
-
   return {
     id: "SMS_PROVIDER",
     label: "SMS PROVIDER",
     status: configured ? "CONFIGURED" : "NOT_CONFIGURED",
-    requiredForLaunch: true,
+    requiredForFullProduction: true,
+    requiredForMvp: false,
     detail: configured
       ? "HTTP phone verification env configured (delivery still requires real-world smoke test)"
       : "PRODUCTION SMS PROVIDER REQUIRED — SMS DELIVERY = BLOCKED",
@@ -104,12 +121,25 @@ function phoneProviderStatus(): ReadinessCheck {
 }
 
 function adminAuthStatus(): ReadinessCheck {
+  if (registrationPolicy.adminWorkflow === "MANUAL_DEFERRED_AUTH") {
+    return {
+      id: "ADMIN_AUTH",
+      label: "ADMIN AUTH",
+      status: "DEFERRED",
+      requiredForFullProduction: true,
+      requiredForMvp: false,
+      detail:
+        "ADMIN AUTH DEFERRED (MVP_MANUAL_REVIEW) — do not use insecure workarounds; secure ops process until provider enabled",
+    };
+  }
+
   if (!HTTP_ADMIN_AUTH_IMPLEMENTED) {
     return {
       id: "ADMIN_AUTH",
       label: "ADMIN AUTH",
       status: "NOT_CONFIGURED",
-      requiredForLaunch: true,
+      requiredForFullProduction: true,
+      requiredForMvp: false,
       detail:
         "PRODUCTION ADMIN AUTH PROVIDER REQUIRED — HTTP stub is not enabled (ADMIN AUTH = BLOCKED)",
     };
@@ -125,7 +155,8 @@ function adminAuthStatus(): ReadinessCheck {
     id: "ADMIN_AUTH",
     label: "ADMIN AUTH",
     status: configured ? "CONFIGURED" : "NOT_CONFIGURED",
-    requiredForLaunch: true,
+    requiredForFullProduction: true,
+    requiredForMvp: false,
     detail: configured
       ? "HTTP admin auth provider configured"
       : "PRODUCTION ADMIN AUTH PROVIDER REQUIRED",
@@ -139,7 +170,8 @@ function encryptionStatus(): ReadinessCheck {
       id: "ENCRYPTION",
       label: "ENCRYPTION",
       status: "NOT_CONFIGURED",
-      requiredForLaunch: true,
+      requiredForFullProduction: true,
+      requiredForMvp: true,
       detail: "REGISTRATION_PII_ENCRYPTION_KEY is missing",
     };
   }
@@ -148,7 +180,8 @@ function encryptionStatus(): ReadinessCheck {
       id: "ENCRYPTION",
       label: "ENCRYPTION",
       status: "ERROR",
-      requiredForLaunch: true,
+      requiredForFullProduction: true,
+      requiredForMvp: true,
       detail:
         "REGISTRATION_PII_ENCRYPTION_KEY must be 64 hex characters (32 bytes)",
     };
@@ -157,7 +190,8 @@ function encryptionStatus(): ReadinessCheck {
     id: "ENCRYPTION",
     label: "ENCRYPTION",
     status: "CONFIGURED",
-    requiredForLaunch: true,
+    requiredForFullProduction: true,
+    requiredForMvp: true,
     detail: "REGISTRATION_PII_ENCRYPTION_KEY format is valid",
   };
 }
@@ -168,7 +202,8 @@ async function migrationVersionStatus(): Promise<ReadinessCheck> {
       id: "MIGRATION_VERSION",
       label: "MIGRATION VERSION",
       status: "NOT_CONFIGURED",
-      requiredForLaunch: true,
+      requiredForFullProduction: true,
+      requiredForMvp: true,
       detail: "DATABASE_URL missing — cannot verify migrations",
     };
   }
@@ -192,7 +227,8 @@ async function migrationVersionStatus(): Promise<ReadinessCheck> {
         id: "MIGRATION_VERSION",
         label: "MIGRATION VERSION",
         status: "CONFIGURED",
-        requiredForLaunch: true,
+        requiredForFullProduction: true,
+        requiredForMvp: true,
         detail: "Expected schema present through 0010_phone_uniqueness",
       };
     }
@@ -201,7 +237,8 @@ async function migrationVersionStatus(): Promise<ReadinessCheck> {
       id: "MIGRATION_VERSION",
       label: "MIGRATION VERSION",
       status: "NOT_CONFIGURED",
-      requiredForLaunch: true,
+      requiredForFullProduction: true,
+      requiredForMvp: true,
       detail: "Apply migrations through 0010_phone_uniqueness.sql",
     };
   } catch {
@@ -209,7 +246,8 @@ async function migrationVersionStatus(): Promise<ReadinessCheck> {
       id: "MIGRATION_VERSION",
       label: "MIGRATION VERSION",
       status: "ERROR",
-      requiredForLaunch: true,
+      requiredForFullProduction: true,
+      requiredForMvp: true,
       detail: "Unable to query database schema for migration verification",
     };
   }
@@ -241,10 +279,17 @@ function adminAuthReady(): boolean {
   );
 }
 
+function isCheckSatisfied(check: ReadinessCheck): boolean {
+  return check.status === "CONFIGURED" || check.status === "DEFERRED";
+}
+
 /**
  * Structured production launch readiness.
- * Does not expose secrets. Fail closed for missing mandatory providers.
- * Never reports REGISTRATION_READY while required checks are incomplete.
+ *
+ * Distinguishes:
+ * - MVP_REGISTRATION_READY — applications can be received (infra + encryption + migrations)
+ * - REGISTRATION_READY — full email/SMS/admin verification stack operational
+ * - REGISTRATION_NOT_READY — mandatory MVP infra missing
  */
 export async function evaluateLaunchReadiness(): Promise<LaunchReadinessReport> {
   const dataSource = getDataSource();
@@ -252,10 +297,19 @@ export async function evaluateLaunchReadiness(): Promise<LaunchReadinessReport> 
 
   const checks: ReadinessCheck[] = [
     {
+      id: "OPERATING_MODE",
+      label: "OPERATING MODE",
+      status: "CONFIGURED",
+      requiredForFullProduction: true,
+      requiredForMvp: true,
+      detail: `Registration mode = ${registrationPolicy.mode}`,
+    },
+    {
       id: "DATABASE",
       label: "DATABASE",
       status: serverEnv.databaseUrl ? "CONFIGURED" : "NOT_CONFIGURED",
-      requiredForLaunch: true,
+      requiredForFullProduction: true,
+      requiredForMvp: true,
       detail: serverEnv.databaseUrl
         ? "DATABASE_URL is configured"
         : "DATABASE_URL is missing",
@@ -264,7 +318,8 @@ export async function evaluateLaunchReadiness(): Promise<LaunchReadinessReport> 
       id: "BLOB",
       label: "BLOB",
       status: serverEnv.blobReadWriteToken ? "CONFIGURED" : "NOT_CONFIGURED",
-      requiredForLaunch: true,
+      requiredForFullProduction: true,
+      requiredForMvp: true,
       detail: serverEnv.blobReadWriteToken
         ? "BLOB_READ_WRITE_TOKEN is configured"
         : "BLOB_READ_WRITE_TOKEN is missing",
@@ -276,7 +331,8 @@ export async function evaluateLaunchReadiness(): Promise<LaunchReadinessReport> 
       status: isRegistrationBackendConfigured()
         ? "CONFIGURED"
         : "NOT_CONFIGURED",
-      requiredForLaunch: true,
+      requiredForFullProduction: true,
+      requiredForMvp: true,
       detail: isRegistrationBackendConfigured()
         ? "Registration backend dependencies are present"
         : "Registration backend is incomplete",
@@ -285,7 +341,8 @@ export async function evaluateLaunchReadiness(): Promise<LaunchReadinessReport> 
       id: "DATA_SOURCE",
       label: "PRODUCTION DATA SOURCE",
       status: dataSource === "api" ? "CONFIGURED" : "NOT_CONFIGURED",
-      requiredForLaunch: true,
+      requiredForFullProduction: true,
+      requiredForMvp: true,
       detail:
         dataSource === "api"
           ? "NEXT_PUBLIC_DATA_SOURCE resolves to api"
@@ -299,40 +356,72 @@ export async function evaluateLaunchReadiness(): Promise<LaunchReadinessReport> 
       id: "IDENTITY_MODE",
       label: "IDENTITY VERIFICATION MODE",
       status: "CONFIGURED",
-      requiredForLaunch: true,
+      requiredForFullProduction: true,
+      requiredForMvp: true,
       detail: "Manual review only (no automated NIN/passport/POSSAP)",
     },
     {
       id: "CAPACITY_POLICY",
       label: "CAPACITY POLICY",
       status: "PENDING_PRODUCT_DECISION",
-      requiredForLaunch: false,
+      requiredForFullProduction: false,
+      requiredForMvp: false,
       detail: "CAPACITY_POLICY_PENDING — 128 target not auto-enforced",
     },
     {
       id: "DATA_RETENTION",
       label: "DATA RETENTION",
       status: "PENDING_PRODUCT_DECISION",
-      requiredForLaunch: false,
+      requiredForFullProduction: false,
+      requiredForMvp: false,
       detail: "PENDING_PRODUCT_LEGAL_POLICY",
     },
   ];
 
-  const blockers = checks
+  const mvpBlockers = checks
     .filter(
       (check) =>
-        check.requiredForLaunch && check.status !== "CONFIGURED",
+        check.requiredForMvp &&
+        check.status !== "CONFIGURED" &&
+        check.status !== "DEFERRED",
     )
     .map((check) => `${check.label}: ${check.detail}`);
 
+  const fullBlockers = checks
+    .filter(
+      (check) =>
+        check.requiredForFullProduction && !isCheckSatisfied(check),
+    )
+    .map((check) => `${check.label}: ${check.detail}`);
+
+  // DEFERRED providers satisfy MVP but not FULL_PRODUCTION.
+  const fullProductionReady =
+    fullBlockers.length === 0 &&
+    emailProviderReady() &&
+    phoneProviderReady() &&
+    adminAuthReady() &&
+    registrationPolicy.isFullProduction;
+
+  const mvpReady = mvpBlockers.length === 0;
+
+  let gate: LaunchGateState = "REGISTRATION_NOT_READY";
+  if (fullProductionReady) {
+    gate = "REGISTRATION_READY";
+  } else if (mvpReady && registrationPolicy.isMvpManualReview) {
+    gate = "MVP_REGISTRATION_READY";
+  }
+
   return {
-    gate:
-      blockers.length === 0 ? "REGISTRATION_READY" : "REGISTRATION_NOT_READY",
+    gate,
+    operatingMode: registrationPolicy.mode,
     identityVerificationMode: "manual",
+    contactVerification: registrationPolicy.contactVerification,
     capacityPolicy: "CAPACITY_POLICY_PENDING",
     dataRetention: "PENDING_PRODUCT_LEGAL_POLICY",
     checks,
-    blockers,
+    blockers: gate === "REGISTRATION_READY" ? [] : mvpReady ? fullBlockers : mvpBlockers,
+    applicationsReceivable: mvpReady,
+    fullProductionVerificationOperational: fullProductionReady,
   };
 }
 
@@ -346,6 +435,9 @@ export function getPublicHealthSnapshot() {
     adminConfigured: adminAuthReady(),
     identityVerificationMode: "manual" as const,
     dataSource: getDataSource(),
-    launchGateHint: "Use authenticated GET /api/admin/system/readiness for authoritative gate",
+    registrationMode: registrationPolicy.mode,
+    contactVerification: registrationPolicy.contactVerification,
+    launchGateHint:
+      "Use authenticated GET /api/admin/system/readiness for authoritative gate (MVP_REGISTRATION_READY vs REGISTRATION_READY)",
   };
 }

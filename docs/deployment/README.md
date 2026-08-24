@@ -2,6 +2,7 @@
 
 | Document | Purpose |
 |----------|---------|
+| [MVP-MANUAL-REGISTRATION.md](./MVP-MANUAL-REGISTRATION.md) | Emergency MVP mode: accept applications; defer email/SMS/admin auth |
 | [PRODUCTION-ENV-MATRIX.md](./PRODUCTION-ENV-MATRIX.md) | Definitive environment variable matrix |
 | [PRODUCTION-MIGRATIONS.md](./PRODUCTION-MIGRATIONS.md) | Migration order and apply/verify steps |
 | [VERCEL-PRODUCTION-CHECKLIST.md](./VERCEL-PRODUCTION-CHECKLIST.md) | Vercel Production operator checklist |

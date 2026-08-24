@@ -4,8 +4,8 @@ Do not implement silent defaults for these items. Mark each decision explicitly 
 
 | # | Decision | Status |
 |---|----------|--------|
-| 1 | Is **email verification** mandatory for eligibility / participation progression? | **PENDING PRODUCT OWNER DECISION** |
-| 2 | Is **phone verification** mandatory for eligibility / participation progression? | **PENDING PRODUCT OWNER DECISION** |
+| 1 | Is **email verification** mandatory for eligibility / participation progression? | **PENDING PRODUCT OWNER DECISION** (MVP: verification **DEFERRED** on submit — see `MVP-MANUAL-REGISTRATION.md`) |
+| 2 | Is **phone verification** mandatory for eligibility / participation progression? | **PENDING PRODUCT OWNER DECISION** (MVP: verification **DEFERRED** on submit) |
 | 3 | What happens when **128** applications / entrants are reached? Auto-reject? Soft cap? Continue accepting? | **PENDING PRODUCT OWNER DECISION** (`CAPACITY_POLICY_PENDING` in code) |
 | 4 | Is there a **waitlist**? | **PENDING PRODUCT OWNER DECISION** (do not invent) |
 | 5 | **Registration data retention** period and deletion process | **PENDING PRODUCT / LEGAL POLICY** |
@@ -19,6 +19,9 @@ Do not implement silent defaults for these items. Mark each decision explicitly 
 
 ## Related system statuses
 
+- **Current operating mode:** `MVP_MANUAL_REVIEW` (`src/config/registration-policy.ts`)
 - Identity verification mode: **manual** (not a Product decision to automate for launch)
 - Automated NIN / passport / POSSAP: **disabled**
-- Launch gate will not report `REGISTRATION_READY` while required infrastructure/providers are incomplete
+- Contact verification on submit: **DEFERRED** (OTP architecture retained)
+- Admin authentication: **DEFERRED** (no insecure workarounds)
+- Launch gate may report `MVP_REGISTRATION_READY` when infra is configured; `REGISTRATION_READY` remains for full provider stack
