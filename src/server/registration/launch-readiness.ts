@@ -429,6 +429,7 @@ export function getPublicHealthSnapshot() {
   return {
     databaseConfigured: Boolean(serverEnv.databaseUrl),
     blobConfigured: Boolean(serverEnv.blobReadWriteToken),
+    encryptionConfigured: Boolean(serverEnv.registrationPiiEncryptionKey),
     registrationConfigured: isRegistrationBackendConfigured(),
     emailConfigured: emailProviderReady(),
     phoneConfigured: phoneProviderReady(),

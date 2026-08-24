@@ -9,7 +9,12 @@ vi.mock("@/server/db", () => ({
     update: () => ({
       set: (values: unknown) => {
         updateSet(values);
-        return { where: updateWhere };
+        return {
+          where: (...args: unknown[]) => {
+            updateWhere(...args);
+            return Promise.resolve();
+          },
+        };
       },
     }),
   }),
@@ -25,6 +30,8 @@ vi.mock("@/server/verification/contact/challenges", () => ({
   resendContactChallenge: vi.fn(),
 }));
 
+import { initiateContactVerification } from "@/server/verification/contact/initiate";
+
 describe("initiateContactVerification — MVP deferred", () => {
   beforeEach(() => {
     updateSet.mockClear();
@@ -34,10 +41,6 @@ describe("initiateContactVerification — MVP deferred", () => {
 
   it("does not generate or deliver OTP when contact verification is deferred", async () => {
     expect(registrationPolicy.initiateContactVerificationOnSubmit).toBe(false);
-
-    const { initiateContactVerification } = await import(
-      "@/server/verification/contact/initiate"
-    );
 
     const result = await initiateContactVerification({
       applicationId: "00000000-0000-4000-8000-000000000001",

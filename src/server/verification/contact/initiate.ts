@@ -26,8 +26,6 @@ export async function initiateContactVerification(options: {
   email: string;
   phone: string;
 }): Promise<InitiateContactVerificationResult> {
-  const db = getDb();
-
   if (!registrationPolicy.initiateContactVerificationOnSubmit) {
     const deferred: ContactChannelInitResult = {
       status: "pending",
@@ -36,6 +34,7 @@ export async function initiateContactVerification(options: {
         "Contact verification is deferred for MVP_MANUAL_REVIEW. The KIRAKITAH team will contact you with next steps.",
     };
 
+    const db = getDb();
     await db
       .update(registrationApplications)
       .set({
@@ -47,6 +46,8 @@ export async function initiateContactVerification(options: {
 
     return { email: deferred, phone: deferred };
   }
+
+  const db = getDb();
 
   let emailResult: ContactChannelInitResult;
   try {

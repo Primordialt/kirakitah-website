@@ -64,13 +64,28 @@ npm run db:migrate
 ```
 
 4. Re-run the SQL verification queries above.
-5. Hit `/api/admin/system/readiness` and `/api/health`.
+5. Confirm KG926 tournament seed / status:
+
+```sql
+SELECT id, name, game, commencement_date, target_participant_count, qualification_target,
+       prize_info, status
+FROM tournaments
+WHERE id = 'event-kg926';
+```
+
+Expected: name `KIRAKITAH GAMING 926`, game `eFootball Mobile`, commencement `2026-09-14`,
+target `128`, qualification `32`, prize containing `US$100`, status `registration_open`.
+
+If this query cannot be run: report **KG926 live state = UNKNOWN** (do not invent open status).
+
+6. Hit `/api/admin/system/readiness` and `/api/health`.
 
 ## 4. Verify success
 
 - `phone_normalized` column exists and is `NOT NULL`
 - Three active unique indexes present
-- Registration create path accepts a synthetic test application (after providers configured)
+- KG926 row present with `registration_open` (or UNKNOWN if DB not checked)
+- Registration create path accepts a synthetic test application (MVP: DB + Blob + PII key only)
 - Readiness `MIGRATION_VERSION` = `CONFIGURED`
 
 ## 5. What NOT to do

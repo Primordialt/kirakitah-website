@@ -18,6 +18,7 @@ export async function GET() {
       contactVerification: snapshot.contactVerification,
       databaseConfigured: snapshot.databaseConfigured,
       blobConfigured: snapshot.blobConfigured,
+      encryptionConfigured: snapshot.encryptionConfigured,
       registrationConfigured: snapshot.registrationConfigured,
       emailConfigured: snapshot.emailConfigured,
       phoneConfigured: snapshot.phoneConfigured,
