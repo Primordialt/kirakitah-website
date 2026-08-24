@@ -15,20 +15,26 @@ Do **not** treat this list as completed until a human operator performs each ste
    - [ ] `DATABASE_URL` (Neon production)
    - [ ] `BLOB_READ_WRITE_TOKEN` (private store)
    - [ ] `REGISTRATION_PII_ENCRYPTION_KEY` (64 hex)
-   - [ ] Email HTTP provider vars
-   - [ ] SMS HTTP provider vars
-   - [ ] Admin auth vars (when real provider ready)
-   - [ ] `ADMIN_SESSION_SECRET` (dedicated)
+   - [ ] Email HTTP provider vars *(deferred for MVP — not required to accept applications)*
+   - [ ] SMS HTTP provider vars *(deferred for MVP)*
+   - [ ] Admin auth vars (when real provider ready) *(deferred for MVP)*
+   - [ ] `ADMIN_SESSION_SECRET` (dedicated) *(when admin auth enabled)*
 7. [ ] Configure **Preview** environment variables separately (mocks allowed; do not copy Production secrets unnecessarily)
 8. [ ] Deploy Production from `main` only after release merge
 9. [ ] Verify deployment succeeds (build green)
 10. [ ] Verify `GET /api/health` on Production (booleans only; no secrets)
-11. [ ] Verify authenticated `GET /api/admin/system/readiness` (requires working admin auth)
-12. [ ] Run synthetic registration smoke tests (`REGISTRATION-PRODUCTION-SMOKE-TEST.md`)
+11. [ ] For MVP: confirm health shows `registrationMode: MVP_MANUAL_REVIEW` and infra booleans; full admin readiness may wait until auth is enabled
+12. [ ] Run synthetic registration smoke tests (`MVP-PRODUCTION-DEPLOYMENT.md` / `REGISTRATION-PRODUCTION-SMOKE-TEST.md`)
 13. [ ] Review Vercel function logs for PII/OTP leakage (must be none)
-14. [ ] Confirm launch gate returns `REGISTRATION_READY` only after all required checks are `CONFIGURED`
+14. [ ] Confirm launch gate: `MVP_REGISTRATION_READY` for MVP (not full `REGISTRATION_READY` unless FULL_PRODUCTION)
 15. [ ] Confirm tournament status is intentionally `registration_open` before public launch
 16. [ ] Only then open public registration communication
+
+## MVP vs full production
+
+Under `MVP_MANUAL_REVIEW`, email/SMS/admin providers are **DEFERRED** and must not block application submit.
+
+See: [`MVP-PRODUCTION-DEPLOYMENT.md`](./MVP-PRODUCTION-DEPLOYMENT.md)
 
 ## Production rules
 

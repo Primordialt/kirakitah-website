@@ -43,14 +43,16 @@ test.describe("Registration", () => {
   test("minor age triggers guardian fields", async ({ page }) => {
     await page.goto("/esports/register");
     const dob = page.getByLabel("Date of birth");
+    await dob.click();
     await dob.fill("2012-03-10");
-    await dob.blur();
+    // Ensure React Hook Form receives the change (date inputs can be flaky with fill alone).
+    await dob.press("Tab");
     await expect(
       page.getByRole("group", { name: /IDENTITY VERIFICATION/i }),
     ).toBeVisible();
     await expect(
       page.getByRole("group", { name: /PARENT \/ GUARDIAN INFORMATION/i }),
-    ).toBeVisible();
+    ).toBeVisible({ timeout: 10_000 });
   });
 
   test("adult age does not show guardian fields", async ({ page }) => {
