@@ -10,7 +10,11 @@ import {
   normalizeIdentificationNumber,
   validateIdentificationNumber,
 } from "@/lib/identification";
-import { validatePlayerPhotoFile } from "@/server/registration/blob-storage";
+import { validatePlayerPhotoFile, validatePlayerPhotoMagicBytes } from "@/server/registration/blob-storage";
+import {
+  isValidNormalizedPhone,
+  normalizePhoneForUniqueness,
+} from "@/server/registration/phone-normalize";
 import { z } from "zod";
 
 export interface ParsedRegistrationRequest {
@@ -77,9 +81,9 @@ function requiredString(
   return value.trim();
 }
 
-export function parseRegistrationFormData(
+export async function parseRegistrationFormData(
   formData: FormData,
-): ParsedRegistrationRequest {
+): Promise<ParsedRegistrationRequest> {
   const details: z.ZodIssue[] = [];
 
   const addIssue = (path: string, message: string) => {
@@ -228,6 +232,18 @@ export function parseRegistrationFormData(
     const photoMessage = validatePlayerPhotoFile(playerPhoto);
     if (photoMessage) {
       addIssue("playerPhoto", photoMessage);
+    } else {
+      const magicMessage = await validatePlayerPhotoMagicBytes(playerPhoto);
+      if (magicMessage) {
+        addIssue("playerPhoto", magicMessage);
+      }
+    }
+  }
+
+  if (phone) {
+    const normalizedPhone = normalizePhoneForUniqueness(phone);
+    if (!isValidNormalizedPhone(normalizedPhone)) {
+      addIssue("phone", "Enter a valid phone number");
     }
   }
 

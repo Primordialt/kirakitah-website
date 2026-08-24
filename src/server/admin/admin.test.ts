@@ -120,6 +120,7 @@ describe("admin auth provider resolution", () => {
 
   it("rejects mock auth in production", async () => {
     vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("VERCEL_ENV", "production");
     vi.stubEnv("ADMIN_AUTH_PROVIDER", "mock");
     const { resetAdminAuthProviderForTests, getAdminAuthProvider } =
       await import("@/server/admin/auth/providers");

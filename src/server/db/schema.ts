@@ -90,6 +90,8 @@ export const registrationApplications = pgTable(
     city: text("city").notNull(),
     email: text("email").notNull(),
     phone: text("phone").notNull(),
+    /** Digits-only form of phone for duplicate protection. Original `phone` is preserved. */
+    phoneNormalized: text("phone_normalized").notNull(),
     identificationType: identificationTypeEnum("identification_type").notNull(),
     identificationNumberHash: text("identification_number_hash").notNull(),
     identificationNumberEncrypted: text("identification_number_encrypted").notNull(),
@@ -142,6 +144,9 @@ export const registrationApplications = pgTable(
   (table) => [
     uniqueIndex("registration_event_email_active_idx")
       .on(table.eventId, sql`lower(${table.email})`)
+      .where(sql`${table.status} NOT IN ('rejected', 'withdrawn')`),
+    uniqueIndex("registration_event_phone_active_idx")
+      .on(table.eventId, table.phoneNormalized)
       .where(sql`${table.status} NOT IN ('rejected', 'withdrawn')`),
     uniqueIndex("registration_event_id_hash_active_idx")
       .on(table.eventId, table.identificationType, table.identificationNumberHash)
@@ -249,6 +254,15 @@ export const adminAuditEventTypeEnum = pgEnum("admin_audit_event_type", [
   "KNOCKOUT_ROUND_COMPLETED",
   "TOURNAMENT_COMPLETED",
   "CHAMPION_RECORDED",
+  "MATCH_RESCHEDULED",
+  "MATCH_SCHEDULE_CANCELLED",
+  "MATCH_ACTIVATED",
+  "MATCH_RULES_VIEWED",
+  "COMPETITION_POLICY_VIEWED",
+  "COMPETITION_POLICY_CHANGED",
+  "NO_SHOW_RECORDED",
+  "DISCONNECT_RESOLVED",
+  "DISPUTE_RESOLVED",
 ]);
 
 export const tournamentPhaseTypeEnum = pgEnum("tournament_phase_type", [
@@ -282,6 +296,13 @@ export const matchStatusEnum = pgEnum("match_status", [
   "disputed",
   "forfeited",
   "requires_resolution",
+]);
+
+export const matchSchedulingStatusEnum = pgEnum("match_scheduling_status", [
+  "unscheduled",
+  "scheduled",
+  "reschedule_requested",
+  "cancelled",
 ]);
 
 export const matchResultSourceEnum = pgEnum("match_result_source", [
@@ -816,6 +837,24 @@ export const matches = pgTable(
       withTimezone: true,
       mode: "string",
     }),
+    timezone: text("timezone"),
+    scheduledWindowStart: timestamp("scheduled_window_start", {
+      withTimezone: true,
+      mode: "string",
+    }),
+    scheduledWindowEnd: timestamp("scheduled_window_end", {
+      withTimezone: true,
+      mode: "string",
+    }),
+    schedulingStatus: matchSchedulingStatusEnum("scheduling_status")
+      .notNull()
+      .default("unscheduled"),
+    scheduledBy: text("scheduled_by"),
+    scheduleUpdatedAt: timestamp("schedule_updated_at", {
+      withTimezone: true,
+      mode: "string",
+    }),
+    scheduleCancelReason: text("schedule_cancel_reason"),
     status: matchStatusEnum("status").notNull().default("scheduled"),
     authoritativeResultId: uuid("authoritative_result_id"),
     rulesVersion: text("rules_version").notNull(),
@@ -839,6 +878,14 @@ export const matches = pgTable(
     index("matches_knockout_round_slot_idx").on(
       table.knockoutRoundId,
       table.bracketSlotIndex,
+    ),
+    index("matches_participant_a_scheduled_idx").on(
+      table.participantAId,
+      table.scheduledAt,
+    ),
+    index("matches_participant_b_scheduled_idx").on(
+      table.participantBId,
+      table.scheduledAt,
     ),
   ],
 );
@@ -934,6 +981,38 @@ export const qualificationStandings = pgTable(
       table.participantId,
     ),
     index("qualification_standings_phase_rank_idx").on(table.phaseId, table.rank),
+  ],
+);
+
+/**
+ * Append-only competition policy configuration history.
+ * Never overwrite — each change creates a new snapshot.
+ */
+export const competitionPolicyHistory = pgTable(
+  "competition_policy_history",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tournamentId: text("tournament_id")
+      .notNull()
+      .references(() => tournaments.id, { onDelete: "cascade" }),
+    rulesVersion: text("rules_version").notNull(),
+    configuration: jsonb("configuration")
+      .$type<Record<string, unknown>>()
+      .notNull(),
+    changeReason: text("change_reason").notNull(),
+    changedBy: text("changed_by").notNull(),
+    effectiveAt: timestamp("effective_at", { withTimezone: true, mode: "string" })
+      .notNull()
+      .defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "string" })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index("competition_policy_history_tournament_idx").on(
+      table.tournamentId,
+      table.effectiveAt,
+    ),
   ],
 );
 

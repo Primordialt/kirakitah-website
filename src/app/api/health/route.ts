@@ -1,21 +1,33 @@
-import { isRegistrationBackendConfigured } from "@/server/env";
+import { getPublicHealthSnapshot } from "@/server/registration/launch-readiness";
 import { NextResponse } from "next/server";
 
 /**
- * Liveness check for deployment and monitoring.
- * Does not expose secrets or sensitive configuration values.
+ * Liveness + safe configuration snapshot for operations.
+ * Does not expose secrets, tokens, URLs with credentials, or encryption keys.
+ * Does not call paid email/SMS providers.
  */
 export async function GET() {
+  const snapshot = getPublicHealthSnapshot();
+
   return NextResponse.json(
     {
       status: "ok",
-      phase: "contact-verification",
-      registrationBackendConfigured: isRegistrationBackendConfigured(),
-      identityVerificationMode: "manual",
+      phase: "mvp-manual-registration",
+      competition: "KIRAKITAH GAMING 926",
+      registrationMode: snapshot.registrationMode,
+      contactVerification: snapshot.contactVerification,
+      databaseConfigured: snapshot.databaseConfigured,
+      blobConfigured: snapshot.blobConfigured,
+      encryptionConfigured: snapshot.encryptionConfigured,
+      registrationConfigured: snapshot.registrationConfigured,
+      emailConfigured: snapshot.emailConfigured,
+      phoneConfigured: snapshot.phoneConfigured,
+      adminConfigured: snapshot.adminConfigured,
+      identityVerificationMode: snapshot.identityVerificationMode,
+      dataSource: snapshot.dataSource,
+      launchGateHint: snapshot.launchGateHint,
       automatedNinLookupEnabled: false,
-      contactVerification: {
-        emailProvider: process.env.EMAIL_VERIFICATION_PROVIDER ?? "default",
-        phoneProvider: process.env.PHONE_VERIFICATION_PROVIDER ?? "default",
+      contactVerificationProviders: {
         mockAllowedInProduction: false,
       },
     },

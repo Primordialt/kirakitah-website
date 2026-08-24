@@ -84,17 +84,20 @@ export async function withAdminApi(
       const code: ApiErrorCode =
         error.code === "NOT_FOUND"
           ? "NOT_FOUND"
-          : error.code === "CONFLICT" ||
-              error.code === "INVALID_TRANSITION" ||
-              error.code === "CAPACITY_REACHED" ||
-              error.code === "DOWNSTREAM_CONFLICT" ||
-              error.code === "MATCH_REQUIRES_RESOLUTION"
-            ? "CONFLICT"
-            : error.code === "QUALIFICATION_RULES_NOT_CONFIGURED" ||
-                error.code === "KNOCKOUT_NOT_READY" ||
-                error.code === "KNOCKOUT_PAIRINGS_NOT_CONFIGURED"
-              ? "VALIDATION_ERROR"
-              : error.code === "VALIDATION_ERROR"
+          : error.code === "FORBIDDEN"
+            ? "FORBIDDEN"
+            : error.code === "CONFLICT" ||
+                error.code === "INVALID_TRANSITION" ||
+                error.code === "CAPACITY_REACHED" ||
+                error.code === "DOWNSTREAM_CONFLICT" ||
+                error.code === "MATCH_REQUIRES_RESOLUTION" ||
+                error.code === "PLAYER_SCHEDULE_CONFLICT"
+              ? "CONFLICT"
+              : error.code === "QUALIFICATION_RULES_NOT_CONFIGURED" ||
+                  error.code === "KNOCKOUT_NOT_READY" ||
+                  error.code === "KNOCKOUT_PAIRINGS_NOT_CONFIGURED" ||
+                  error.code === "MATCH_RULES_NOT_CONFIGURED" ||
+                  error.code === "VALIDATION_ERROR"
                 ? "VALIDATION_ERROR"
                 : "INTERNAL_ERROR";
       return adminJson(apiError(code, error.message), error.status, requestId);

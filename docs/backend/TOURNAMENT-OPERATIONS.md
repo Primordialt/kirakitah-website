@@ -1,4 +1,4 @@
-# Tournament Competition Operations — Backend Steps 7–9
+# Tournament Competition Operations — Backend Steps 7–10
 
 **Competition:** KIRAKITAH GAMING 926 (`event-kg926`)  
 **Rules version:** `kg926-v1`  
@@ -14,7 +14,9 @@ Backend Step 8 **finalized KG926 qualification** (32 pods). See [QUALIFICATION-S
 
 Backend Step 9 **implements KIRAKITAH TOP 32 knockout execution**. See [KNOCKOUT-SYSTEM.md](./KNOCKOUT-SYSTEM.md).
 
-Qualification is **single-elimination pods**. Knockout is **single-elimination Top 32** with **manual R32 pairing**.
+Backend Step 10 adds **manual match scheduling** and a centralized **competition policy** catalog. See [SCHEDULING-SYSTEM.md](./SCHEDULING-SYSTEM.md) and [COMPETITION-POLICY.md](./COMPETITION-POLICY.md).
+
+Qualification is **single-elimination pods**. Knockout is **single-elimination Top 32** with **manual R32 pairing**. Scheduling is **manual admin only**.
 
 ---
 
@@ -210,6 +212,9 @@ APIs under `/api/admin/tournaments/[tournamentId]/…` for phases, matches, stan
 | `tournament:standings_view` | ✓ | ✓ | ✓ | ✓ |
 | `tournament:pod_manage` | ✓ | ✓ | — | — |
 | `tournament:knockout_manage` | ✓ | ✓ | — | — |
+| `tournament:match_schedule` | ✓ | ✓ | — | — |
+| `tournament:policy_view` | ✓ | ✓ | ✓ | ✓ |
+| `tournament:policy_manage` | ✓ | — | — | — |
 
 ---
 
@@ -309,4 +314,4 @@ Also: `tournaments.competition_rules`, `tournament_participants.public_code`
 
 ## Next step
 
-**Backend Step 10 — Tournament Scheduling, Match Rules & Competition Policy Finalization**
+**Backend Step 11 — Production Provider Integration, Notifications & Operational Readiness**

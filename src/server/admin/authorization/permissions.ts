@@ -36,6 +36,9 @@ export const ADMIN_PERMISSIONS = [
   "tournament:standings_view",
   "tournament:pod_manage",
   "tournament:knockout_manage",
+  "tournament:match_schedule",
+  "tournament:policy_view",
+  "tournament:policy_manage",
 ] as const;
 
 export type AdminPermission = (typeof ADMIN_PERMISSIONS)[number];
@@ -67,6 +70,9 @@ const ROLE_PERMISSIONS: Record<AdminRole, readonly AdminPermission[]> = {
     "tournament:standings_view",
     "tournament:pod_manage",
     "tournament:knockout_manage",
+    "tournament:match_schedule",
+    "tournament:policy_view",
+    "tournament:policy_manage",
   ],
   TOURNAMENT_ADMIN: [
     "dashboard:view",
@@ -89,6 +95,8 @@ const ROLE_PERMISSIONS: Record<AdminRole, readonly AdminPermission[]> = {
     "tournament:standings_view",
     "tournament:pod_manage",
     "tournament:knockout_manage",
+    "tournament:match_schedule",
+    "tournament:policy_view",
   ],
   REVIEWER: [
     "dashboard:view",
@@ -104,6 +112,7 @@ const ROLE_PERMISSIONS: Record<AdminRole, readonly AdminPermission[]> = {
     "tournament:eligibility",
     "tournament:match_view",
     "tournament:standings_view",
+    "tournament:policy_view",
   ],
   SUPPORT: [
     "dashboard:view",
@@ -111,6 +120,7 @@ const ROLE_PERMISSIONS: Record<AdminRole, readonly AdminPermission[]> = {
     "applications:view",
     "tournament:view",
     "tournament:standings_view",
+    "tournament:policy_view",
   ],
 };
 

@@ -266,12 +266,15 @@ function ChannelVerificationCard({
 export function ContactVerificationPanel({
   referenceId,
   contactVerification,
+  deferred = false,
 }: {
   referenceId: string;
   contactVerification?: {
     email: ContactChannelVerificationState;
     phone: ContactChannelVerificationState;
   };
+  /** MVP_MANUAL_REVIEW: do not force OTP; communicate verification will follow. */
+  deferred?: boolean;
 }) {
   const [emailState, setEmailState] = useState(() =>
     initialChannelState(contactVerification?.email),
@@ -281,8 +284,8 @@ export function ContactVerificationPanel({
   );
 
   const showPanel = useMemo(() => {
-    return Boolean(contactVerification);
-  }, [contactVerification]);
+    return deferred || Boolean(contactVerification);
+  }, [contactVerification, deferred]);
 
   const syncCooldown = useCallback((channel: Channel) => {
     if (channel === "email") {
@@ -305,6 +308,26 @@ export function ContactVerificationPanel({
 
   if (!showPanel) {
     return null;
+  }
+
+  if (deferred) {
+    return (
+      <div className="flex w-full flex-col gap-3 rounded-xl border border-border-interactive bg-surface p-4 text-left">
+        <h3 className="text-h3 text-text-primary">Contact verification</h3>
+        <p className="text-label font-semibold uppercase tracking-wide text-accent">
+          Contact verification will follow
+        </p>
+        <p className="text-body-sm text-text-secondary">
+          Email and phone verification are not required to submit your
+          application right now. Your contact details have been recorded. The
+          KIRAKITAH team will contact you with next steps.
+        </p>
+        <p className="text-body-sm text-text-muted">
+          Your email and phone are not marked verified until ownership is
+          confirmed later.
+        </p>
+      </div>
+    );
   }
 
   return (

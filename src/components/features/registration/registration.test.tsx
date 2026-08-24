@@ -239,6 +239,13 @@ describe("RegistrationForm", () => {
       expect(screen.getByText(/YOU'RE IN THE SYSTEM/i)).toBeInTheDocument();
     });
 
+    expect(
+      screen.getByText(/application has been received/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/Contact verification will follow/i),
+    ).toBeInTheDocument();
+
     expect(mockSubmit).toHaveBeenCalledOnce();
     const [submitted, options] = mockSubmit.mock.calls[0];
     expect(submitted.identityVerification.identificationType).toBe("nin");

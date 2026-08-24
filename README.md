@@ -46,61 +46,49 @@ npm run test:e2e     # End-to-end tests (Playwright)
 ### Architecture
 
 ```text
-GitHub (development branch)
-   ↓
-Vercel Preview deployment
-   ↓
-Next.js frontend (mock data services)
+GitHub
+  development → Vercel Preview
+  main        → Vercel Production
 ```
 
-Production deployments should track the `main` branch once release-ready.
+Node.js **22** (`.nvmrc`). Framework: Next.js. Build: `npm run build`.
+
+### Environment (summary)
+
+Full matrix: [`docs/deployment/PRODUCTION-ENV-MATRIX.md`](docs/deployment/PRODUCTION-ENV-MATRIX.md)
+
+| Variable | Preview | Production |
+|---|---|---|
+| `NEXT_PUBLIC_SITE_URL` | Preview URL | Production canonical URL |
+| `NEXT_PUBLIC_DATA_SOURCE` | `mock` or `api` | **`api` only** (no mocks) |
+| Server secrets (`DATABASE_URL`, Blob, PII key, email/SMS/admin) | Optional / as needed | Required before public registration |
+
+Production launch docs: [`docs/deployment/README.md`](docs/deployment/README.md)
 
 ### First-time setup
 
 1. Import `Primordialt/kirakitah-website` into [Vercel](https://vercel.com).
-2. Set **Framework Preset** to Next.js (auto-detected).
-3. Confirm **Node.js 22** (from `.nvmrc`).
-4. Add environment variables:
-
-| Variable | Preview | Production | Notes |
-|---|---|---|---|
-| `NEXT_PUBLIC_SITE_URL` | Preview domain URL | Production domain URL | Canonical/SEO base URL |
-| `NEXT_PUBLIC_DATA_SOURCE` | `mock` | `mock` | Keep `mock` until backend exists |
-
-5. Connect Git:
-   - **Preview** → `development` branch
-   - **Production** → `main` branch
-
-### Deploy from CLI (optional)
-
-```bash
-npx vercel login
-npx vercel link
-npx vercel --prebuilt   # after npm run build locally, optional
-npx vercel              # preview deploy
-npx vercel --prod       # production deploy (main branch recommended)
-```
+2. Framework Preset: Next.js (auto-detected).
+3. Confirm **Node.js 22**.
+4. Connect Git: Preview → `development`, Production → `main`.
+5. Configure environment variables per matrix (never commit secrets).
 
 ### Production safeguards
 
-- `/dev/*` routes redirect to `/` on Vercel Preview and Production
-- `robots.txt` disallows `/dev`
-- Security headers applied via `next.config.ts`
-- Mock registration only — no real backend integration in this phase
+- Registration fails closed when Production infrastructure is missing
+- Mock registration / email / SMS / admin auth blocked on Vercel Production
+- Identity verification is **manual review only** (no automated NIN/passport/POSSAP)
+- `/dev/*` routes redirect on hosted environments; `robots.txt` disallows `/dev`
+- Security headers via `next.config.ts`
 
 ### Post-deploy smoke check
 
-Verify these routes on the hosted deployment:
+- `/`, `/about`, `/initiatives`, `/esports`, `/esports/register`, `/esports/rules`, `/esports/faq`
+- `GET /api/health`
+- Authenticated `GET /api/admin/system/readiness` (when admin auth works)
+- `/dev/ui` must redirect on hosted environments
 
-- `/` — homepage
-- `/about`
-- `/initiatives`
-- `/esports` — KIRAKITAH GAMING 926
-- `/esports/register` — registration form
-- `/esports/rules`
-- `/esports/faq`
-- `/community`, `/stories`, `/contact` — coming-soon placeholders
-- `/dev/ui` — must redirect to `/` on hosted environments
+Do **not** open public registration until the launch checklist reports `REGISTRATION_READY`.
 
 ## Repository
 
