@@ -3,22 +3,15 @@
 import { useEffect, useRef } from "react";
 import { Button } from "@/components/ui";
 import { COMPETITION_NAME } from "@/config/competition";
-import { registrationPolicy } from "@/config/registration-policy";
-import type { ContactChannelVerificationState } from "@/domain/registration";
-import { ContactVerificationPanel } from "./ContactVerificationPanel";
 
 export function RegistrationSuccess({
   referenceId,
-  contactVerification,
 }: {
   referenceId?: string;
-  contactVerification?: {
-    email: ContactChannelVerificationState;
-    phone: ContactChannelVerificationState;
-  };
+  /** Retained for API compatibility; MVP deferred contact OTP is not shown. */
+  contactVerification?: unknown;
 }) {
   const headingRef = useRef<HTMLHeadingElement>(null);
-  const contactDeferred = registrationPolicy.contactVerification === "DEFERRED";
 
   useEffect(() => {
     headingRef.current?.focus();
@@ -35,33 +28,26 @@ export function RegistrationSuccess({
         tabIndex={-1}
         className="text-h2 text-text-primary outline-none"
       >
-        YOU&apos;RE IN THE SYSTEM.
+        APPLICATION RECEIVED
       </h2>
       <p className="text-body-lg text-text-secondary">
-        Your {COMPETITION_NAME} application has been received.
+        Thank you for submitting your {COMPETITION_NAME} application.
       </p>
       <p className="text-body-sm text-text-secondary">
-        Our team will review your application and identity information. You will
-        be contacted with the next steps.
-      </p>
-      <p className="text-body-sm text-text-muted">
-        This is not confirmed tournament participation. Identity review is
-        manual and does not automatically qualify you.
+        Our team will review your application and contact you regarding the next
+        steps.
       </p>
       {referenceId ? (
         <p className="text-body-sm text-text-muted">
-          Your application reference:{" "}
+          <span className="font-medium text-text-primary">
+            Application Reference:
+          </span>{" "}
           <span className="font-medium text-text-primary">{referenceId}</span>
         </p>
       ) : null}
-
-      {referenceId ? (
-        <ContactVerificationPanel
-          referenceId={referenceId}
-          contactVerification={contactVerification}
-          deferred={contactDeferred}
-        />
-      ) : null}
+      <p className="text-body-sm text-text-muted">
+        Please keep this reference for your records.
+      </p>
 
       <Button href="/esports" variant="outline" size="lg">
         BACK TO TOURNAMENT

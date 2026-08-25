@@ -45,3 +45,6 @@ Thumbs.db
 # Misc
 *.log
 .cache/
+
+# Local Neon / DB tooling artifacts — never commit
+.neon

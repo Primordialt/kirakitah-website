@@ -21,8 +21,9 @@ Never paste real `DATABASE_URL` values into documentation, tickets, chat, or com
 | 8 | `drizzle/0008_knockout_execution.sql` | Knockout bracket execution |
 | 9 | `drizzle/0009_scheduling_and_policy.sql` | Match scheduling + competition policy history |
 | 10 | `drizzle/0010_phone_uniqueness.sql` | `phone_normalized` + active phone unique index |
+| 11 | `drizzle/0011_admin_password_auth.sql` | Admin password hash, lockout, login attempt rate limits, audit enum |
 
-Latest required for registration launch hardening: **0010**.
+Latest required for registration + admin login: **0011**.
 
 No duplicate migration numbers in the repository. Order is deterministic by numeric filename prefix.
 
@@ -57,14 +58,27 @@ Authenticated readiness:
 
 1. Take a Neon snapshot / PITR restore point.
 2. Set `DATABASE_URL` only in a secure environment (local shell / CI secret — not committed).
-3. From this repository revision:
+   Prefer Neon’s **direct** (non-`-pooler`) connection string for migrations.
+3. Ensure dependencies are installed (`pg` is required so `drizzle-kit migrate` uses
+   node-postgres instead of `@neondatabase/serverless` WebSockets):
+
+```bash
+npm ci
+```
+
+4. From this repository revision:
 
 ```bash
 npm run db:migrate
 ```
 
-4. Re-run the SQL verification queries above.
-5. Confirm KG926 tournament seed / status:
+Expected migrate output includes: `Using 'pg' driver for database querying`.
+
+If you still see the Neon WebSocket warning/error, confirm `pg` is installed and
+that `DATABASE_URL` is set for that shell session.
+
+5. Re-run the SQL verification queries above.
+6. Confirm KG926 tournament seed / status:
 
 ```sql
 SELECT id, name, game, commencement_date, target_participant_count, qualification_target,

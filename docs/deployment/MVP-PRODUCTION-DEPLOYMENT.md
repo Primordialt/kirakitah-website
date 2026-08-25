@@ -45,6 +45,7 @@ If Cursor or any agent cannot access Vercel Production / Neon Production / Blob 
 | `DATABASE_URL` | Yes | Neon PostgreSQL connection string |
 | `BLOB_READ_WRITE_TOKEN` | Yes | Vercel Blob read/write token |
 | `REGISTRATION_PII_ENCRYPTION_KEY` | Yes | 64 hex chars = 32 bytes AES-256-GCM |
+| `ADMIN_SESSION_SECRET` | Yes (for admin login) | Dedicated HMAC secret for admin session cookies (64+ random chars). Do not reuse casually. |
 
 ### Explicitly NOT required for MVP submit path
 
@@ -52,10 +53,21 @@ If Cursor or any agent cannot access Vercel Production / Neon Production / Blob 
 |----------|----------------|
 | `RESEND_API_KEY` / `EMAIL_FROM` | Contact verification deferred — no OTP email |
 | `TWILIO_*` | Contact verification deferred — no OTP SMS |
-| Admin auth secrets / HTTP Basic | Admin auth deferred (`MANUAL_DEFERRED_AUTH`) |
+| `ADMIN_AUTH_PROVIDER=mock` | **Forbidden in Production** — Production uses database password auth |
+| `ADMIN_AUTH_API_URL` / `ADMIN_AUTH_API_KEY` | HTTP/OIDC stub — not used |
 | POSSAP / NIN API credentials | Automated identity deferred |
 
-Production **must never** silently fall back to mock DB, mock Blob, mock registration, mock email, mock SMS, or mock identity.
+### Admin auth environment classification
+
+| Variable | Classification |
+|----------|----------------|
+| `DATABASE_URL` | **REQUIRED IN PRODUCTION** (registration + admin auth) |
+| `ADMIN_SESSION_SECRET` | **REQUIRED IN PRODUCTION** (prefer dedicated; app may fall back to PII key only as last resort) |
+| `ADMIN_AUTH_PROVIDER=database` | **OPTIONAL** (Production defaults to `database` when DB is configured) |
+| `ADMIN_AUTH_PROVIDER=mock` | **DEVELOPMENT/TEST ONLY** |
+| `ADMIN_BOOTSTRAP_PASSWORD` | **DEVELOPMENT/TEST / secure shell only** — used by `npm run admin:create`; never commit |
+
+Production **must never** silently fall back to mock DB, mock Blob, mock registration, mock email, mock SMS, mock identity, or mock admin auth.
 
 Generate encryption key (local only; never commit; never paste into tickets):
 
@@ -88,8 +100,22 @@ In Vercel → Project → Settings → Environment Variables → **Production**:
 3. Set `DATABASE_URL` (Neon Production)
 4. Set `BLOB_READ_WRITE_TOKEN`
 5. Set `REGISTRATION_PII_ENCRYPTION_KEY` (64 hex)
+6. Set `ADMIN_SESSION_SECRET` (dedicated; `openssl rand -hex 32` or longer random string)
+7. Do **not** set `ADMIN_AUTH_PROVIDER=mock` on Production
 
 Redeploy after changing env vars.
+
+### B2. Provision first Production admin
+
+After migrations through `0011`:
+
+```bash
+set ADMIN_BOOTSTRAP_PASSWORD=<long-password>
+npm run admin:create -- --email <ops-email> --name "Ops Admin" --role SUPER_ADMIN
+```
+
+Prefer `ADMIN_BOOTSTRAP_PASSWORD` so the password is not typed into a visible shell prompt.
+Never commit credentials. See `docs/admin/ADMIN-AUTH.md` and `docs/admin/ADMIN-PRODUCTION-TEST.md`.
 
 ### C. Neon database creation / configuration
 
@@ -97,16 +123,24 @@ Redeploy after changing env vars.
 2. Copy the connection string into Vercel `DATABASE_URL` (Production only).
 3. Take a Neon snapshot / PITR restore point before migrations.
 
-### D. Apply migrations `0000` → `0010`
+### D. Apply migrations `0000` → `0011`
 
-From a secure shell with Production `DATABASE_URL` set (never logged):
+From a secure shell with Production `DATABASE_URL` set (never logged). Prefer Neon’s
+**direct** (non-pooler) connection string for migrations:
 
 ```bash
 npm ci
 npm run db:migrate
 ```
 
-Expected files in order: `0000` … `0010` (see `PRODUCTION-MIGRATIONS.md`).
+`drizzle-kit migrate` uses the `pg` driver (installed in this repo) so CLI migrations
+do not go through `@neondatabase/serverless` WebSockets. Application runtime remains
+Neon HTTP via `src/server/db/index.ts`.
+
+Expected files in order: `0000` … `0011` (see `PRODUCTION-MIGRATIONS.md`).
+`0011_admin_password_auth` adds admin password hash / lockout / login attempt table / login audit enums.
+
+Expected migrate log line: `Using 'pg' driver for database querying`.
 
 Do **not** assume migrations are already applied. Do **not** run `db:push` on Production unless Product Engineering explicitly approves.
 
@@ -192,8 +226,10 @@ Full `REGISTRATION_READY` remains reserved for `FULL_PRODUCTION` + contact provi
 
 ### K. Submit one synthetic test application
 
-Use synthetic adult data + valid JPEG/PNG/WebP ≤ 5 MB.  
+Use synthetic adult data + valid JPEG/PNG/WebP ≤ **15 KB** (`15 * 1024` = 15360 bytes).  
 Do not use real NIN/passport numbers of real people.
+
+Confirm oversized photos (>15 KB) are rejected by the API.
 
 ### L. Confirm application exists in Neon
 
@@ -238,7 +274,7 @@ Retry same email, phone, and identity number → expect rejection (`APPLICATION_
 
 Safe reference like `KG926-2026-XXXXXX`. Response must not expose NIN, passport, encrypted PII, OTP, internal DB IDs, Blob URLs, or admin data.
 
-Success UX language: application **received** / “YOU'RE IN THE SYSTEM” — not “Registration confirmed” as final verified entry.
+Success UX language: **APPLICATION RECEIVED** — thank-you + next-steps contact note + Application Reference only. Must **not** expose internal email addresses, claim verification, qualification, or confirmed participation.
 
 ### S. Check Production logs for accidental PII
 
@@ -260,7 +296,7 @@ Registration form
   → registration-open check (tournament.status === registration_open)
   → rate limiting
   → duplicate checks (email / phone / identity)
-  → player photo validation (MIME + magic bytes, ≤ 5 MB)
+  → player photo validation (MIME + magic bytes, ≤ 15 KB / 15360 bytes)
   → private Vercel Blob upload
   → Neon insert
   → identity_verification_status = pending_review
@@ -268,7 +304,7 @@ Registration form
   → email_verification_status = pending
   → phone_verification_status = pending
   → reference ID returned
-  → success screen (received for review)
+  → success screen (APPLICATION RECEIVED)
 ```
 
 **Does not:** initiate OTP, send email/SMS, call POSSAP, auto-verify NIN/passport, claim email/phone verified.
@@ -279,6 +315,19 @@ Registration form
 
 - `MVP-MANUAL-REGISTRATION.md` — policy  
 - `MVP-REGISTRATION-SMOKE-TEST.md` — synthetic test plan  
+- `docs/admin/ADMIN-AUTH.md` — production admin authentication  
+- `docs/admin/ADMIN-PRODUCTION-TEST.md` — admin login/RBAC/audit smoke plan  
 - `PRODUCTION-MIGRATIONS.md` — migration commands  
 - `PRODUCTION-READINESS.md` — full vs MVP gates  
 - `DEPLOYMENT-STATUS-MATRIX.md` — checklist snapshot  
+
+---
+
+## Post-deploy admin + registration UX checklist
+
+- [ ] `ADMIN_SESSION_SECRET` configured on Production
+- [ ] Migration `0011` applied
+- [ ] First admin provisioned (`npm run admin:create`)
+- [ ] `/admin/login` verified with real credentials (see `ADMIN-PRODUCTION-TEST.md`)
+- [ ] Player photo maximum **15 KB** verified (client + API reject oversized)
+- [ ] Success screen shows **APPLICATION RECEIVED** without internal emails or verification claims

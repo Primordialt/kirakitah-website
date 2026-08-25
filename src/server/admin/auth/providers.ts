@@ -4,6 +4,7 @@ import {
   ADMIN_ROLES,
   type AdminRole,
 } from "@/server/admin/authorization/permissions";
+import { DatabaseAdminAuthProvider } from "./database-provider";
 import type { AdminAuthProvider, AdminLoginCredentials, AdminUser } from "./types";
 
 /**
@@ -39,8 +40,7 @@ export class MockAdminAuthProvider implements AdminAuthProvider {
 }
 
 /**
- * Production placeholder until a real identity provider is configured.
- * Always fails closed.
+ * Fail-closed when no usable admin provider is configured.
  */
 export class UnavailableAdminAuthProvider implements AdminAuthProvider {
   readonly providerId = "unavailable";
@@ -53,8 +53,8 @@ export class UnavailableAdminAuthProvider implements AdminAuthProvider {
 }
 
 /**
- * Future HTTP/OIDC provider stub — PENDING PROVIDER.
- * Fails closed until credentials exist.
+ * Optional future OIDC/SSO provider stub — not used for password auth.
+ * Prefer `database` for KIRAKITAH production admin login.
  */
 export class HttpAdminAuthProvider implements AdminAuthProvider {
   readonly providerId = "http";
@@ -63,8 +63,7 @@ export class HttpAdminAuthProvider implements AdminAuthProvider {
     if (!serverEnv.adminAuthApiUrl || !serverEnv.adminAuthApiKey) {
       throw new Error("Admin authentication provider credentials are missing.");
     }
-    // Real OIDC/SSO integration is PENDING PROVIDER.
-    throw new Error("HTTP admin authentication is not yet enabled.");
+    throw new Error("HTTP/OIDC admin authentication is not yet enabled.");
   }
 }
 
@@ -78,8 +77,23 @@ export function resolveAdminAuthProvider(): AdminAuthProvider {
     return new MockAdminAuthProvider();
   }
 
+  if (mode === "database") {
+    if (!serverEnv.databaseUrl) {
+      return new UnavailableAdminAuthProvider();
+    }
+    return new DatabaseAdminAuthProvider();
+  }
+
   if (mode === "http") {
     return new HttpAdminAuthProvider();
+  }
+
+  // Default: database in production when DB is configured; mock in development.
+  if (serverEnv.isStrictProduction) {
+    if (serverEnv.databaseUrl) {
+      return new DatabaseAdminAuthProvider();
+    }
+    return new UnavailableAdminAuthProvider();
   }
 
   if (serverEnv.allowMockAdminAuth) {

@@ -3,11 +3,11 @@
  *
  * Product Owner decision (emergency MVP launch):
  * Accept public applications now with manual identity review.
- * Defer email OTP, phone OTP, and production admin authentication.
+ * Defer email OTP and phone OTP.
+ * Production admin authentication is enabled (database password auth).
  *
- * This is NOT a permanent removal of verification architecture.
  * Switch REGISTRATION_OPERATING_MODE to "FULL_PRODUCTION" only after
- * real email/SMS/admin providers are configured and tested.
+ * real email/SMS providers are configured and tested.
  *
  * @see docs/deployment/MVP-MANUAL-REGISTRATION.md
  */
@@ -38,9 +38,8 @@ export const registrationPolicy = {
   /** Always manual for KG926 — no automated NIN/passport/POSSAP. */
   identityVerification: "MANUAL" as IdentityVerificationPolicy,
 
-  adminWorkflow: (REGISTRATION_OPERATING_MODE === "MVP_MANUAL_REVIEW"
-    ? "MANUAL_DEFERRED_AUTH"
-    : "SECURE_PROVIDER") as AdminWorkflowPolicy,
+  /** Production admin login uses database password authentication. */
+  adminWorkflow: "SECURE_PROVIDER" as AdminWorkflowPolicy,
 
   /**
    * Whether submit must initiate email/phone OTP delivery.

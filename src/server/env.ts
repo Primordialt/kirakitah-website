@@ -109,12 +109,14 @@ export const serverEnv = {
     return !this.isProduction || this.vercelEnv === "preview";
   },
 
-  get adminAuthProvider(): "mock" | "http" | "unavailable" {
+  get adminAuthProvider(): "mock" | "http" | "unavailable" | "database" {
     const value = readEnv("ADMIN_AUTH_PROVIDER");
     if (value === "http") return "http";
     if (value === "mock") return "mock";
+    if (value === "database") return "database";
     if (value === "unavailable") return "unavailable";
-    return this.isStrictProduction ? "unavailable" : "mock";
+    // Production defaults to database password auth when DATABASE_URL exists.
+    return this.isStrictProduction ? "database" : "mock";
   },
 
   get adminSessionSecret() {
@@ -168,9 +170,21 @@ export function isPhoneDeliveryConfigured(): boolean {
 }
 
 /**
- * Env credentials alone are insufficient while HttpAdminAuthProvider is a stub.
- * See HTTP_ADMIN_AUTH_IMPLEMENTED in launch-readiness.ts.
+ * Production admin auth is configured when database password auth can run
+ * (DATABASE_URL + session signing secret). Mock is allowed outside Production.
  */
 export function isAdminAuthConfigured(): boolean {
-  return false;
+  if (serverEnv.allowMockAdminAuth && serverEnv.adminAuthProvider === "mock") {
+    return true;
+  }
+
+  const provider = serverEnv.adminAuthProvider;
+  if (provider === "unavailable" || provider === "http") {
+    return false;
+  }
+
+  return Boolean(
+    serverEnv.databaseUrl &&
+      (serverEnv.adminSessionSecret || serverEnv.registrationPiiEncryptionKey),
+  );
 }

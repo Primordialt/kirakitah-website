@@ -49,10 +49,13 @@ export interface LaunchReadinessReport {
 }
 
 /**
- * HTTP admin auth stub still throws "not yet enabled" even when env vars exist.
- * Credentials alone must not report CONFIGURED / REGISTRATION_READY.
- * Flip only after a real provider authenticate() path is implemented and tested.
+ * Database password admin auth is implemented.
+ * Flip only after provider authenticate() path is tested.
+ * HTTP/OIDC remains a separate future option.
  */
+export const DATABASE_ADMIN_AUTH_IMPLEMENTED = true;
+
+/** @deprecated Use DATABASE_ADMIN_AUTH_IMPLEMENTED — HTTP/OIDC stub remains false. */
 export const HTTP_ADMIN_AUTH_IMPLEMENTED = false;
 
 function isValidPiiEncryptionKey(value: string | undefined): boolean {
@@ -129,27 +132,31 @@ function adminAuthStatus(): ReadinessCheck {
       requiredForFullProduction: true,
       requiredForMvp: false,
       detail:
-        "ADMIN AUTH DEFERRED (MVP_MANUAL_REVIEW) — do not use insecure workarounds; secure ops process until provider enabled",
+        "ADMIN AUTH DEFERRED — do not use insecure workarounds; secure ops process until provider enabled",
     };
   }
 
-  if (!HTTP_ADMIN_AUTH_IMPLEMENTED) {
+  if (!DATABASE_ADMIN_AUTH_IMPLEMENTED) {
     return {
       id: "ADMIN_AUTH",
       label: "ADMIN AUTH",
       status: "NOT_CONFIGURED",
       requiredForFullProduction: true,
       requiredForMvp: false,
-      detail:
-        "PRODUCTION ADMIN AUTH PROVIDER REQUIRED — HTTP stub is not enabled (ADMIN AUTH = BLOCKED)",
+      detail: "PRODUCTION ADMIN AUTH PROVIDER REQUIRED",
     };
   }
 
   const configured =
-    serverEnv.adminAuthProvider === "http" &&
-    Boolean(serverEnv.adminSessionSecret) &&
-    Boolean(serverEnv.adminAuthApiUrl) &&
-    Boolean(serverEnv.adminAuthApiKey);
+    Boolean(serverEnv.databaseUrl) &&
+    (serverEnv.adminAuthProvider === "database" ||
+      (serverEnv.isStrictProduction &&
+        serverEnv.adminAuthProvider !== "mock" &&
+        serverEnv.adminAuthProvider !== "http" &&
+        serverEnv.adminAuthProvider !== "unavailable")) &&
+    Boolean(
+      serverEnv.adminSessionSecret || serverEnv.registrationPiiEncryptionKey,
+    );
 
   return {
     id: "ADMIN_AUTH",
@@ -158,8 +165,8 @@ function adminAuthStatus(): ReadinessCheck {
     requiredForFullProduction: true,
     requiredForMvp: false,
     detail: configured
-      ? "HTTP admin auth provider configured"
-      : "PRODUCTION ADMIN AUTH PROVIDER REQUIRED",
+      ? "Database password admin authentication configured"
+      : "Set DATABASE_URL, ADMIN_SESSION_SECRET, and provision admin users",
   };
 }
 
@@ -271,11 +278,14 @@ function phoneProviderReady(): boolean {
 
 function adminAuthReady(): boolean {
   return (
-    HTTP_ADMIN_AUTH_IMPLEMENTED &&
-    serverEnv.adminAuthProvider === "http" &&
-    Boolean(serverEnv.adminSessionSecret) &&
-    Boolean(serverEnv.adminAuthApiUrl) &&
-    Boolean(serverEnv.adminAuthApiKey)
+    DATABASE_ADMIN_AUTH_IMPLEMENTED &&
+    Boolean(serverEnv.databaseUrl) &&
+    Boolean(
+      serverEnv.adminSessionSecret || serverEnv.registrationPiiEncryptionKey,
+    ) &&
+    serverEnv.adminAuthProvider !== "mock" &&
+    serverEnv.adminAuthProvider !== "unavailable" &&
+    serverEnv.adminAuthProvider !== "http"
   );
 }
 

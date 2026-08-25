@@ -236,15 +236,14 @@ describe("RegistrationForm", () => {
     await user.click(screen.getByRole("button", { name: /SUBMIT APPLICATION/i }));
 
     await waitFor(() => {
-      expect(screen.getByText(/YOU'RE IN THE SYSTEM/i)).toBeInTheDocument();
+      expect(screen.getByText(/APPLICATION RECEIVED/i)).toBeInTheDocument();
     });
 
     expect(
-      screen.getByText(/application has been received/i),
+      screen.getByText(/Thank you for submitting your KIRAKITAH GAMING 926 application/i),
     ).toBeInTheDocument();
-    expect(
-      screen.getByText(/Contact verification will follow/i),
-    ).toBeInTheDocument();
+    expect(screen.queryByText(/Contact verification will follow/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/YOU'RE IN THE SYSTEM/i)).not.toBeInTheDocument();
 
     expect(mockSubmit).toHaveBeenCalledOnce();
     const [submitted, options] = mockSubmit.mock.calls[0];

@@ -1,6 +1,6 @@
 # MVP Manual Registration — KIRAKITAH GAMING 926
 
-**Product Owner decision:** Accept public applications now while deferring email OTP, phone OTP, and production admin authentication.
+**Product Owner decision:** Accept public applications now while deferring email OTP and phone OTP. Production admin authentication uses database password login.
 
 ## CURRENT MODE
 
@@ -15,11 +15,12 @@ Source of truth (code, not a hidden env flag):
 | Registration mode | `MVP_MANUAL_REVIEW` |
 | Contact verification | `DEFERRED` |
 | Identity verification | `MANUAL` |
-| Admin workflow | `MANUAL_DEFERRED_AUTH` |
+| Admin workflow | `SECURE_PROVIDER` (database password auth) |
+| Player photo maximum | **15 KB** (`15 * 1024` bytes) |
 
 ### Current registration behavior
 
-1. Applicant submits a valid form (photo required).
+1. Applicant submits a valid form (photo required, max **15 KB**, JPEG/PNG/WebP).
 2. Server validates, enforces registration-open, rate limits, and duplicates.
 3. Player photo stored privately in Vercel Blob.
 4. Application persisted in Neon with:
@@ -28,10 +29,11 @@ Source of truth (code, not a hidden env flag):
    - `email_verification_status = pending`
    - `phone_verification_status = pending`
 5. Application reference returned (`KG926-…`).
-6. Success UI: application received + manual review — **not** confirmed participant / verified identity / verified contact.
+6. Success UI: **APPLICATION RECEIVED** — not confirmed participant / verified identity / verified contact.
 7. Email OTP / SMS OTP are **not** initiated on submit (architecture remains).
 8. No automated NIN/passport/POSSAP.
 9. No automatic eligibility or participant selection.
+10. Admins sign in at `/admin/login` with email + password (see `docs/admin/ADMIN-AUTH.md`).
 
 ### Deferred ≠ mocked
 

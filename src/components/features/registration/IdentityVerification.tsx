@@ -8,17 +8,26 @@ import {
   getIdentificationNumberPlaceholder,
 } from "@/lib/identification";
 import {
+  MAX_IDENTITY_FILE_SIZE_BYTES,
   PLAYER_PHOTO_ACCEPTED_TYPES,
   formatAcceptedTypes,
+  formatFileSize,
+  validateIdentityFile,
 } from "@/lib/identity-upload";
 import { useEffect } from "react";
 import { Controller, useWatch } from "react-hook-form";
 import type { FormSectionProps } from "./types";
-import type { UseFormSetValue } from "react-hook-form";
+import type {
+  UseFormClearErrors,
+  UseFormSetError,
+  UseFormSetValue,
+} from "react-hook-form";
 import type { RegistrationFormValues } from "@/domain/registration";
 
 interface IdentityVerificationProps extends FormSectionProps {
   setValue: UseFormSetValue<RegistrationFormValues>;
+  setError: UseFormSetError<RegistrationFormValues>;
+  clearErrors: UseFormClearErrors<RegistrationFormValues>;
 }
 
 export function IdentityVerification({
@@ -26,6 +35,8 @@ export function IdentityVerification({
   errors,
   register,
   setValue,
+  setError,
+  clearErrors,
 }: IdentityVerificationProps) {
   const identificationType = useWatch({
     control,
@@ -88,13 +99,41 @@ export function IdentityVerification({
             label="Player photo"
             required
             accept={PLAYER_PHOTO_ACCEPTED_TYPES.join(",")}
-            description={`Upload a recent clear photo of yourself. Accepted formats: ${formatAcceptedTypes(PLAYER_PHOTO_ACCEPTED_TYPES)}.`}
+            description={`Upload a recent clear photo of yourself. Accepted formats: ${formatAcceptedTypes(PLAYER_PHOTO_ACCEPTED_TYPES)}. Maximum photo size: ${formatFileSize(MAX_IDENTITY_FILE_SIZE_BYTES)}.`}
             selectedFile={value instanceof File ? value : null}
             error={errors.identityVerification?.playerPhoto?.message}
             onBlur={onBlur}
             onChange={(event) => {
-              const file = event.target.files?.[0];
-              onChange(file ?? undefined);
+              const input = event.target;
+              const file = input.files?.[0];
+              if (!file) {
+                onChange(undefined);
+                clearErrors("identityVerification.playerPhoto");
+                return;
+              }
+
+              const validationError = validateIdentityFile(file, {
+                label: "Player photo",
+                acceptedTypes: PLAYER_PHOTO_ACCEPTED_TYPES,
+                maxSizeBytes: MAX_IDENTITY_FILE_SIZE_BYTES,
+              });
+
+              if (validationError) {
+                onChange(undefined);
+                setError("identityVerification.playerPhoto", {
+                  type: "validate",
+                  message: validationError,
+                });
+                input.value = "";
+                return;
+              }
+
+              clearErrors("identityVerification.playerPhoto");
+              onChange(file);
+              setValue("identityVerification.playerPhoto", file, {
+                shouldValidate: true,
+                shouldDirty: true,
+              });
             }}
           />
         )}
