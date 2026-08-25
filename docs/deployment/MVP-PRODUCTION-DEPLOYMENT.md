@@ -99,14 +99,20 @@ Redeploy after changing env vars.
 
 ### D. Apply migrations `0000` → `0010`
 
-From a secure shell with Production `DATABASE_URL` set (never logged):
+From a secure shell with Production `DATABASE_URL` set (never logged). Prefer Neon’s
+**direct** (non-pooler) connection string for migrations:
 
 ```bash
 npm ci
 npm run db:migrate
 ```
 
+`drizzle-kit migrate` uses the `pg` driver (installed in this repo) so CLI migrations
+do not go through `@neondatabase/serverless` WebSockets. Application runtime remains
+Neon HTTP via `src/server/db/index.ts`.
+
 Expected files in order: `0000` … `0010` (see `PRODUCTION-MIGRATIONS.md`).
+Expected migrate log line: `Using 'pg' driver for database querying`.
 
 Do **not** assume migrations are already applied. Do **not** run `db:push` on Production unless Product Engineering explicitly approves.
 

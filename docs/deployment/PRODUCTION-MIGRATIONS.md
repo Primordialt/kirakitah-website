@@ -57,14 +57,27 @@ Authenticated readiness:
 
 1. Take a Neon snapshot / PITR restore point.
 2. Set `DATABASE_URL` only in a secure environment (local shell / CI secret — not committed).
-3. From this repository revision:
+   Prefer Neon’s **direct** (non-`-pooler`) connection string for migrations.
+3. Ensure dependencies are installed (`pg` is required so `drizzle-kit migrate` uses
+   node-postgres instead of `@neondatabase/serverless` WebSockets):
+
+```bash
+npm ci
+```
+
+4. From this repository revision:
 
 ```bash
 npm run db:migrate
 ```
 
-4. Re-run the SQL verification queries above.
-5. Confirm KG926 tournament seed / status:
+Expected migrate output includes: `Using 'pg' driver for database querying`.
+
+If you still see the Neon WebSocket warning/error, confirm `pg` is installed and
+that `DATABASE_URL` is set for that shell session.
+
+5. Re-run the SQL verification queries above.
+6. Confirm KG926 tournament seed / status:
 
 ```sql
 SELECT id, name, game, commencement_date, target_participant_count, qualification_target,
