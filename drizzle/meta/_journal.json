@@ -99,6 +99,13 @@
       "when": 1720915200000,
       "tag": "0013_kg926_social_channels",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1721001600000,
+      "tag": "0014_admin_user_management",
+      "breakpoints": true
     }
   ]
 }

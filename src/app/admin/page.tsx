@@ -1,10 +1,17 @@
 import Link from "next/link";
 import { AdminShell, loadAdminSession } from "@/components/admin/AdminShell";
+import { roleHasPermission } from "@/server/admin/authorization/permissions";
 import { getAdminDashboardStats } from "@/server/admin/registration/service";
 import { isRegistrationBackendConfigured } from "@/server/env";
 
 export default async function AdminDashboardPage() {
   const session = await loadAdminSession("dashboard:view");
+  const canManageAdmins = roleHasPermission(session.user.role, "admin:manage");
+  const canReviewIdentity = roleHasPermission(
+    session.user.role,
+    "identity:review",
+  );
+  const canReviewSocial = roleHasPermission(session.user.role, "social:review");
 
   let stats = {
     totalApplications: 0,
@@ -67,24 +74,36 @@ export default async function AdminDashboardPage() {
       )}
 
       <div className="mt-8 flex flex-wrap gap-3">
-        <Link
-          href="/admin/reviews/identity"
-          className="rounded-lg bg-brand-primary px-4 py-2 text-button text-white"
-        >
-          Open identity reviews
-        </Link>
-        <Link
-          href="/admin/reviews/social"
-          className="rounded-lg border border-border-interactive px-4 py-2 text-button"
-        >
-          Open social reviews
-        </Link>
+        {canReviewIdentity ? (
+          <Link
+            href="/admin/reviews/identity"
+            className="rounded-lg bg-brand-primary px-4 py-2 text-button text-white"
+          >
+            Open identity reviews
+          </Link>
+        ) : null}
+        {canReviewSocial ? (
+          <Link
+            href="/admin/reviews/social"
+            className="rounded-lg border border-border-interactive px-4 py-2 text-button"
+          >
+            Open social reviews
+          </Link>
+        ) : null}
         <Link
           href="/admin/applications"
           className="rounded-lg border border-border-interactive px-4 py-2 text-button"
         >
           Browse applications
         </Link>
+        {canManageAdmins ? (
+          <Link
+            href="/admin/users"
+            className="rounded-lg border border-border-interactive px-4 py-2 text-button"
+          >
+            Administrators
+          </Link>
+        ) : null}
       </div>
     </AdminShell>
   );
