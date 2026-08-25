@@ -149,8 +149,13 @@ export async function submitSocialFollowReview(input: {
     .where(eq(registrationSocialFollows.id, row.id));
 
   const allRows = await listSocialFollowsForApplication(application.id);
+  const requiredStatuses = REQUIRED_SOCIAL_PLATFORMS.map((platform) => {
+    const row = allRows.find((item) => item.platform === platform);
+    return row?.verificationStatus ?? ("pending" as const);
+  });
   const socialFollowStatus = deriveApplicationSocialFollowStatus(
-    allRows.map((item) => item.verificationStatus),
+    requiredStatuses,
+    REQUIRED_SOCIAL_PLATFORMS.length,
   );
 
   await db

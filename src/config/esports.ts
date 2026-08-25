@@ -129,9 +129,10 @@ export const esportsWatch = {
   title: "WATCH THE ACTION",
   copy: "Selected matches will be broadcast through KIRAKITAH's official channels.",
   platforms: [
+    { label: "X", href: "https://x.com/Kirakitah" },
+    { label: "Instagram", href: "https://www.instagram.com/kirakitah" },
+    { label: "TikTok", href: "https://www.tiktok.com/@kirakitah926" },
     { label: "YouTube", href: null },
-    { label: "TikTok", href: null },
-    { label: "Instagram", href: null },
   ] satisfies EsportsPlatform[],
 } as const;
 
@@ -139,9 +140,10 @@ export const esportsHighlights = {
   title: "CATCH THE MOMENTS",
   copy: "From unbelievable goals to unexpected comebacks, follow the best moments from the tournament across KIRAKITAH's social channels.",
   platforms: [
+    { label: "X", href: "https://x.com/Kirakitah" },
+    { label: "Instagram", href: "https://www.instagram.com/kirakitah" },
+    { label: "TikTok", href: "https://www.tiktok.com/@kirakitah926" },
     { label: "YouTube", href: null },
-    { label: "TikTok", href: null },
-    { label: "Instagram", href: null },
   ] satisfies EsportsPlatform[],
 } as const;
 

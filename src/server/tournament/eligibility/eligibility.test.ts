@@ -327,8 +327,13 @@ describe("tournament admin permissions", () => {
 });
 
 describe("eligibility rules version", () => {
-  it("uses kg926-v2 as current eligibility version constant", () => {
-    expect(KG926_ELIGIBILITY_RULES_VERSION).toBe("kg926-v2");
+  it("uses kg926-v3 as current eligibility version constant", () => {
+    expect(KG926_ELIGIBILITY_RULES_VERSION).toBe("kg926-v3");
+    expect(DEFAULT_KG926_ELIGIBILITY_RULES.requiredSocialPlatforms).toEqual([
+      "x",
+      "instagram",
+      "tiktok",
+    ]);
   });
 
   it("rejects when social following is pending", () => {

@@ -54,7 +54,7 @@ export interface AdminApplicationDetail {
     attestation: boolean;
     attestationAt: string | null;
     platforms: Array<{
-      platform: "instagram" | "tiktok" | "youtube";
+      platform: "x" | "instagram" | "tiktok" | "youtube";
       applicantHandle: string;
       verificationStatus: "pending" | "verified" | "rejected";
       verificationNotes: string | null;

@@ -92,6 +92,13 @@
       "when": 1720828800000,
       "tag": "0012_social_follow_eligibility",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1720915200000,
+      "tag": "0013_kg926_social_channels",
+      "breakpoints": true
     }
   ]
 }

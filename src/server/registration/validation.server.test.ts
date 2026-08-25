@@ -30,9 +30,9 @@ function buildValidFormData(): FormData {
   formData.append(
     "socialHandles",
     JSON.stringify({
+      x: "test_x",
       instagram: "test_ig",
       tiktok: "test_tt",
-      youtube: "test_yt",
     }),
   );
   formData.append("socialFollowAttestation", "true");

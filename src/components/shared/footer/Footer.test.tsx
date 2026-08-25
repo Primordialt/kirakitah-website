@@ -42,7 +42,19 @@ describe("Footer", () => {
       "href",
       "/esports/register",
     );
-    expect(screen.queryByRole("link", { name: "Instagram" })).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "X" })).toHaveAttribute(
+      "href",
+      "https://x.com/Kirakitah",
+    );
+    expect(screen.getByRole("link", { name: "Instagram" })).toHaveAttribute(
+      "href",
+      "https://www.instagram.com/kirakitah",
+    );
+    expect(screen.getByRole("link", { name: "TikTok" })).toHaveAttribute(
+      "href",
+      "https://www.tiktok.com/@kirakitah926",
+    );
+    expect(screen.queryByRole("link", { name: "YouTube" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Privacy Policy" })).not.toBeInTheDocument();
   });
 });

@@ -168,6 +168,7 @@ export function evaluateWithConfig(input: {
     phoneVerificationStatus: input.application.phoneVerificationStatus,
     socialFollowStatus,
     socialFollowingRequired: input.config.socialFollowingRequired,
+    requiredSocialPlatforms: input.config.requiredSocialPlatforms.join(","),
     guardianRequired: needsGuardian,
     guardianPresent: Boolean(input.guardian),
     guardianConsentPresent: Boolean(input.guardian?.consentAt),

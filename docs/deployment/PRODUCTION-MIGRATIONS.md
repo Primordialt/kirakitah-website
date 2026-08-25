@@ -23,8 +23,9 @@ Never paste real `DATABASE_URL` values into documentation, tickets, chat, or com
 | 10 | `drizzle/0010_phone_uniqueness.sql` | `phone_normalized` + active phone unique index |
 | 11 | `drizzle/0011_admin_password_auth.sql` | Admin password hash, lockout, login attempt rate limits, audit enum |
 | 12 | `drizzle/0012_social_follow_eligibility.sql` | Social follow attestation + per-platform manual review + kg926-v2 eligibility |
+| 13 | `drizzle/0013_kg926_social_channels.sql` | Add `x` social platform; KG926 required set X+Instagram+TikTok; eligibility `kg926-v3` |
 
-Latest required for registration + admin login + social follow eligibility: **0012**.
+Latest required for registration + admin login + social follow eligibility: **0013**.
 
 No duplicate migration numbers in the repository. Order is deterministic by numeric filename prefix.
 
@@ -34,7 +35,13 @@ No duplicate migration numbers in the repository. Order is deterministic by nume
 - Adds application-level `social_follow_status` / attestation columns
 - Backfills existing applications to `social_follow_status = pending_review` (does not remove participants)
 - Updates `event-kg926` eligibility rules to `kg926-v2` with `socialFollowingRequired: true`
-- Rollback: drop new table/columns/enums only after confirming no dependent code is deployed; prefer forward-fix migrations
+
+### Migration 0013 notes
+
+- Adds enum value `x` to `social_platform` (YouTube retained for future optional use)
+- Updates `event-kg926` to eligibility **kg926-v3** with `requiredSocialPlatforms: ["x","instagram","tiktok"]`
+- Does not invent a YouTube URL
+- Rollback: prefer forward-fix; do not edit applied migrations
 
 ## 2. Inspect current production migration state
 

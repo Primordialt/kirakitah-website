@@ -101,7 +101,9 @@ export function SocialFollowReviewActions({
             >
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div>
-                  <p className="font-medium capitalize">{row.platform}</p>
+                  <p className="font-medium capitalize">
+                    {row.platform === "x" ? "X" : row.platform}
+                  </p>
                   <p className="text-body-sm text-text-secondary">
                     Handle: {row.applicantHandle}
                   </p>
