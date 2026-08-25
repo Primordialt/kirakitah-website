@@ -39,9 +39,12 @@ set ADMIN_BOOTSTRAP_PASSWORD=your-long-password
 npm run admin:create -- --email you@example.com --name "Your Name" --role SUPER_ADMIN
 ```
 
-Or omit `ADMIN_BOOTSTRAP_PASSWORD` and enter the password when prompted.
+- Prefer `ADMIN_BOOTSTRAP_PASSWORD` so the password is never typed into a visible prompt.
+- Or omit `ADMIN_BOOTSTRAP_PASSWORD` and enter the password when prompted (visible stdin — avoid on shared screens).
 
 Do not commit passwords. Do not use mock auth in Production.
+
+See also: `docs/admin/ADMIN-PRODUCTION-TEST.md`.
 
 ## Roles
 

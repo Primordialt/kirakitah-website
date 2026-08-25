@@ -14,7 +14,7 @@ Record pass/fail; do not announce registration publicly until all applicable tes
 - [ ] Production deployment of intended commit is live
 - [ ] `NEXT_PUBLIC_DATA_SOURCE=api`
 - [ ] `DATABASE_URL`, `BLOB_READ_WRITE_TOKEN`, `REGISTRATION_PII_ENCRYPTION_KEY` set
-- [ ] Migrations `0000`→`0010` applied
+- [ ] Migrations `0000`→`0011` applied
 - [ ] KG926 tournament `status = registration_open` (if unknown, stop and verify)
 - [ ] `/api/health` shows `registrationConfigured: true`
 
@@ -22,12 +22,12 @@ Record pass/fail; do not announce registration publicly until all applicable tes
 
 ## TEST 1 — Adult registration
 
-**Input:** Adult applicant (≥18), valid Nigeria contact fields, valid identification, valid photo (JPEG/PNG/WebP ≤ 5 MB).
+**Input:** Adult applicant (≥18), valid Nigeria contact fields, valid identification, valid photo (JPEG/PNG/WebP ≤ **15 KB** / 15360 bytes).
 
 **Expected:** SUCCESS  
 - HTTP success from `POST /api/registrations`  
 - Reference ID returned (e.g. `KG926-2026-XXXXXX`)  
-- Success UI indicates application received / in the system for review  
+- Success UI shows **APPLICATION RECEIVED** (no internal email; no verified/qualified claims)  
 
 **Record:** reference ID __________
 
@@ -92,9 +92,11 @@ Record pass/fail; do not announce registration publicly until all applicable tes
 
 ## TEST 8 — Oversized photo
 
-**Input:** Image larger than 5 MB.
+**Input:** Image larger than **15 KB** (15360 bytes), e.g. 15 KB + 1 byte, 20 KB, or 100 KB.
 
 **Expected:** REJECTED  
+- Client validation error where practical  
+- API rejects regardless of client  
 
 ---
 

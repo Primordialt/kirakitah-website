@@ -11,10 +11,15 @@ describe("RegistrationSuccess — MVP messaging", () => {
     expect(
       screen.getByText(/Thank you for submitting your KIRAKITAH GAMING 926 application/i),
     ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        /Our team will review your application and contact you regarding the next steps\./i,
+      ),
+    ).toBeInTheDocument();
     expect(screen.getByText(/KG926-2026-ABCDEF/)).toBeInTheDocument();
-    expect(screen.getByText(/hq@kirakitah\.com/i)).toBeInTheDocument();
     expect(screen.getByText(/keep this reference/i)).toBeInTheDocument();
 
+    expect(screen.queryByText(/@kirakitah\.com/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/YOU'RE IN THE SYSTEM/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/Contact verification will follow/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/GAMING 2026/i)).not.toBeInTheDocument();

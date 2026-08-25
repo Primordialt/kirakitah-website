@@ -58,8 +58,12 @@ describe("identity-upload", () => {
     const twentyKb = new File(["x".repeat(20 * 1024)], "20kb.jpg", {
       type: "image/jpeg",
     });
+    const hundredKb = new File(["x".repeat(100 * 1024)], "100kb.jpg", {
+      type: "image/jpeg",
+    });
 
     const message = `Player photo must be ${formatFileSize(MAX_IDENTITY_FILE_SIZE_BYTES)} or smaller`;
+    expect(formatFileSize(MAX_IDENTITY_FILE_SIZE_BYTES)).toBe("15 KB");
 
     expect(
       validateIdentityFile(overByOne, {
@@ -73,6 +77,27 @@ describe("identity-upload", () => {
         acceptedTypes: ["image/jpeg"],
       }),
     ).toBe(message);
+    expect(
+      validateIdentityFile(hundredKb, {
+        label: "Player photo",
+        acceptedTypes: ["image/jpeg"],
+      }),
+    ).toBe(message);
+  });
+
+  it("accepts JPEG, PNG, and WebP MIME types and rejects invalid types", () => {
+    const jpeg = new File(["x"], "a.jpg", { type: "image/jpeg" });
+    const png = new File(["x"], "a.png", { type: "image/png" });
+    const webp = new File(["x"], "a.webp", { type: "image/webp" });
+    const gif = new File(["x"], "a.gif", { type: "image/gif" });
+    const accepted = ["image/jpeg", "image/png", "image/webp"] as const;
+
+    expect(validateIdentityFile(jpeg, { label: "Player photo", acceptedTypes: accepted })).toBeUndefined();
+    expect(validateIdentityFile(png, { label: "Player photo", acceptedTypes: accepted })).toBeUndefined();
+    expect(validateIdentityFile(webp, { label: "Player photo", acceptedTypes: accepted })).toBeUndefined();
+    expect(validateIdentityFile(gif, { label: "Player photo", acceptedTypes: accepted })).toBe(
+      "Player photo must be JPEG, PNG, WebP",
+    );
   });
 
   it("maps file metadata without content", () => {

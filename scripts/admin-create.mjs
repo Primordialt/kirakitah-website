@@ -5,8 +5,8 @@
  * Usage (secure shell with DATABASE_URL set — never commit the URL):
  *   npm run admin:create -- --email admin@example.com --name "Ops Admin" --role SUPER_ADMIN
  *
- * Password is read from ADMIN_BOOTSTRAP_PASSWORD env or prompted via stdin.
- * Never logs the password or hash.
+Password is read from `ADMIN_BOOTSTRAP_PASSWORD` (preferred — never echoed) or prompted via stdin.
+Never logs the password or hash.
  */
 import { createInterface } from "readline/promises";
 import { stdin as input, stdout as output } from "process";
@@ -74,8 +74,11 @@ async function readPassword() {
   if (process.env.ADMIN_BOOTSTRAP_PASSWORD) {
     return process.env.ADMIN_BOOTSTRAP_PASSWORD;
   }
+  console.error(
+    "Tip: set ADMIN_BOOTSTRAP_PASSWORD to avoid typing the password into a visible prompt.",
+  );
   const rl = createInterface({ input, output });
-  const password = await rl.question("Password (min 12 chars, input visible): ");
+  const password = await rl.question("Password (min 12 chars): ");
   rl.close();
   return password;
 }

@@ -35,7 +35,7 @@ export function RegistrationSuccess({
       </p>
       <p className="text-body-sm text-text-secondary">
         Our team will review your application and contact you regarding the next
-        steps via hq@kirakitah.com.
+        steps.
       </p>
       {referenceId ? (
         <p className="text-body-sm text-text-muted">

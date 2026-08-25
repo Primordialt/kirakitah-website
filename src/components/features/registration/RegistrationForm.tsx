@@ -71,6 +71,8 @@ export function RegistrationForm() {
     handleSubmit,
     watch,
     setValue,
+    setError,
+    clearErrors,
     formState: { errors, isSubmitting, isDirty },
   } = useForm<RegistrationFormValues>({
     resolver: zodResolver(registrationSchema),
@@ -160,6 +162,8 @@ export function RegistrationForm() {
         control={control}
         errors={errors}
         setValue={setValue}
+        setError={setError}
+        clearErrors={clearErrors}
       />
       <GamingInformation register={register} control={control} errors={errors} />
       <AvailabilityInformation register={register} control={control} errors={errors} />
