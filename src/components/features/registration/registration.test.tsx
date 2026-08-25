@@ -187,6 +187,18 @@ describe("RegistrationForm", () => {
     mockSubmit.mockResolvedValue({ success: true, referenceId: "MOCK-123" });
   });
 
+  it("clarifies that Gamer Tag is the eFootball username", () => {
+    render(<RegistrationForm />);
+
+    expect(screen.getByLabelText(/Gamer Tag/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Your eFootball username \/ gamer tag/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByPlaceholderText(/Enter your eFootball username/i),
+    ).toBeInTheDocument();
+  });
+
   it("shows validation errors for required fields", async () => {
     render(<RegistrationForm />);
     const user = userEvent.setup();

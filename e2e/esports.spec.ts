@@ -90,7 +90,7 @@ test.describe("Registration", () => {
       ]),
     });
 
-    await page.getByLabel("Gamer tag").fill("E2EPlayer");
+    await page.getByLabel(/Gamer Tag/i).fill("E2EPlayer");
     await page.getByLabel("Mobile platform").selectOption("android");
     await page.getByLabel("Time zone").selectOption("Africa/Lagos");
     await page.getByText("Flexible — will adapt to schedule").click();
