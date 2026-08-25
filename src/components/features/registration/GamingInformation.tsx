@@ -9,8 +9,11 @@ export function GamingInformation({ register, errors }: FormSectionProps) {
     <fieldset className="flex flex-col gap-5">
       <legend className="text-h4 text-text-primary">GAMING INFORMATION</legend>
       <Input
-        label="Gamer tag"
+        label="Gamer Tag"
+        description="Your eFootball username / gamer tag"
+        placeholder="Enter your eFootball username"
         required
+        autoComplete="off"
         error={errors.gamerTag?.message}
         {...register("gamerTag")}
       />
