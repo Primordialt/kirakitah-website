@@ -10,6 +10,8 @@ export const ELIGIBILITY_REASON_CODES = [
   "PHONE_NOT_VERIFIED",
   "GUARDIAN_INFORMATION_MISSING",
   "GUARDIAN_CONSENT_MISSING",
+  "SOCIAL_FOLLOWING_NOT_VERIFIED",
+  "SOCIAL_FOLLOWING_REJECTED",
   "TOURNAMENT_REGISTRATION_CLOSED",
   "TOURNAMENT_REGISTRATION_NOT_OPEN",
   "ALREADY_SELECTED",
@@ -30,6 +32,10 @@ export const ELIGIBILITY_REASON_LABELS: Record<EligibilityReasonCode, string> = 
   PHONE_NOT_VERIFIED: "Phone ownership verification is required but not complete.",
   GUARDIAN_INFORMATION_MISSING: "Guardian information is required but missing.",
   GUARDIAN_CONSENT_MISSING: "Guardian consent is required but missing.",
+  SOCIAL_FOLLOWING_NOT_VERIFIED:
+    "Social following requirement not satisfied — verification is still pending.",
+  SOCIAL_FOLLOWING_REJECTED:
+    "Social following requirement not satisfied — one or more platforms were rejected.",
   TOURNAMENT_REGISTRATION_CLOSED: "Tournament registration is closed.",
   TOURNAMENT_REGISTRATION_NOT_OPEN: "Tournament registration is not yet open.",
   ALREADY_SELECTED: "Applicant is already selected for this tournament.",

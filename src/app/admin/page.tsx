@@ -9,6 +9,7 @@ export default async function AdminDashboardPage() {
   let stats = {
     totalApplications: 0,
     pendingIdentityReviews: 0,
+    pendingSocialReviews: 0,
     pendingContactVerification: 0,
     underReview: 0,
     approved: 0,
@@ -29,6 +30,7 @@ export default async function AdminDashboardPage() {
   const cards = [
     { label: "Total applications", value: stats.totalApplications },
     { label: "Pending identity reviews", value: stats.pendingIdentityReviews },
+    { label: "Pending social reviews", value: stats.pendingSocialReviews },
     {
       label: "Pending contact verification",
       value: stats.pendingContactVerification,
@@ -70,6 +72,12 @@ export default async function AdminDashboardPage() {
           className="rounded-lg bg-brand-primary px-4 py-2 text-button text-white"
         >
           Open identity reviews
+        </Link>
+        <Link
+          href="/admin/reviews/social"
+          className="rounded-lg border border-border-interactive px-4 py-2 text-button"
+        >
+          Open social reviews
         </Link>
         <Link
           href="/admin/applications"

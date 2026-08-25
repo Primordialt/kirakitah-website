@@ -71,6 +71,12 @@ export function AdminShell({
             </Link>
             <Link
               className="hover:text-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-border-focus"
+              href="/admin/reviews/social"
+            >
+              Social reviews
+            </Link>
+            <Link
+              className="hover:text-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-border-focus"
               href="/admin/audit"
             >
               Audit

@@ -33,6 +33,7 @@ export interface ParsedRegistrationRequest {
   timezone: string;
   availability: string[];
   socialHandles?: Record<string, string>;
+  socialFollowAttestation: true;
   guardian?: z.infer<typeof guardianSchema>;
   consents: {
     rules: true;
@@ -109,6 +110,7 @@ export async function parseRegistrationFormData(
   let timezone = "";
   let availability: string[] = [];
   let socialHandles: Record<string, string> | undefined;
+  let socialFollowAttestation: true | undefined;
   let guardian: z.infer<typeof guardianSchema> | undefined;
   let consents: ParsedRegistrationRequest["consents"] | undefined;
   let eventId = "";
@@ -153,6 +155,15 @@ export async function parseRegistrationFormData(
     const socialRaw = formData.get("socialHandles");
     if (typeof socialRaw === "string" && socialRaw.trim()) {
       socialHandles = JSON.parse(socialRaw) as Record<string, string>;
+    }
+
+    const socialAttestationRaw = formData.get("socialFollowAttestation");
+    if (
+      socialAttestationRaw === "true" ||
+      socialAttestationRaw === "on" ||
+      socialAttestationRaw === "1"
+    ) {
+      socialFollowAttestation = true;
     }
 
     const guardianRaw = formData.get("guardian");
@@ -226,6 +237,29 @@ export async function parseRegistrationFormData(
     consents = consentsResult.data;
   }
 
+  const requiredSocialPlatforms = ["instagram", "tiktok", "youtube"] as const;
+  const normalizedSocialHandles: Record<string, string> = {};
+  for (const platform of requiredSocialPlatforms) {
+    const handle = socialHandles?.[platform]?.trim();
+    if (!handle) {
+      addIssue(
+        `socialHandles.${platform}`,
+        platform === "youtube"
+          ? "YouTube handle / channel name is required"
+          : `${platform[0]!.toUpperCase()}${platform.slice(1)} username is required`,
+      );
+    } else {
+      normalizedSocialHandles[platform] = handle;
+    }
+  }
+
+  if (socialFollowAttestation !== true) {
+    addIssue(
+      "socialFollowAttestation",
+      "Confirm that you follow KIRAKITAH on all official social platforms",
+    );
+  }
+
   if (!playerPhoto) {
     addIssue("playerPhoto", "Player photo is required");
   } else {
@@ -255,7 +289,7 @@ export async function parseRegistrationFormData(
     addIssue("game", "Game must be eFootball Mobile");
   }
 
-  if (details.length > 0 || !consents || !playerPhoto) {
+  if (details.length > 0 || !consents || !playerPhoto || socialFollowAttestation !== true) {
     throw new z.ZodError(details);
   }
 
@@ -279,7 +313,8 @@ export async function parseRegistrationFormData(
     gamingProfile,
     timezone,
     availability,
-    socialHandles,
+    socialHandles: normalizedSocialHandles,
+    socialFollowAttestation: true,
     guardian,
     consents,
     eventId,

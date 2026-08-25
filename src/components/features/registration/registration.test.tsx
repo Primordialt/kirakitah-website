@@ -76,7 +76,16 @@ async function fillRequiredRegistrationFields(user: ReturnType<typeof userEvent.
   const playerPhotoInput = screen.getByLabelText(/Player photo/i);
   await user.upload(playerPhotoInput, createTestFile("player-photo.jpg", "image/jpeg"));
 
-  await user.type(screen.getByLabelText(/Gamer tag/i), "TestGamer");
+  await user.type(screen.getByLabelText(/Gamer Tag/i), "TestGamer");
+  await user.type(screen.getByLabelText(/Instagram username/i), "test_ig");
+  await user.type(screen.getByLabelText(/TikTok username/i), "test_tt");
+  await user.type(
+    screen.getByLabelText(/YouTube handle \/ channel name/i),
+    "test_yt",
+  );
+  await user.click(
+    screen.getByLabelText(/I confirm that I follow KIRAKITAH on all official social platforms/i),
+  );
   await user.selectOptions(screen.getByLabelText(/Mobile platform/i), "android");
   await user.selectOptions(screen.getByLabelText(/Time zone/i), "Africa/Lagos");
   await user.click(screen.getByLabelText(/Flexible — will adapt to schedule/i));
@@ -121,6 +130,12 @@ describe("registration domain", () => {
       platform: "android",
       timezone: "Africa/Lagos",
       availability: ["flexible"],
+      socialHandles: {
+        instagram: "test_ig",
+        tiktok: "test_tt",
+        youtube: "test_yt",
+      },
+      socialFollowAttestation: true,
       consents: {
         rules: true,
         terms: true,
@@ -154,6 +169,12 @@ describe("registration domain", () => {
         gamingProfile: "",
         timezone: "Africa/Lagos",
         availability: ["flexible"],
+        socialHandles: {
+          instagram: "test_ig",
+          tiktok: "test_tt",
+          youtube: "test_yt",
+        },
+        socialFollowAttestation: true,
         consents: {
           rules: true,
           terms: true,

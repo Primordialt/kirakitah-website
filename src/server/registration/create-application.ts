@@ -5,6 +5,7 @@ import {
   registrationApplications,
   registrationGuardians,
 } from "@/server/db/schema";
+import { insertPendingSocialFollows } from "@/server/registration/social-follow";
 import { serverEnv } from "@/server/env";
 import {
   deletePlayerPhoto,
@@ -332,7 +333,16 @@ export async function createRegistrationApplication(
       // Contact OTP may be deferred (MVP); never mark verified without ownership proof.
       emailVerificationStatus: "pending",
       phoneVerificationStatus: "pending",
+      // Social follow is attested at submit but remains pending_review until manual admin verification.
+      socialFollowStatus: "pending_review",
+      socialFollowAttestation: true,
+      socialFollowAttestationAt: acceptedAt,
       submitIpHash,
+    });
+
+    await insertPendingSocialFollows({
+      applicationId,
+      handles: input.socialHandles ?? {},
     });
 
     if (input.guardian) {

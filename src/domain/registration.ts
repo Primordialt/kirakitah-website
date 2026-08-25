@@ -50,7 +50,12 @@ export interface RegistrationSubmission {
   gamingProfile?: string;
   timezone: string;
   availability: string[];
-  socialHandles?: Record<string, string>;
+  socialHandles: {
+    instagram: string;
+    tiktok: string;
+    youtube: string;
+  };
+  socialFollowAttestation: true;
   guardian?: GuardianInfo;
   consents: RegistrationConsents;
   eventId: string;
@@ -161,13 +166,17 @@ export const registrationSchema = z
     availability: z
       .array(z.string())
       .min(1, "At least one availability slot is required"),
-    socialHandles: z
-      .object({
-        instagram: z.string().optional(),
-        tiktok: z.string().optional(),
-        youtube: z.string().optional(),
-      })
-      .optional(),
+    socialHandles: z.object({
+      instagram: z.string().min(1, "Instagram username is required"),
+      tiktok: z.string().min(1, "TikTok username is required"),
+      youtube: z.string().min(1, "YouTube handle / channel name is required"),
+    }),
+    socialFollowAttestation: z.literal(true, {
+      errorMap: () => ({
+        message:
+          "Confirm that you follow KIRAKITAH on all official social platforms",
+      }),
+    }),
     guardian: guardianSchema.optional(),
     consents: z.object({
       rules: z.literal(true, {
@@ -214,18 +223,6 @@ export function toRegistrationSubmission(
   data: RegistrationFormValues,
   options: { includeGuardian: boolean },
 ): RegistrationSubmission {
-  const socialEntries = {
-    instagram: data.socialHandles?.instagram,
-    tiktok: data.socialHandles?.tiktok,
-    youtube: data.socialHandles?.youtube,
-  };
-
-  const socialHandles = Object.fromEntries(
-    Object.entries(socialEntries).filter((entry): entry is [string, string] =>
-      Boolean(entry[1]),
-    ),
-  );
-
   const { identificationType, identificationNumber } = data.identityVerification;
 
   return {
@@ -249,7 +246,12 @@ export function toRegistrationSubmission(
     gamingProfile: data.gamingProfile || undefined,
     timezone: data.timezone,
     availability: data.availability,
-    socialHandles: Object.keys(socialHandles).length > 0 ? socialHandles : undefined,
+    socialHandles: {
+      instagram: data.socialHandles.instagram.trim(),
+      tiktok: data.socialHandles.tiktok.trim(),
+      youtube: data.socialHandles.youtube.trim(),
+    },
+    socialFollowAttestation: true,
     guardian: options.includeGuardian ? data.guardian : undefined,
     consents: data.consents,
     eventId: data.eventId,

@@ -28,6 +28,15 @@ function buildValidFormData(): FormData {
   formData.append("timezone", "Africa/Lagos");
   formData.append("availability", JSON.stringify(["flexible"]));
   formData.append(
+    "socialHandles",
+    JSON.stringify({
+      instagram: "test_ig",
+      tiktok: "test_tt",
+      youtube: "test_yt",
+    }),
+  );
+  formData.append("socialFollowAttestation", "true");
+  formData.append(
     "consents",
     JSON.stringify({
       rules: true,

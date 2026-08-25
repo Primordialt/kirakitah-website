@@ -91,6 +91,12 @@ test.describe("Registration", () => {
     });
 
     await page.getByLabel(/Gamer Tag/i).fill("E2EPlayer");
+    await page.getByLabel(/Instagram username/i).fill("e2e_ig");
+    await page.getByLabel(/TikTok username/i).fill("e2e_tt");
+    await page.getByLabel(/YouTube handle \/ channel name/i).fill("e2e_yt");
+    await page
+      .getByText(/I confirm that I follow KIRAKITAH on all official social platforms listed above/i)
+      .click();
     await page.getByLabel("Mobile platform").selectOption("android");
     await page.getByLabel("Time zone").selectOption("Africa/Lagos");
     await page.getByText("Flexible — will adapt to schedule").click();

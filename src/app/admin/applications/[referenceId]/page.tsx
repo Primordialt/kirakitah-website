@@ -5,6 +5,7 @@ import {
   IdentityReviewActions,
   RevealIdentityButton,
 } from "@/components/admin/ApplicationReviewActions";
+import { SocialFollowReviewActions } from "@/components/admin/SocialFollowReviewActions";
 import { TournamentEligibilityPanel } from "@/components/admin/TournamentEligibilityPanel";
 import { getAdminApplicationDetail } from "@/server/admin/registration/service";
 import { roleHasPermission } from "@/server/admin/authorization/permissions";
@@ -42,6 +43,7 @@ export default async function AdminApplicationDetailPage({
 
   const canReveal = roleHasPermission(session.user.role, "identity:reveal");
   const canReview = roleHasPermission(session.user.role, "identity:review");
+  const canSocialReview = roleHasPermission(session.user.role, "social:review");
   const canStatus = roleHasPermission(session.user.role, "applications:status");
   const canEvaluate = roleHasPermission(session.user.role, "tournament:eligibility");
   const canSelect = roleHasPermission(session.user.role, "tournament:participant_select");
@@ -53,7 +55,7 @@ export default async function AdminApplicationDetailPage({
       <h1 className="text-h2">{detail.referenceId}</h1>
       <p className="mt-1 text-body text-text-secondary">
         {detail.player.fullName} · {detail.status} · identity{" "}
-        {detail.identity.status}
+        {detail.identity.status} · social {detail.socialFollow.status}
       </p>
 
       <div className="mt-8 grid gap-6 lg:grid-cols-2">
@@ -236,6 +238,13 @@ export default async function AdminApplicationDetailPage({
             Identity review is complete ({detail.identity.status}).
           </p>
         )}
+        <SocialFollowReviewActions
+          referenceId={detail.referenceId}
+          socialFollowStatus={detail.socialFollow.status}
+          attestation={detail.socialFollow.attestation}
+          platforms={detail.socialFollow.platforms}
+          canReview={canSocialReview}
+        />
         <ApplicationStatusActions
           referenceId={detail.referenceId}
           currentStatus={detail.status}
@@ -247,6 +256,7 @@ export default async function AdminApplicationDetailPage({
           canSelect={canSelect}
           initialParticipantId={participant?.participantId}
           initialParticipantStatus={participant?.status}
+          initialSocialFollowStatus={detail.socialFollow.status}
         />
       </div>
     </AdminShell>

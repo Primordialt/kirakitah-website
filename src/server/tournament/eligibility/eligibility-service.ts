@@ -108,6 +108,7 @@ export function evaluateRegistrationEligibility(input: {
     identityVerificationStatus: string;
     emailVerificationStatus: string;
     phoneVerificationStatus: string;
+    socialFollowStatus?: string | null;
   };
   guardian: { consentAt: string } | null;
   existingParticipant: { status: string } | null;
@@ -144,6 +145,7 @@ export function evaluateWithConfig(input: {
     identityVerificationStatus: string;
     emailVerificationStatus: string;
     phoneVerificationStatus: string;
+    socialFollowStatus?: string | null;
   };
   guardian: { consentAt: string } | null;
   existingParticipant: { status: string } | null;
@@ -154,6 +156,8 @@ export function evaluateWithConfig(input: {
   const reasons: EligibilityReasonCode[] = [];
   const age = calculateAge(input.application.dateOfBirth);
   const needsGuardian = requiresGuardian(input.application.dateOfBirth);
+  const socialFollowStatus =
+    input.application.socialFollowStatus ?? "pending_review";
 
   const evaluatedRequirements: Record<string, boolean | string | number | null> = {
     minimumAgeMet: age >= input.config.minimumAge,
@@ -162,6 +166,8 @@ export function evaluateWithConfig(input: {
     identityStatus: input.application.identityVerificationStatus,
     emailVerificationStatus: input.application.emailVerificationStatus,
     phoneVerificationStatus: input.application.phoneVerificationStatus,
+    socialFollowStatus,
+    socialFollowingRequired: input.config.socialFollowingRequired,
     guardianRequired: needsGuardian,
     guardianPresent: Boolean(input.guardian),
     guardianConsentPresent: Boolean(input.guardian?.consentAt),
@@ -215,6 +221,14 @@ export function evaluateWithConfig(input: {
       reasons.push("GUARDIAN_INFORMATION_MISSING");
     } else if (!input.guardian.consentAt) {
       reasons.push("GUARDIAN_CONSENT_MISSING");
+    }
+  }
+
+  if (input.config.socialFollowingRequired) {
+    if (socialFollowStatus === "rejected") {
+      reasons.push("SOCIAL_FOLLOWING_REJECTED");
+    } else if (socialFollowStatus !== "verified") {
+      reasons.push("SOCIAL_FOLLOWING_NOT_VERIFIED");
     }
   }
 

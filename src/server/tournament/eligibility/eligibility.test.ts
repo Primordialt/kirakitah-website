@@ -15,6 +15,7 @@ const baseApplication = {
   identityVerificationStatus: "verified",
   emailVerificationStatus: "verified",
   phoneVerificationStatus: "verified",
+  socialFollowStatus: "verified",
 };
 
 const baseInput = {
@@ -326,7 +327,37 @@ describe("tournament admin permissions", () => {
 });
 
 describe("eligibility rules version", () => {
-  it("uses kg926-v1 as current version constant", () => {
-    expect(KG926_ELIGIBILITY_RULES_VERSION).toBe("kg926-v1");
+  it("uses kg926-v2 as current eligibility version constant", () => {
+    expect(KG926_ELIGIBILITY_RULES_VERSION).toBe("kg926-v2");
+  });
+
+  it("rejects when social following is pending", () => {
+    const result = evaluateWithConfig({
+      ...baseInput,
+      application: {
+        ...baseApplication,
+        socialFollowStatus: "pending_review",
+      },
+    });
+    expect(result.eligible).toBe(false);
+    expect(result.reasons).toContain("SOCIAL_FOLLOWING_NOT_VERIFIED");
+  });
+
+  it("rejects when social following is rejected", () => {
+    const result = evaluateWithConfig({
+      ...baseInput,
+      application: {
+        ...baseApplication,
+        socialFollowStatus: "rejected",
+      },
+    });
+    expect(result.eligible).toBe(false);
+    expect(result.reasons).toContain("SOCIAL_FOLLOWING_REJECTED");
+  });
+
+  it("allows eligibility when social following is verified", () => {
+    const result = evaluateWithConfig(baseInput);
+    expect(result.eligible).toBe(true);
+    expect(result.evaluatedRequirements.socialFollowStatus).toBe("verified");
   });
 });

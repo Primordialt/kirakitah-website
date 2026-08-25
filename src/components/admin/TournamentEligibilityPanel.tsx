@@ -21,12 +21,14 @@ export function TournamentEligibilityPanel({
   canSelect,
   initialParticipantId,
   initialParticipantStatus,
+  initialSocialFollowStatus,
 }: {
   referenceId: string;
   canEvaluate: boolean;
   canSelect: boolean;
   initialParticipantId?: string | null;
   initialParticipantStatus?: string | null;
+  initialSocialFollowStatus?: string | null;
 }) {
   const router = useRouter();
   const [eligibility, setEligibility] = useState<EligibilityPayload | null>(null);
@@ -39,6 +41,7 @@ export function TournamentEligibilityPanel({
   const [disqualifyReason, setDisqualifyReason] = useState("");
 
   const tournamentId = TOURNAMENT_EVENT_ID;
+  const socialStatusLabel = (initialSocialFollowStatus ?? "pending_review").toUpperCase();
 
   const evaluate = async () => {
     setLoading(true);
@@ -182,6 +185,16 @@ export function TournamentEligibilityPanel({
         <p className="text-body-sm">
           Participant status:{" "}
           <span className="font-semibold">{participantStatus}</span>
+        </p>
+      ) : null}
+
+      <p className="text-body-sm">
+        Social following:{" "}
+        <span className="font-semibold">{socialStatusLabel}</span>
+      </p>
+      {socialStatusLabel !== "VERIFIED" ? (
+        <p className="text-body-sm text-warning">
+          Social following requirement not satisfied.
         </p>
       ) : null}
 

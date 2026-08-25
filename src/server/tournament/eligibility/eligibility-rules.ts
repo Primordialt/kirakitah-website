@@ -3,7 +3,7 @@ import {
   type TournamentEligibilityRulesConfig,
 } from "@/server/tournament/eligibility/eligibility-types";
 
-/** Default KG926 eligibility configuration — PO decisions pending where noted. */
+/** Default KG926 eligibility configuration (kg926-v2). */
 export const DEFAULT_KG926_ELIGIBILITY_RULES: TournamentEligibilityRulesConfig = {
   minimumAge: 10,
   emailVerificationRequired: false,
@@ -12,6 +12,7 @@ export const DEFAULT_KG926_ELIGIBILITY_RULES: TournamentEligibilityRulesConfig =
   approvedApplicationStatus: "verified",
   identityVerifiedRequired: true,
   requireGuardianForMinors: true,
+  socialFollowingRequired: true,
 };
 
 export function parseEligibilityRules(
@@ -39,6 +40,8 @@ export function parseEligibilityRules(
         obj.identityVerifiedRequired ?? base.identityVerifiedRequired,
       requireGuardianForMinors:
         obj.requireGuardianForMinors ?? base.requireGuardianForMinors,
+      socialFollowingRequired:
+        obj.socialFollowingRequired ?? base.socialFollowingRequired,
     },
   };
 }
