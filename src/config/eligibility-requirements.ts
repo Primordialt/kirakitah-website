@@ -50,7 +50,7 @@ export const howToParticipateSteps = [
     step: "04",
     title: "COMPLETE REVIEW",
     description:
-      "Our team manually reviews your application, identity information and social follow status.",
+      "Our team reviews your application, identity information and social follow status.",
   },
   {
     step: "05",
