@@ -36,8 +36,7 @@ export default function EsportsRulesPage() {
         </p>
         <h1 className="mt-3 text-h1 text-text-primary">TOURNAMENT RULES</h1>
         <p className="mt-4 text-body-lg text-text-secondary">
-          Know the rules before you enter the arena. Sections marked as pending
-          will be updated once finalized.
+          Know the rules before you enter the arena.
         </p>
       </div>
       <div className="grid gap-12 lg:grid-cols-[14rem_1fr] lg:gap-16">

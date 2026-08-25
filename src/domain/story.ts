@@ -1,5 +1,10 @@
 import type { ImageAsset } from "./image-asset";
 
+export interface StoryCta {
+  label: string;
+  href: string;
+}
+
 export interface Story {
   id: string;
   slug: string;
@@ -11,4 +16,5 @@ export interface Story {
   category: string;
   author?: string;
   featured: boolean;
+  cta?: StoryCta;
 }

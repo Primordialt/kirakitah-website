@@ -8,6 +8,7 @@ import { siteConfig } from "@/config/site";
 import Link from "next/link";
 import { FooterColumn } from "./FooterColumn";
 import { SocialLinks } from "./SocialLinks";
+import { BrandLogo } from "@/components/shared/brand/BrandLogo";
 
 export function Footer() {
   const exploreColumn = footerColumns.find((col) => col.title === "Explore");
@@ -22,12 +23,7 @@ export function Footer() {
       <div className="container-wide py-12 md:py-16">
         <div className="grid gap-10 md:grid-cols-2 lg:grid-cols-12 lg:gap-8">
           <div className="lg:col-span-4">
-            <Link
-              href="/"
-              className="text-h3 font-bold tracking-[0.1em] text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus/50 rounded-sm"
-            >
-              {siteConfig.brandName}
-            </Link>
+            <BrandLogo imageClassName="h-7 w-auto" />
             <p className="mt-3 text-label font-semibold text-accent">
               {footerBrand.tagline}
             </p>

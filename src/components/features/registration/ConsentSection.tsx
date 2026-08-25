@@ -23,15 +23,48 @@ const consentItems = [
   },
   {
     name: "consents.terms" as const,
-    label: "I accept the terms and conditions",
+    label: (
+      <>
+        I accept the{" "}
+        <Link
+          href="/terms"
+          className="text-accent underline-offset-2 hover:underline"
+          onClick={(event) => event.stopPropagation()}
+        >
+          terms and conditions
+        </Link>
+      </>
+    ),
   },
   {
     name: "consents.privacy" as const,
-    label: "I accept the privacy policy",
+    label: (
+      <>
+        I accept the{" "}
+        <Link
+          href="/privacy"
+          className="text-accent underline-offset-2 hover:underline"
+          onClick={(event) => event.stopPropagation()}
+        >
+          privacy policy
+        </Link>
+      </>
+    ),
   },
   {
     name: "consents.codeOfConduct" as const,
-    label: "I agree to the code of conduct",
+    label: (
+      <>
+        I agree to the{" "}
+        <Link
+          href="/code-of-conduct"
+          className="text-accent underline-offset-2 hover:underline"
+          onClick={(event) => event.stopPropagation()}
+        >
+          code of conduct
+        </Link>
+      </>
+    ),
   },
   {
     name: "consents.mediaConsent" as const,

@@ -97,7 +97,7 @@ test.describe("Initiatives page", () => {
       page.getByRole("heading", { level: 1, name: /WHAT WE'RE BUILDING/i }),
     ).toBeVisible();
     await expect(page.getByRole("heading", { name: "KIRAKITAH Gaming" })).toBeVisible();
-    await expect(page.getByText("Coming Soon").first()).toBeVisible();
+    await expect(page.getByText("In Development").first()).toBeVisible();
     await expect(page.getByRole("contentinfo")).toBeVisible();
 
     const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);

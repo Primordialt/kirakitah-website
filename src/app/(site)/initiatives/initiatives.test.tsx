@@ -32,7 +32,7 @@ describe("Initiatives page", () => {
     ).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "KIRAKITAH Gaming" })).toBeInTheDocument();
     expect(screen.getAllByText("Active").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("Coming Soon").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("In Development").length).toBeGreaterThan(0);
   });
 });
 
@@ -41,19 +41,15 @@ describe("InitiativeCard", () => {
     const gaming = mockInitiatives.find((i) => i.slug === "kirakitah-gaming")!;
     render(<InitiativeCard initiative={gaming} />);
 
-    expect(screen.getByRole("link")).toHaveAttribute(
-      "href",
-      "/initiatives/kirakitah-gaming",
-    );
+    expect(screen.getByRole("link")).toHaveAttribute("href", "/esports");
     expect(screen.getByText("Active")).toBeInTheDocument();
   });
 
-  it("renders coming soon initiative without link", () => {
+  it("renders in-development initiative with navigable link", () => {
     const innovation = mockInitiatives.find((i) => i.slug === "innovation")!;
     render(<InitiativeCard initiative={innovation} />);
 
-    expect(screen.queryByRole("link")).not.toBeInTheDocument();
-    expect(screen.getByText("Coming Soon")).toBeInTheDocument();
-    expect(screen.getByText("Not yet announced")).toBeInTheDocument();
+    expect(screen.getByRole("link")).toHaveAttribute("href", "/initiatives/innovation");
+    expect(screen.getAllByText("In Development").length).toBeGreaterThan(0);
   });
 });

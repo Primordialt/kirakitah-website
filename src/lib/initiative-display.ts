@@ -4,8 +4,10 @@ import type { BadgeVariant } from "@/components/ui/badge";
 export function getInitiativeStatusLabel(status: InitiativeStatus): string {
   const labels: Record<InitiativeStatus, string> = {
     active: "Active",
+    "in-development": "In Development",
+    exploring: "Exploring",
+    "coming-next": "Coming Next",
     upcoming: "Upcoming",
-    "coming-soon": "Coming Soon",
     archived: "Completed",
   };
   return labels[status];
@@ -14,8 +16,10 @@ export function getInitiativeStatusLabel(status: InitiativeStatus): string {
 export function getInitiativeStatusVariant(status: InitiativeStatus): BadgeVariant {
   const variants: Record<InitiativeStatus, BadgeVariant> = {
     active: "success",
+    "in-development": "info",
+    exploring: "warning",
+    "coming-next": "warning",
     upcoming: "info",
-    "coming-soon": "warning",
     archived: "outline",
   };
   return variants[status];
@@ -34,5 +38,12 @@ export function getInitiativeCategoryLabel(category: InitiativeCategory): string
 }
 
 export function isInitiativeNavigable(status: InitiativeStatus): boolean {
-  return status === "active" || status === "upcoming" || status === "archived";
+  return (
+    status === "active" ||
+    status === "in-development" ||
+    status === "exploring" ||
+    status === "coming-next" ||
+    status === "upcoming" ||
+    status === "archived"
+  );
 }

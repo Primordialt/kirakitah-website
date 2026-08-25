@@ -2,8 +2,10 @@ import type { ImageAsset } from "./image-asset";
 
 export type InitiativeStatus =
   | "active"
+  | "in-development"
+  | "exploring"
+  | "coming-next"
   | "upcoming"
-  | "coming-soon"
   | "archived";
 
 export type InitiativeCategory =
@@ -25,6 +27,7 @@ export interface Initiative {
   name: string;
   tagline: string;
   description: string;
+  body?: string[];
   status: InitiativeStatus;
   category: InitiativeCategory;
   featuredImage: ImageAsset;

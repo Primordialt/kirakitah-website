@@ -4,6 +4,7 @@ import {
   getInitiativeCategoryLabel,
   getInitiativeStatusLabel,
   getInitiativeStatusVariant,
+  isInitiativeNavigable,
 } from "@/lib/initiative-display";
 import { Badge } from "@/components/ui";
 import Link from "next/link";
@@ -71,8 +72,12 @@ function InitiativeCardContent({ initiative }: { initiative: Initiative }) {
         <span className="text-label font-semibold text-accent group-hover:text-text-primary transition-standard">
           {initiative.cta.label} →
         </span>
-      ) : initiative.status === "coming-soon" ? (
-        <span className="text-caption text-text-muted">Not yet announced</span>
+      ) : initiative.status === "in-development" ||
+        initiative.status === "exploring" ||
+        initiative.status === "coming-next" ? (
+        <span className="text-caption text-text-muted">
+          {getInitiativeStatusLabel(initiative.status)}
+        </span>
       ) : null}
     </div>
   );
@@ -90,8 +95,7 @@ export function InitiativeCard({
   className,
 }: InitiativeCardProps) {
   const href = initiative.cta?.href ?? `/initiatives/${initiative.slug}`;
-  const isInteractive =
-    initiative.status === "active" || initiative.status === "upcoming";
+  const isInteractive = isInitiativeNavigable(initiative.status);
 
   const wrapperClass = cn(
     "group flex h-full flex-col overflow-hidden rounded-2xl border border-border bg-surface",

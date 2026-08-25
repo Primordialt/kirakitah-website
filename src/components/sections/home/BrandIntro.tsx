@@ -25,11 +25,13 @@ export function BrandIntro() {
             </h2>
           </div>
           <div className="flex flex-col gap-6">
-            <p className="text-body-lg text-text-secondary">
-              {homepageBrandIntro.supportingCopy}
-            </p>
+            {homepageBrandIntro.paragraphs.map((paragraph) => (
+              <p key={paragraph.slice(0, 32)} className="text-body-lg text-text-secondary">
+                {paragraph}
+              </p>
+            ))}
             <div className="flex flex-wrap gap-2" aria-hidden="true">
-              {["Competition", "Creativity", "Technology", "Community"].map(
+              {["Technology", "Culture", "Competition", "Creativity", "Community"].map(
                 (tag) => (
                   <span
                     key={tag}

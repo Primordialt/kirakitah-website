@@ -3,6 +3,7 @@ import {
   AboutFinalCta,
   AboutHero,
   AboutPrinciples,
+  HowItWorks,
   WhatWereBuilding,
   WhoWeAre,
   WhyWeExist,
@@ -37,6 +38,7 @@ export default function AboutPage() {
       <AboutHero />
       <WhoWeAre />
       <WhyWeExist />
+      <HowItWorks />
       <AboutPrinciples />
       <WhatWereBuilding />
       <AboutEcosystem />

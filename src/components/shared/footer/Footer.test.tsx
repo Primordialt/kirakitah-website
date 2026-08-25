@@ -55,6 +55,17 @@ describe("Footer", () => {
       "https://www.tiktok.com/@kirakitah926",
     );
     expect(screen.queryByRole("link", { name: "YouTube" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: "Privacy Policy" })).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Privacy Policy" })).toHaveAttribute(
+      "href",
+      "/privacy",
+    );
+    expect(screen.getByRole("link", { name: "Terms & Conditions" })).toHaveAttribute(
+      "href",
+      "/terms",
+    );
+    expect(screen.getAllByRole("link", { name: "Code of Conduct" })).toHaveLength(2);
+    for (const link of screen.getAllByRole("link", { name: "Code of Conduct" })) {
+      expect(link).toHaveAttribute("href", "/code-of-conduct");
+    }
   });
 });

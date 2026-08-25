@@ -3,6 +3,7 @@ import type { Story } from "@/domain/story";
 import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui";
 import { Reveal } from "./Reveal";
 import { SectionShell } from "./SectionShell";
+import Link from "next/link";
 
 function formatStoryDate(iso: string): string {
   return new Intl.DateTimeFormat("en", {
@@ -14,16 +15,28 @@ function formatStoryDate(iso: string): string {
 
 function StoryCard({ story }: { story: Story }) {
   return (
-    <Card variant="interactive" className="h-full">
+    <Card variant="interactive" className="flex h-full flex-col">
       <CardHeader>
         <Badge variant="outline" className="w-fit capitalize">
           {story.category}
         </Badge>
-        <CardTitle className="mt-2">{story.title}</CardTitle>
+        <CardTitle className="mt-2">
+          <Link
+            href={`/stories/${story.slug}`}
+            className="transition-standard hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus/50 rounded-sm"
+          >
+            {story.title}
+          </Link>
+        </CardTitle>
         <CardDescription>{formatStoryDate(story.publishedAt)}</CardDescription>
       </CardHeader>
-      <CardContent className="pt-0">
+      <CardContent className="flex flex-1 flex-col pt-0">
         <p className="text-body-sm text-text-secondary">{story.excerpt}</p>
+        {story.cta ? (
+          <Button href={story.cta.href} variant="ghost" size="sm" className="mt-4 w-fit">
+            {story.cta.label}
+          </Button>
+        ) : null}
       </CardContent>
     </Card>
   );
