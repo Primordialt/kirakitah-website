@@ -41,6 +41,23 @@ export const contactVerificationStatusEnum = pgEnum("contact_verification_status
   "unavailable",
 ]);
 
+export const socialPlatformEnum = pgEnum("social_platform", [
+  "instagram",
+  "tiktok",
+  "youtube",
+]);
+
+export const socialPlatformVerificationStatusEnum = pgEnum(
+  "social_platform_verification_status",
+  ["pending", "verified", "rejected"],
+);
+
+export const socialFollowStatusEnum = pgEnum("social_follow_status", [
+  "pending_review",
+  "verified",
+  "rejected",
+]);
+
 export const verificationChallengeChannelEnum = pgEnum("verification_challenge_channel", [
   "email",
   "phone",
@@ -127,6 +144,16 @@ export const registrationApplications = pgTable(
       withTimezone: true,
       mode: "string",
     }),
+    socialFollowStatus: socialFollowStatusEnum("social_follow_status")
+      .notNull()
+      .default("pending_review"),
+    socialFollowAttestation: boolean("social_follow_attestation")
+      .notNull()
+      .default(false),
+    socialFollowAttestationAt: timestamp("social_follow_attestation_at", {
+      withTimezone: true,
+      mode: "string",
+    }),
     identityReviewedAt: timestamp("identity_reviewed_at", {
       withTimezone: true,
       mode: "string",
@@ -151,6 +178,9 @@ export const registrationApplications = pgTable(
     uniqueIndex("registration_event_id_hash_active_idx")
       .on(table.eventId, table.identificationType, table.identificationNumberHash)
       .where(sql`${table.status} NOT IN ('rejected', 'withdrawn')`),
+    index("registration_applications_social_follow_status_idx").on(
+      table.socialFollowStatus,
+    ),
   ],
 );
 
@@ -166,6 +196,43 @@ export const registrationGuardians = pgTable("registration_guardians", {
   consentAt: timestamp("consent_at", { withTimezone: true, mode: "string" })
     .notNull(),
 });
+
+export const registrationSocialFollows = pgTable(
+  "registration_social_follows",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    applicationId: uuid("application_id")
+      .notNull()
+      .references(() => registrationApplications.id, { onDelete: "cascade" }),
+    platform: socialPlatformEnum("platform").notNull(),
+    applicantHandle: text("applicant_handle").notNull(),
+    verificationStatus: socialPlatformVerificationStatusEnum("verification_status")
+      .notNull()
+      .default("pending"),
+    verificationNotes: text("verification_notes"),
+    reviewedBy: text("reviewed_by"),
+    reviewedAt: timestamp("reviewed_at", {
+      withTimezone: true,
+      mode: "string",
+    }),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "string" })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true, mode: "string" })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("registration_social_follows_application_platform_uidx").on(
+      table.applicationId,
+      table.platform,
+    ),
+    index("registration_social_follows_status_idx").on(
+      table.verificationStatus,
+      table.updatedAt,
+    ),
+  ],
+);
 
 export const registrationVerificationChallenges = pgTable(
   "registration_verification_challenges",
@@ -223,6 +290,9 @@ export const adminAuditEventTypeEnum = pgEnum("admin_audit_event_type", [
   "SENSITIVE_IDENTITY_VIEWED",
   "GUARDIAN_DATA_VIEWED",
   "PLAYER_PHOTO_VIEWED",
+  "SOCIAL_FOLLOW_REVIEWED",
+  "SOCIAL_FOLLOW_APPROVED",
+  "SOCIAL_FOLLOW_REJECTED",
   "ELIGIBILITY_EVALUATED",
   "PARTICIPANT_SELECTED",
   "PARTICIPANT_WITHDRAWN",

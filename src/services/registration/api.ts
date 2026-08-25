@@ -50,19 +50,16 @@ function buildRegistrationFormData(
   formData.append("consents", JSON.stringify(data.consents));
   formData.append("eventId", data.eventId);
 
-  const socialEntries = {
-    instagram: data.socialHandles?.instagram,
-    tiktok: data.socialHandles?.tiktok,
-    youtube: data.socialHandles?.youtube,
+  const socialHandles = {
+    instagram: data.socialHandles.instagram,
+    tiktok: data.socialHandles.tiktok,
+    youtube: data.socialHandles.youtube,
   };
-  const socialHandles = Object.fromEntries(
-    Object.entries(socialEntries).filter((entry): entry is [string, string] =>
-      Boolean(entry[1]),
-    ),
+  formData.append("socialHandles", JSON.stringify(socialHandles));
+  formData.append(
+    "socialFollowAttestation",
+    data.socialFollowAttestation ? "true" : "false",
   );
-  if (Object.keys(socialHandles).length > 0) {
-    formData.append("socialHandles", JSON.stringify(socialHandles));
-  }
 
   if (options.includeGuardian && data.guardian) {
     formData.append("guardian", JSON.stringify(data.guardian));

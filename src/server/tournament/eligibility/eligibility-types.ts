@@ -1,7 +1,7 @@
 import type { EligibilityReasonCode } from "@/server/tournament/eligibility/eligibility-reasons";
 
 /** Single source of truth for current KG926 eligibility rules version. */
-export const KG926_ELIGIBILITY_RULES_VERSION = "kg926-v1" as const;
+export const KG926_ELIGIBILITY_RULES_VERSION = "kg926-v2" as const;
 
 /**
  * Configurable tournament eligibility requirements.
@@ -19,6 +19,11 @@ export interface TournamentEligibilityRulesConfig {
   approvedApplicationStatus: "verified" | "under_review" | "received";
   identityVerifiedRequired: boolean;
   requireGuardianForMinors: boolean;
+  /**
+   * When true, all required official social platforms must be manually verified
+   * before the applicant is eligible for tournament participant selection.
+   */
+  socialFollowingRequired: boolean;
 }
 
 export interface EligibilityEvaluationResult {

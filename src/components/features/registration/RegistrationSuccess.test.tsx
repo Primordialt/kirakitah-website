@@ -16,6 +16,11 @@ describe("RegistrationSuccess — MVP messaging", () => {
         /Our team will review your application and contact you regarding the next steps\./i,
       ),
     ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        /Your social details have been recorded and will be reviewed with your application/i,
+      ),
+    ).toBeInTheDocument();
     expect(screen.getByText(/KG926-2026-ABCDEF/)).toBeInTheDocument();
     expect(screen.getByText(/keep this reference/i)).toBeInTheDocument();
 

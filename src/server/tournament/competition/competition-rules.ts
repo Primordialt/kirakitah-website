@@ -2,11 +2,11 @@
  * Finalized KG926 competition rules — kg926-v1
  * Qualification: single-elimination pods
  * Knockout: single-elimination Top 32 with manual R32 pairing
+ *
+ * Note: eligibility rules version (kg926-v2+) is independent of competition structure.
  */
 
-import { KG926_ELIGIBILITY_RULES_VERSION } from "@/server/tournament/eligibility/eligibility-types";
-
-export const KG926_COMPETITION_RULES_VERSION = KG926_ELIGIBILITY_RULES_VERSION;
+export const KG926_COMPETITION_RULES_VERSION = "kg926-v1" as const;
 
 export const KG926_QUALIFICATION_POD_COUNT = 32;
 export const KG926_QUALIFICATION_POSITIONS_PER_POD = 4;

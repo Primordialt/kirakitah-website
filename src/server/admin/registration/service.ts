@@ -6,6 +6,7 @@ import {
   registrationApplications,
   registrationGuardians,
 } from "@/server/db/schema";
+import { listSocialFollowsForApplication } from "@/server/registration/social-follow";
 import { serverEnv } from "@/server/env";
 import { decryptSensitiveValue } from "@/server/registration/pii";
 import { recordAuditEvent } from "@/server/audit/events";
@@ -56,6 +57,7 @@ export async function getAdminDashboardStats(): Promise<AdminDashboardStats> {
     .select({
       totalApplications: count(),
       pendingIdentityReviews: sql<number>`count(*) filter (where ${registrationApplications.identityVerificationStatus} = 'pending_review')`,
+      pendingSocialReviews: sql<number>`count(*) filter (where ${registrationApplications.socialFollowStatus} = 'pending_review')`,
       pendingContactVerification: sql<number>`count(*) filter (where ${registrationApplications.emailVerificationStatus} = 'pending' or ${registrationApplications.phoneVerificationStatus} = 'pending')`,
       underReview: sql<number>`count(*) filter (where ${registrationApplications.status} = 'under_review')`,
       approved: sql<number>`count(*) filter (where ${registrationApplications.status} = 'verified')`,
@@ -66,6 +68,7 @@ export async function getAdminDashboardStats(): Promise<AdminDashboardStats> {
   return {
     totalApplications: Number(totals?.totalApplications ?? 0),
     pendingIdentityReviews: Number(totals?.pendingIdentityReviews ?? 0),
+    pendingSocialReviews: Number(totals?.pendingSocialReviews ?? 0),
     pendingContactVerification: Number(totals?.pendingContactVerification ?? 0),
     underReview: Number(totals?.underReview ?? 0),
     approved: Number(totals?.approved ?? 0),
@@ -151,6 +154,7 @@ export async function listAdminApplications(query: ListApplicationsQuery): Promi
       status: registrationApplications.status,
       identityVerificationStatus:
         registrationApplications.identityVerificationStatus,
+      socialFollowStatus: registrationApplications.socialFollowStatus,
       emailVerificationStatus: registrationApplications.emailVerificationStatus,
       phoneVerificationStatus: registrationApplications.phoneVerificationStatus,
     })
@@ -221,6 +225,19 @@ export async function getAdminApplicationDetail(
       availability: row.availability,
     },
     socialHandles: row.socialHandles,
+    socialFollow: {
+      status: row.socialFollowStatus,
+      attestation: row.socialFollowAttestation,
+      attestationAt: row.socialFollowAttestationAt,
+      platforms: (await listSocialFollowsForApplication(row.id)).map((item) => ({
+        platform: item.platform,
+        applicantHandle: item.applicantHandle,
+        verificationStatus: item.verificationStatus,
+        verificationNotes: item.verificationNotes,
+        reviewedBy: item.reviewedBy,
+        reviewedAt: item.reviewedAt,
+      })),
+    },
     contactVerification: {
       emailStatus: row.emailVerificationStatus,
       emailVerifiedAt: row.emailVerifiedAt,
@@ -487,6 +504,55 @@ export async function listPendingIdentityReviews(options?: {
     pageSize: options?.pageSize,
     identityStatus: "pending_review",
   });
+}
+
+export async function listPendingSocialReviews(options?: {
+  page?: number;
+  pageSize?: number;
+}): Promise<{
+  items: AdminApplicationListItem[];
+  page: number;
+  pageSize: number;
+  total: number;
+}> {
+  const db = getDb();
+  const page = Math.max(1, options?.page ?? 1);
+  const pageSize = ALLOWED_PAGE_SIZES.has(options?.pageSize ?? 25)
+    ? (options?.pageSize ?? 25)
+    : 25;
+  const offset = (page - 1) * pageSize;
+  const where = eq(registrationApplications.socialFollowStatus, "pending_review");
+
+  const [totalRow] = await db
+    .select({ value: count() })
+    .from(registrationApplications)
+    .where(where);
+
+  const rows = await db
+    .select({
+      referenceId: registrationApplications.referenceId,
+      fullName: registrationApplications.fullName,
+      createdAt: registrationApplications.createdAt,
+      eventId: registrationApplications.eventId,
+      status: registrationApplications.status,
+      identityVerificationStatus:
+        registrationApplications.identityVerificationStatus,
+      socialFollowStatus: registrationApplications.socialFollowStatus,
+      emailVerificationStatus: registrationApplications.emailVerificationStatus,
+      phoneVerificationStatus: registrationApplications.phoneVerificationStatus,
+    })
+    .from(registrationApplications)
+    .where(where)
+    .orderBy(desc(registrationApplications.createdAt))
+    .limit(pageSize)
+    .offset(offset);
+
+  return {
+    items: rows,
+    page,
+    pageSize,
+    total: Number(totalRow?.value ?? 0),
+  };
 }
 
 export async function listAdminAuditEvents(options?: {

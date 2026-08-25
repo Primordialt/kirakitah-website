@@ -1,3 +1,5 @@
+import { officialSocialFooterLinks } from "@/config/social";
+
 export type NavigationItem = {
   label: string;
   href: string;
@@ -74,11 +76,7 @@ export const footerColumns: FooterColumn[] = [
   },
   {
     title: "Connect",
-    links: [
-      { label: "Instagram", href: null, external: true },
-      { label: "TikTok", href: null, external: true },
-      { label: "YouTube", href: null, external: true },
-    ],
+    links: officialSocialFooterLinks(),
   },
   {
     title: "Legal",

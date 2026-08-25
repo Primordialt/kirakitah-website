@@ -9,6 +9,7 @@ export interface AdminApplicationListItem {
   eventId: string;
   status: string;
   identityVerificationStatus: string;
+  socialFollowStatus: string;
   emailVerificationStatus: string;
   phoneVerificationStatus: string;
 }
@@ -16,6 +17,7 @@ export interface AdminApplicationListItem {
 export interface AdminDashboardStats {
   totalApplications: number;
   pendingIdentityReviews: number;
+  pendingSocialReviews: number;
   pendingContactVerification: number;
   underReview: number;
   approved: number;
@@ -47,6 +49,19 @@ export interface AdminApplicationDetail {
     availability: string[];
   };
   socialHandles: Record<string, string> | null;
+  socialFollow: {
+    status: string;
+    attestation: boolean;
+    attestationAt: string | null;
+    platforms: Array<{
+      platform: "instagram" | "tiktok" | "youtube";
+      applicantHandle: string;
+      verificationStatus: "pending" | "verified" | "rejected";
+      verificationNotes: string | null;
+      reviewedBy: string | null;
+      reviewedAt: string | null;
+    }>;
+  };
   contactVerification: {
     emailStatus: string;
     emailVerifiedAt: string | null;

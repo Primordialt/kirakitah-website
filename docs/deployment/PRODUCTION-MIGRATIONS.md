@@ -22,10 +22,19 @@ Never paste real `DATABASE_URL` values into documentation, tickets, chat, or com
 | 9 | `drizzle/0009_scheduling_and_policy.sql` | Match scheduling + competition policy history |
 | 10 | `drizzle/0010_phone_uniqueness.sql` | `phone_normalized` + active phone unique index |
 | 11 | `drizzle/0011_admin_password_auth.sql` | Admin password hash, lockout, login attempt rate limits, audit enum |
+| 12 | `drizzle/0012_social_follow_eligibility.sql` | Social follow attestation + per-platform manual review + kg926-v2 eligibility |
 
-Latest required for registration + admin login: **0011**.
+Latest required for registration + admin login + social follow eligibility: **0012**.
 
 No duplicate migration numbers in the repository. Order is deterministic by numeric filename prefix.
+
+### Migration 0012 notes
+
+- Adds `registration_social_follows` (unique application+platform)
+- Adds application-level `social_follow_status` / attestation columns
+- Backfills existing applications to `social_follow_status = pending_review` (does not remove participants)
+- Updates `event-kg926` eligibility rules to `kg926-v2` with `socialFollowingRequired: true`
+- Rollback: drop new table/columns/enums only after confirming no dependent code is deployed; prefer forward-fix migrations
 
 ## 2. Inspect current production migration state
 

@@ -85,6 +85,13 @@
       "when": 1720742400000,
       "tag": "0011_admin_password_auth",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1720828800000,
+      "tag": "0012_social_follow_eligibility",
+      "breakpoints": true
     }
   ]
 }

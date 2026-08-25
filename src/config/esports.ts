@@ -1,4 +1,5 @@
 import type { FooterLink } from "@/config/navigation";
+import { officialSocialFooterLinks } from "@/config/social";
 
 export interface EsportsCta {
   label: string;
@@ -337,8 +338,4 @@ export const esportsRulesSections: EsportsRuleSection[] = [
   },
 ];
 
-export const esportsSocialLinks: FooterLink[] = [
-  { label: "YouTube", href: null, external: true },
-  { label: "TikTok", href: null, external: true },
-  { label: "Instagram", href: null, external: true },
-];
+export const esportsSocialLinks: FooterLink[] = officialSocialFooterLinks();
