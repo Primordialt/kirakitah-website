@@ -285,6 +285,10 @@ export const adminAuditEventTypeEnum = pgEnum("admin_audit_event_type", [
   "ADMIN_LOGIN_SUCCESS",
   "ADMIN_LOGIN_FAILURE",
   "ADMIN_LOGOUT",
+  "ADMIN_CREATED",
+  "ADMIN_ROLE_CHANGED",
+  "ADMIN_ACTIVATED",
+  "ADMIN_DEACTIVATED",
   "IDENTITY_REVIEW_APPROVED",
   "IDENTITY_REVIEW_REJECTED",
   "APPLICATION_STATUS_CHANGED",
@@ -1107,6 +1111,9 @@ export const adminUsers = pgTable("admin_users", {
     mode: "string",
   }),
   createdAt: timestamp("created_at", { withTimezone: true, mode: "string" })
+    .notNull()
+    .defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true, mode: "string" })
     .notNull()
     .defaultNow(),
   lastLoginAt: timestamp("last_login_at", { withTimezone: true, mode: "string" }),

@@ -21,6 +21,7 @@ import {
 } from "@/server/admin/registration/transitions";
 import { ParticipantSelectionError } from "@/server/tournament/participant-service";
 import { CompetitionOperationsError } from "@/server/tournament/competition/errors";
+import { AdminUserManagementError } from "@/server/admin/users/service";
 
 export function adminJson(body: unknown, status: number, requestId: string) {
   return NextResponse.json(body, {
@@ -79,6 +80,17 @@ export async function withAdminApi(
         error.status,
         requestId,
       );
+    }
+    if (error instanceof AdminUserManagementError) {
+      const code: ApiErrorCode =
+        error.code === "NOT_FOUND"
+          ? "NOT_FOUND"
+          : error.code === "CONFLICT"
+            ? "CONFLICT"
+            : error.code === "FORBIDDEN"
+              ? "FORBIDDEN"
+              : "VALIDATION_ERROR";
+      return adminJson(apiError(code, error.message), error.status, requestId);
     }
     if (error instanceof CompetitionOperationsError) {
       const code: ApiErrorCode =

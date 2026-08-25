@@ -21,7 +21,11 @@ describe("admin permissions", () => {
   it("grants reviewer identity permissions without admin management", () => {
     expect(roleHasPermission("REVIEWER", "identity:review")).toBe(true);
     expect(roleHasPermission("REVIEWER", "identity:reveal")).toBe(true);
+    expect(roleHasPermission("REVIEWER", "applications:status")).toBe(true);
     expect(roleHasPermission("REVIEWER", "admin:manage")).toBe(false);
+    expect(roleHasPermission("REVIEWER", "tournament:participant_select")).toBe(
+      false,
+    );
   });
 
   it("limits support from sensitive identity reveal and review", () => {

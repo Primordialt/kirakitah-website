@@ -24,8 +24,9 @@ Never paste real `DATABASE_URL` values into documentation, tickets, chat, or com
 | 11 | `drizzle/0011_admin_password_auth.sql` | Admin password hash, lockout, login attempt rate limits, audit enum |
 | 12 | `drizzle/0012_social_follow_eligibility.sql` | Social follow attestation + per-platform manual review + kg926-v2 eligibility |
 | 13 | `drizzle/0013_kg926_social_channels.sql` | Add `x` social platform; KG926 required set X+Instagram+TikTok; eligibility `kg926-v3` |
+| 14 | `drizzle/0014_admin_user_management.sql` | Admin management audit events + `admin_users.updated_at` |
 
-Latest required for registration + admin login + social follow eligibility: **0013**.
+Latest required for registration + admin login + social follow eligibility + admin user management: **0014**.
 
 No duplicate migration numbers in the repository. Order is deterministic by numeric filename prefix.
 

@@ -1,3 +1,5 @@
+import { getAdminAuthProvider } from "@/server/admin/auth/providers";
+import { isAdminUserActive } from "@/server/admin/users/service";
 import { serverEnv } from "@/server/env";
 import {
   AdminAuthenticationError,
@@ -10,7 +12,6 @@ import {
   requireAdminSession,
 } from "@/server/admin/auth/session";
 import type { AdminSession } from "@/server/admin/auth/types";
-import { getAdminAuthProvider } from "@/server/admin/auth/providers";
 
 export {
   getAdminAuthProvider,
@@ -29,11 +30,32 @@ export {
 export { ADMIN_SESSION_COOKIE as ADMIN_SESSION_COOKIE_NAME } from "@/server/admin/auth/constants";
 export type { AdminUser, AdminSession, AdminAuthProvider } from "@/server/admin/auth/types";
 
+async function assertSessionStillActive(session: AdminSession): Promise<void> {
+  const provider = getAdminAuthProvider();
+  if (provider.providerId !== "database" || !serverEnv.databaseUrl) {
+    return;
+  }
+  // Mock / unavailable providers do not persist accounts for live checks.
+  try {
+    const active = await isAdminUserActive(session.user.id);
+    if (!active) {
+      throw new AdminAuthenticationError("Administrator session is no longer valid.");
+    }
+  } catch (error) {
+    if (error instanceof AdminAuthenticationError) {
+      throw error;
+    }
+    // Fail closed if the account cannot be verified in database mode.
+    throw new AdminAuthenticationError("Administrator session could not be verified.");
+  }
+}
+
 export async function requireAdminApiSession(
   request: Request,
   permission?: AdminPermission,
 ): Promise<AdminSession> {
   const session = requireAdminSession(getAdminSessionFromRequest(request));
+  await assertSessionStillActive(session);
   if (permission) {
     assertPermission(session.user.role, permission);
   }
@@ -44,6 +66,7 @@ export async function requireAdminPageSession(
   permission?: AdminPermission,
 ): Promise<AdminSession> {
   const session = requireAdminSession(await getAdminSessionFromCookies());
+  await assertSessionStillActive(session);
   if (permission) {
     assertPermission(session.user.role, permission);
   }

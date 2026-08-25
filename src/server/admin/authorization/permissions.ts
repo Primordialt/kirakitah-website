@@ -105,6 +105,7 @@ const ROLE_PERMISSIONS: Record<AdminRole, readonly AdminPermission[]> = {
     "dashboard:view",
     "applications:list",
     "applications:view",
+    "applications:status",
     "identity:view_masked",
     "identity:reveal",
     "identity:review",

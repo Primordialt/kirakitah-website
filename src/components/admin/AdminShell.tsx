@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import {
   AdminAuthorizationError,
   AdminAuthenticationError,
+  roleHasPermission,
 } from "@/server/admin/authorization/permissions";
 import { requireAdminPageSession } from "@/server/admin/auth";
 import type { AdminPermission } from "@/server/admin/authorization/permissions";
@@ -32,6 +33,18 @@ export function AdminShell({
   session: AdminSession;
   children: React.ReactNode;
 }) {
+  const canManageAdmins = roleHasPermission(session.user.role, "admin:manage");
+  const canReviewIdentity = roleHasPermission(
+    session.user.role,
+    "identity:review",
+  );
+  const canReviewSocial = roleHasPermission(session.user.role, "social:review");
+  const canViewAudit = roleHasPermission(session.user.role, "audit:view");
+  const canViewTournaments = roleHasPermission(
+    session.user.role,
+    "tournament:view",
+  );
+
   return (
     <div className="min-h-screen bg-background text-text-primary">
       <a
@@ -63,36 +76,54 @@ export function AdminShell({
             >
               Applications
             </Link>
-            <Link
-              className="hover:text-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-border-focus"
-              href="/admin/reviews/identity"
-            >
-              Identity reviews
-            </Link>
-            <Link
-              className="hover:text-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-border-focus"
-              href="/admin/reviews/social"
-            >
-              Social reviews
-            </Link>
-            <Link
-              className="hover:text-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-border-focus"
-              href="/admin/audit"
-            >
-              Audit
-            </Link>
-            <Link
-              className="hover:text-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-border-focus"
-              href="/admin/tournaments"
-            >
-              Tournaments
-            </Link>
-            <Link
-              className="hover:text-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-border-focus"
-              href="/admin/tournaments/participants"
-            >
-              Participants
-            </Link>
+            {canReviewIdentity ? (
+              <Link
+                className="hover:text-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-border-focus"
+                href="/admin/reviews/identity"
+              >
+                Identity reviews
+              </Link>
+            ) : null}
+            {canReviewSocial ? (
+              <Link
+                className="hover:text-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-border-focus"
+                href="/admin/reviews/social"
+              >
+                Social reviews
+              </Link>
+            ) : null}
+            {canViewAudit ? (
+              <Link
+                className="hover:text-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-border-focus"
+                href="/admin/audit"
+              >
+                Audit
+              </Link>
+            ) : null}
+            {canViewTournaments ? (
+              <>
+                <Link
+                  className="hover:text-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-border-focus"
+                  href="/admin/tournaments"
+                >
+                  Tournaments
+                </Link>
+                <Link
+                  className="hover:text-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-border-focus"
+                  href="/admin/tournaments/participants"
+                >
+                  Participants
+                </Link>
+              </>
+            ) : null}
+            {canManageAdmins ? (
+              <Link
+                className="hover:text-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-border-focus"
+                href="/admin/users"
+              >
+                Administrators
+              </Link>
+            ) : null}
             <AdminLogoutButton />
           </nav>
         </div>
