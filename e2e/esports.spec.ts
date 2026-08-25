@@ -69,7 +69,13 @@ test.describe("Registration", () => {
     await page.goto("/esports/register");
 
     await expect(
-      page.getByRole("heading", { level: 1, name: /YOUR GAME\. YOUR SKILL\. YOUR SHOT\./i }),
+      page.getByRole("heading", { level: 1, name: /REGISTER FOR KIRAKITAH GAMING 926/i }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: /BEFORE YOU APPLY/i }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("group", { name: /FOLLOW KIRAKITAH/i }),
     ).toBeVisible();
 
     await page.getByLabel("Full name").fill("E2E Test Player");
@@ -95,16 +101,22 @@ test.describe("Registration", () => {
     await page.getByLabel(/Instagram username/i).fill("e2e_ig");
     await page.getByLabel(/TikTok username/i).fill("e2e_tt");
     await page
-      .getByText(/I confirm that I follow KIRAKITAH on all official social platforms listed above/i)
+      .getByText(/I confirm that I follow KIRAKITAH on all three official social platforms listed above/i)
       .click();
     await page.getByLabel("Mobile platform").selectOption("android");
     await page.getByLabel("Time zone").selectOption("Africa/Lagos");
     await page.getByText("Flexible — will adapt to schedule").click();
-    await page.getByText("I have read and accept the tournament rules").click();
-    await page.getByText("I accept the terms and conditions").click();
-    await page.getByText("I accept the privacy policy").click();
-    await page.getByText("I agree to the code of conduct").click();
-    await page.getByText("I consent to media coverage of tournament participation").click();
+    await page
+      .getByLabel(/I have read and accept the.*tournament rules/i)
+      .check({ force: true });
+    await page
+      .getByLabel(/I accept the.*terms and conditions/i)
+      .check({ force: true });
+    await page.getByLabel(/I accept the.*privacy policy/i).check({ force: true });
+    await page.getByLabel(/I agree to the.*code of conduct/i).check({ force: true });
+    await page
+      .getByLabel(/I consent to media coverage of tournament participation/i)
+      .check({ force: true });
 
     await page.getByRole("button", { name: /SUBMIT APPLICATION/i }).click();
 

@@ -174,7 +174,7 @@ export const registrationSchema = z
     socialFollowAttestation: z.literal(true, {
       errorMap: () => ({
         message:
-          "Confirm that you follow KIRAKITAH on all official social platforms",
+          "Confirm that you follow KIRAKITAH on all three official social platforms",
       }),
     }),
     guardian: guardianSchema.optional(),

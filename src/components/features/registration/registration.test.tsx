@@ -81,7 +81,7 @@ async function fillRequiredRegistrationFields(user: ReturnType<typeof userEvent.
   await user.type(screen.getByLabelText(/Instagram username/i), "test_ig");
   await user.type(screen.getByLabelText(/TikTok username/i), "test_tt");
   await user.click(
-    screen.getByLabelText(/I confirm that I follow KIRAKITAH on all official social platforms/i),
+    screen.getByLabelText(/I confirm that I follow KIRAKITAH on all three official social platforms/i),
   );
   await user.selectOptions(screen.getByLabelText(/Mobile platform/i), "android");
   await user.selectOptions(screen.getByLabelText(/Time zone/i), "Africa/Lagos");

@@ -37,9 +37,8 @@ export function RegistrationSuccess({
         Our team will review your application and contact you regarding the next
         steps.
       </p>
-      <p className="text-body-sm text-text-muted">
-        Your social details have been recorded and will be reviewed with your
-        application.
+      <p className="text-body-sm font-medium text-text-primary">
+        Participation is subject to eligibility and manual review.
       </p>
       {referenceId ? (
         <p className="text-body-sm text-text-muted">

@@ -1,3 +1,5 @@
+import { BeforeYouApply } from "@/components/features/registration/BeforeYouApply";
+import { EligibilityRequirements } from "@/components/features/eligibility";
 import { RegistrationForm } from "@/components/features/registration";
 import { SectionShell } from "@/components/sections/esports/SectionShell";
 import { COMPETITION_NAME } from "@/config/competition";
@@ -42,6 +44,13 @@ export default function EsportsRegisterPage() {
           <p className="mt-2 text-body text-text-muted">
             {esportsRegisterHero.copy}
           </p>
+        </div>
+        <BeforeYouApply />
+        <div className="mb-8">
+          <EligibilityRequirements
+            id="register-eligibility-requirements"
+            compact
+          />
         </div>
         <RegistrationForm />
       </SectionShell>

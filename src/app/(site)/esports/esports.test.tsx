@@ -77,4 +77,41 @@ describe("EsportsPage", () => {
       "/esports/faq",
     );
   });
+
+  it("communicates eligibility, social requirement and application vs participation", async () => {
+    const page = await EsportsPage();
+    render(page);
+
+    expect(
+      screen.getByRole("heading", { name: /HOW TO PARTICIPATE/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: /REQUIRED BEFORE PARTICIPATION/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getAllByRole("heading", { name: /ELIGIBILITY REQUIREMENTS/i }).length,
+    ).toBeGreaterThan(0);
+
+    expect(screen.getAllByText("10+").length).toBeGreaterThan(0);
+    expect(screen.getByText(/Required for ages 10–17/i)).toBeInTheDocument();
+    expect(screen.getAllByText("Manual review").length).toBeGreaterThan(0);
+    expect(screen.getByText("X + Instagram + TikTok")).toBeInTheDocument();
+    expect(
+      screen.getByText(/Final participant selection is separate/i),
+    ).toBeInTheDocument();
+
+    expect(
+      screen.getAllByText(
+        /Submitting an application does not automatically qualify you for the tournament/i,
+      ).length,
+    ).toBeGreaterThan(0);
+    expect(
+      screen.getByText(/Your follows are manually verified by the KIRAKITAH team/i),
+    ).toBeInTheDocument();
+
+    expect(screen.queryByText(/YouTube \+/i)).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/follows are automatically verified/i),
+    ).not.toBeInTheDocument();
+  });
 });
