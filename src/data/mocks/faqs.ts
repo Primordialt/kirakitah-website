@@ -13,7 +13,7 @@ export const mockFaqs: FAQ[] = [
     id: "faq-esports-001",
     question: "Who can participate?",
     answer:
-      "Players aged 10 and above who can compete in eFootball Mobile on a supported mobile device. Participants under 18 require parent or guardian consent.",
+      "Players aged 10 and above who can compete in eFootball Mobile on a supported mobile device. Applicants aged 10–17 require parent or guardian information. You must also follow KIRAKITAH on X, Instagram and TikTok and pass manual review before participation.",
     category: "esports",
     order: 1,
   },
@@ -21,9 +21,33 @@ export const mockFaqs: FAQ[] = [
     id: "faq-esports-002",
     question: "What age do I need to be?",
     answer:
-      "The minimum age to participate in KIRAKITAH GAMING 926 is 10. Participants under 18 must provide parent or guardian information during registration.",
+      "The minimum age to participate in KIRAKITAH GAMING 926 is 10. Applicants aged 10–17 must provide parent or guardian information during registration.",
     category: "esports",
     order: 2,
+  },
+  {
+    id: "faq-esports-015",
+    question: "What do I need before I can participate?",
+    answer:
+      "You must be at least 10 years old, meet the tournament requirements, complete the application process, provide the required information, follow KIRAKITAH on X, Instagram and TikTok, and pass our manual review process.",
+    category: "esports",
+    order: 15,
+  },
+  {
+    id: "faq-esports-016",
+    question: "Can I apply before my social follows are verified?",
+    answer:
+      "Yes. You can submit your application first. However, your social follows must be manually verified before you can become eligible to participate.",
+    category: "esports",
+    order: 16,
+  },
+  {
+    id: "faq-esports-017",
+    question: "Does submitting the application guarantee participation?",
+    answer:
+      "No. An application is only the first step. Your application, identity and social-follow status must satisfy the required checks before you can become eligible, and participant selection is a separate step.",
+    category: "esports",
+    order: 17,
   },
   {
     id: "faq-esports-003",

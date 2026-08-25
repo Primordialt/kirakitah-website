@@ -1,5 +1,5 @@
 import type { FooterLink } from "@/config/navigation";
-import { officialSocialFooterLinks } from "@/config/social";
+import { REQUIRED_SOCIAL_ACCOUNTS, officialSocialFooterLinks } from "@/config/social";
 
 export interface EsportsCta {
   label: string;
@@ -198,8 +198,9 @@ export const esportsWhoCanEnter = {
   heading: "WHO CAN ENTER?",
   paragraphs: [
     "KIRAKITAH Gaming 926 is open to players aged 10 and above, subject to the official tournament rules and eligibility requirements.",
-    "Players under 18 will require appropriate parent or guardian consent.",
-    "Participants must be able to compete using a supported mobile device and meet all tournament requirements.",
+    "Applicants aged 10–17 must provide parent or guardian information.",
+    "You must follow KIRAKITAH on X, Instagram and TikTok. Follows are manually verified before participation.",
+    "Submitting an application does not automatically qualify you for the tournament. Eligibility and participant selection are separate steps.",
   ],
   cta: { label: "READ FULL RULES", href: "/esports/rules" } satisfies EsportsCta,
 } as const;
@@ -213,9 +214,10 @@ export const esportsWatch = {
   title: "WATCH THE ACTION",
   copy: "Selected KIRAKITAH Gaming 926 matches will be featured through KIRAKITAH's official broadcast and social channels. Follow the competition, watch selected matches live and catch the best moments throughout the tournament.",
   platforms: [
-    { label: "X", href: "https://x.com/Kirakitah" },
-    { label: "Instagram", href: "https://www.instagram.com/kirakitah" },
-    { label: "TikTok", href: "https://www.tiktok.com/@kirakitah926" },
+    ...REQUIRED_SOCIAL_ACCOUNTS.map((account) => ({
+      label: account.label,
+      href: account.href,
+    })),
     { label: "YouTube", href: null },
   ] satisfies EsportsPlatform[],
 } as const;
@@ -224,9 +226,10 @@ export const esportsHighlights = {
   title: "CATCH THE MOMENTS",
   copy: "From unbelievable goals to unexpected comebacks, follow the best moments from the tournament across KIRAKITAH's social channels.",
   platforms: [
-    { label: "X", href: "https://x.com/Kirakitah" },
-    { label: "Instagram", href: "https://www.instagram.com/kirakitah" },
-    { label: "TikTok", href: "https://www.tiktok.com/@kirakitah926" },
+    ...REQUIRED_SOCIAL_ACCOUNTS.map((account) => ({
+      label: account.label,
+      href: account.href,
+    })),
     { label: "YouTube", href: null },
   ] satisfies EsportsPlatform[],
 } as const;
@@ -296,10 +299,15 @@ export const registrationAvailabilityOptions = [
 export const esportsRulesSections: EsportsRuleSection[] = [
   {
     id: "eligibility",
-    title: "Eligibility",
+    title: "Eligibility & Participation",
     content: [
-      "KIRAKITAH GAMING 926 is open to players who meet the minimum age requirement and can compete in eFootball Mobile on a supported mobile device.",
-      "Participation is subject to application review and verification by KIRAKITAH.",
+      "Minimum age: 10 years old.",
+      "Applicants aged 10–17 must provide parent or guardian information and consent during registration.",
+      "Identity information is subject to manual review by the KIRAKITAH team.",
+      "Applicants must follow KIRAKITAH on X, Instagram and TikTok. Social follows are manually verified before participation.",
+      "Submitting an application does not equal tournament participation.",
+      "Meeting eligibility requirements does not automatically equal participant selection. Participant selection is a separate admin operation.",
+      "See also: Age, Registration and Safeguarding sections below.",
     ],
   },
   {
@@ -307,15 +315,16 @@ export const esportsRulesSections: EsportsRuleSection[] = [
     title: "Age",
     content: [
       "The minimum age to participate is 10 years old.",
-      "Participants under 18 must provide parent or guardian information and consent during registration.",
+      "Applicants aged 10–17 must provide parent or guardian information and consent during registration.",
     ],
   },
   {
     id: "registration",
     title: "Registration",
     content: [
-      "Registration is an application process. Submitting a registration form does not guarantee participation until verified by KIRAKITAH.",
-      "Registration details will be confirmed during the application process.",
+      "Registration is an application process. Submitting a registration form does not guarantee participation.",
+      "You can submit your application before social verification is completed, but you cannot participate until required social follows have been manually verified and remaining eligibility checks are satisfied.",
+      "Application statuses include APPLICATION RECEIVED, APPLICATION UNDER REVIEW, IDENTITY REVIEW and SOCIAL REVIEW before ELIGIBILITY and PARTICIPANT SELECTION.",
     ],
   },
   {

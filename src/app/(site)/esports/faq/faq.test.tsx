@@ -25,6 +25,18 @@ describe("EsportsFaqPage", () => {
 
     expect(screen.getByText("Who can participate?")).toBeInTheDocument();
     expect(screen.getByText("What game are we playing?")).toBeInTheDocument();
+    expect(
+      screen.getByText("What do I need before I can participate?"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Can I apply before my social follows are verified?"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Does submitting the application guarantee participation?"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: /ELIGIBILITY REQUIREMENTS/i }),
+    ).toBeInTheDocument();
   });
 
   it("opens and closes accordion items with keyboard", async () => {

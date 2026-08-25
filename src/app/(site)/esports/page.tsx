@@ -1,7 +1,10 @@
+import { EligibilityRequirements } from "@/components/features/eligibility";
 import {
   EsportsHero,
   TournamentIntro,
   TournamentDetails,
+  HowToParticipate,
+  SocialRequirementCallout,
   TournamentJourney,
   Qualification,
   WhyEnter,
@@ -14,6 +17,7 @@ import {
   RulesPreview,
   FAQPreview,
   EsportsFinalCTA,
+  SectionShell,
 } from "@/components/sections/esports";
 import { esportsFaqPreview } from "@/config/esports";
 import { siteConfig } from "@/config/site";
@@ -59,6 +63,15 @@ export default async function EsportsPage() {
       <EsportsHero />
       <TournamentIntro />
       <TournamentDetails tournament={tournament} />
+      <HowToParticipate />
+      <SocialRequirementCallout />
+      <SectionShell
+        id="eligibility-overview"
+        className="border-t border-border bg-surface/40"
+        ariaLabelledby="eligibility-requirements-heading"
+      >
+        <EligibilityRequirements />
+      </SectionShell>
       <TournamentJourney />
       <Qualification />
       <WhyEnter />

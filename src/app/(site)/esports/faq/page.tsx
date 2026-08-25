@@ -4,6 +4,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui";
+import { EligibilityRequirements } from "@/components/features/eligibility";
 import { SectionShell } from "@/components/sections/esports/SectionShell";
 import { COMPETITION_NAME } from "@/config/competition";
 import { siteConfig } from "@/config/site";
@@ -44,6 +45,9 @@ export default async function EsportsFaqPage() {
           Answers to common questions about the inaugural KIRAKITAH Gaming
           championship.
         </p>
+      </div>
+      <div className="mb-10">
+        <EligibilityRequirements id="faq-eligibility-requirements" compact />
       </div>
       <Accordion type="single" collapsible>
         {faqs.map((faq) => (

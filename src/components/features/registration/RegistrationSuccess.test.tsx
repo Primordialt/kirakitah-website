@@ -17,9 +17,7 @@ describe("RegistrationSuccess — MVP messaging", () => {
       ),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(
-        /Your social details have been recorded and will be reviewed with your application/i,
-      ),
+      screen.getByText(/Participation is subject to eligibility and manual review/i),
     ).toBeInTheDocument();
     expect(screen.getByText(/KG926-2026-ABCDEF/)).toBeInTheDocument();
     expect(screen.getByText(/keep this reference/i)).toBeInTheDocument();
@@ -33,5 +31,7 @@ describe("RegistrationSuccess — MVP messaging", () => {
     expect(screen.queryByText(/you qualified/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/You are confirmed/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/identity has been verified/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/You're registered for the tournament/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/follows have been verified/i)).not.toBeInTheDocument();
   });
 });
