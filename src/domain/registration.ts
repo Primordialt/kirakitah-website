@@ -51,9 +51,9 @@ export interface RegistrationSubmission {
   timezone: string;
   availability: string[];
   socialHandles: {
+    x: string;
     instagram: string;
     tiktok: string;
-    youtube: string;
   };
   socialFollowAttestation: true;
   guardian?: GuardianInfo;
@@ -167,9 +167,9 @@ export const registrationSchema = z
       .array(z.string())
       .min(1, "At least one availability slot is required"),
     socialHandles: z.object({
+      x: z.string().min(1, "X username is required"),
       instagram: z.string().min(1, "Instagram username is required"),
       tiktok: z.string().min(1, "TikTok username is required"),
-      youtube: z.string().min(1, "YouTube handle / channel name is required"),
     }),
     socialFollowAttestation: z.literal(true, {
       errorMap: () => ({
@@ -247,9 +247,9 @@ export function toRegistrationSubmission(
     timezone: data.timezone,
     availability: data.availability,
     socialHandles: {
+      x: data.socialHandles.x.trim(),
       instagram: data.socialHandles.instagram.trim(),
       tiktok: data.socialHandles.tiktok.trim(),
-      youtube: data.socialHandles.youtube.trim(),
     },
     socialFollowAttestation: true,
     guardian: options.includeGuardian ? data.guardian : undefined,

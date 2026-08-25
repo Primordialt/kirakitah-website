@@ -45,6 +45,7 @@ export const socialPlatformEnum = pgEnum("social_platform", [
   "instagram",
   "tiktok",
   "youtube",
+  "x",
 ]);
 
 export const socialPlatformVerificationStatusEnum = pgEnum(

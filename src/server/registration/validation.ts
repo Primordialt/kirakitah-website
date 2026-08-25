@@ -237,17 +237,18 @@ export async function parseRegistrationFormData(
     consents = consentsResult.data;
   }
 
-  const requiredSocialPlatforms = ["instagram", "tiktok", "youtube"] as const;
+  const requiredSocialPlatforms = ["x", "instagram", "tiktok"] as const;
   const normalizedSocialHandles: Record<string, string> = {};
   for (const platform of requiredSocialPlatforms) {
     const handle = socialHandles?.[platform]?.trim();
     if (!handle) {
-      addIssue(
-        `socialHandles.${platform}`,
-        platform === "youtube"
-          ? "YouTube handle / channel name is required"
-          : `${platform[0]!.toUpperCase()}${platform.slice(1)} username is required`,
-      );
+      const label =
+        platform === "x"
+          ? "X username is required"
+          : platform === "instagram"
+            ? "Instagram username is required"
+            : "TikTok username is required";
+      addIssue(`socialHandles.${platform}`, label);
     } else {
       normalizedSocialHandles[platform] = handle;
     }

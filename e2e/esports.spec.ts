@@ -91,9 +91,9 @@ test.describe("Registration", () => {
     });
 
     await page.getByLabel(/Gamer Tag/i).fill("E2EPlayer");
+    await page.getByLabel(/X username/i).fill("e2e_x");
     await page.getByLabel(/Instagram username/i).fill("e2e_ig");
     await page.getByLabel(/TikTok username/i).fill("e2e_tt");
-    await page.getByLabel(/YouTube handle \/ channel name/i).fill("e2e_yt");
     await page
       .getByText(/I confirm that I follow KIRAKITAH on all official social platforms listed above/i)
       .click();

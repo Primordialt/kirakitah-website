@@ -51,9 +51,9 @@ function buildRegistrationFormData(
   formData.append("eventId", data.eventId);
 
   const socialHandles = {
+    x: data.socialHandles.x,
     instagram: data.socialHandles.instagram,
     tiktok: data.socialHandles.tiktok,
-    youtube: data.socialHandles.youtube,
   };
   formData.append("socialHandles", JSON.stringify(socialHandles));
   formData.append(

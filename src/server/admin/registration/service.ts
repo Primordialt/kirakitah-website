@@ -7,6 +7,7 @@ import {
   registrationGuardians,
 } from "@/server/db/schema";
 import { listSocialFollowsForApplication } from "@/server/registration/social-follow";
+import { REQUIRED_SOCIAL_PLATFORMS } from "@/config/social";
 import { serverEnv } from "@/server/env";
 import { decryptSensitiveValue } from "@/server/registration/pii";
 import { recordAuditEvent } from "@/server/audit/events";
@@ -229,14 +230,18 @@ export async function getAdminApplicationDetail(
       status: row.socialFollowStatus,
       attestation: row.socialFollowAttestation,
       attestationAt: row.socialFollowAttestationAt,
-      platforms: (await listSocialFollowsForApplication(row.id)).map((item) => ({
-        platform: item.platform,
-        applicantHandle: item.applicantHandle,
-        verificationStatus: item.verificationStatus,
-        verificationNotes: item.verificationNotes,
-        reviewedBy: item.reviewedBy,
-        reviewedAt: item.reviewedAt,
-      })),
+      platforms: (await listSocialFollowsForApplication(row.id))
+        .filter((item) =>
+          (REQUIRED_SOCIAL_PLATFORMS as readonly string[]).includes(item.platform),
+        )
+        .map((item) => ({
+          platform: item.platform,
+          applicantHandle: item.applicantHandle,
+          verificationStatus: item.verificationStatus,
+          verificationNotes: item.verificationNotes,
+          reviewedBy: item.reviewedBy,
+          reviewedAt: item.reviewedAt,
+        })),
     },
     contactVerification: {
       emailStatus: row.emailVerificationStatus,

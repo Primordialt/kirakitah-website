@@ -4,26 +4,26 @@ import { roleHasPermission } from "@/server/admin/authorization/permissions";
 
 describe("social follow status derivation", () => {
   it("is pending when platforms are incomplete", () => {
-    expect(deriveApplicationSocialFollowStatus(["verified", "verified"])).toBe(
+    expect(deriveApplicationSocialFollowStatus(["verified", "verified"], 3)).toBe(
       "pending_review",
     );
   });
 
-  it("is pending when any platform is pending", () => {
+  it("is pending when any required platform is pending", () => {
     expect(
-      deriveApplicationSocialFollowStatus(["verified", "pending", "verified"]),
+      deriveApplicationSocialFollowStatus(["verified", "pending", "verified"], 3),
     ).toBe("pending_review");
   });
 
-  it("is rejected when any platform is rejected", () => {
+  it("is rejected when any required platform is rejected", () => {
     expect(
-      deriveApplicationSocialFollowStatus(["verified", "rejected", "verified"]),
+      deriveApplicationSocialFollowStatus(["verified", "rejected", "verified"], 3),
     ).toBe("rejected");
   });
 
-  it("is verified when all required platforms are verified", () => {
+  it("is verified when all three required platforms are verified", () => {
     expect(
-      deriveApplicationSocialFollowStatus(["verified", "verified", "verified"]),
+      deriveApplicationSocialFollowStatus(["verified", "verified", "verified"], 3),
     ).toBe("verified");
   });
 });

@@ -2,7 +2,7 @@
 
 import { Checkbox, Input } from "@/components/ui";
 import { COMPETITION_NAME } from "@/config/competition";
-import { OFFICIAL_SOCIAL_ACCOUNTS } from "@/config/social";
+import { REQUIRED_SOCIAL_ACCOUNTS } from "@/config/social";
 import { Controller } from "react-hook-form";
 import type { FormSectionProps } from "./types";
 
@@ -11,18 +11,12 @@ export function SocialInformation({ register, control, errors }: FormSectionProp
     <fieldset className="flex flex-col gap-5">
       <legend className="text-h4 text-text-primary">SOCIALS</legend>
       <p className="text-body-sm text-text-secondary">
-        To participate in KIRAKITAH tournaments, you must follow KIRAKITAH on all
-        official social platforms. Following KIRAKITAH on all official social
-        platforms is required before participating in the tournament.
-      </p>
-      <p className="text-body-sm text-text-muted">
-        Provide your usernames below. Our team will manually review that you
-        follow the official KIRAKITAH accounts. Submitting this form does not
-        verify your follows.
+        To participate in {COMPETITION_NAME}, follow KIRAKITAH on the official
+        social platforms listed below and provide your usernames.
       </p>
 
       <ul className="space-y-2 text-body-sm">
-        {OFFICIAL_SOCIAL_ACCOUNTS.map((account) => (
+        {REQUIRED_SOCIAL_ACCOUNTS.map((account) => (
           <li key={account.platform}>
             <span className="font-medium text-text-primary">{account.label}: </span>
             {account.href ? (
@@ -32,7 +26,7 @@ export function SocialInformation({ register, control, errors }: FormSectionProp
                 rel="noopener noreferrer"
                 className="text-accent underline-offset-2 hover:underline"
               >
-                Official KIRAKITAH {account.label}
+                {account.href.replace(/^https?:\/\//, "")}
               </a>
             ) : (
               <span className="text-text-muted">
@@ -44,7 +38,16 @@ export function SocialInformation({ register, control, errors }: FormSectionProp
         ))}
       </ul>
 
-      {OFFICIAL_SOCIAL_ACCOUNTS.map((account) => (
+      <p className="text-body-sm text-text-secondary">
+        Following KIRAKITAH on all official social platforms listed above is
+        required before participating in the tournament.
+      </p>
+      <p className="text-body-sm text-text-muted">
+        Our team will manually review that you follow these accounts. Submitting
+        this form does not verify your follows.
+      </p>
+
+      {REQUIRED_SOCIAL_ACCOUNTS.map((account) => (
         <Input
           key={account.platform}
           label={account.handleFieldLabel}
@@ -68,7 +71,7 @@ export function SocialInformation({ register, control, errors }: FormSectionProp
             onBlur={onBlur}
             onChange={(event) => onChange(event.target.checked)}
             error={errors.socialFollowAttestation?.message}
-            label={`I confirm that I follow KIRAKITAH on all official social platforms listed above.`}
+            label="I confirm that I follow KIRAKITAH on all official social platforms listed above."
             description={`Required to participate in ${COMPETITION_NAME}. This attestation is not automatic verification.`}
           />
         )}

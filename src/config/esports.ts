@@ -213,9 +213,10 @@ export const esportsWatch = {
   title: "WATCH THE ACTION",
   copy: "Selected KIRAKITAH Gaming 926 matches will be featured through KIRAKITAH's official broadcast and social channels. Follow the competition, watch selected matches live and catch the best moments throughout the tournament.",
   platforms: [
-    { label: "Watch on YouTube", href: null },
-    { label: "Follow on TikTok", href: null },
-    { label: "Follow on Instagram", href: null },
+    { label: "X", href: "https://x.com/Kirakitah" },
+    { label: "Instagram", href: "https://www.instagram.com/kirakitah" },
+    { label: "TikTok", href: "https://www.tiktok.com/@kirakitah926" },
+    { label: "YouTube", href: null },
   ] satisfies EsportsPlatform[],
 } as const;
 
@@ -223,9 +224,10 @@ export const esportsHighlights = {
   title: "CATCH THE MOMENTS",
   copy: "From unbelievable goals to unexpected comebacks, follow the best moments from the tournament across KIRAKITAH's social channels.",
   platforms: [
+    { label: "X", href: "https://x.com/Kirakitah" },
+    { label: "Instagram", href: "https://www.instagram.com/kirakitah" },
+    { label: "TikTok", href: "https://www.tiktok.com/@kirakitah926" },
     { label: "YouTube", href: null },
-    { label: "TikTok", href: null },
-    { label: "Instagram", href: null },
   ] satisfies EsportsPlatform[],
 } as const;
 

@@ -77,12 +77,9 @@ async function fillRequiredRegistrationFields(user: ReturnType<typeof userEvent.
   await user.upload(playerPhotoInput, createTestFile("player-photo.jpg", "image/jpeg"));
 
   await user.type(screen.getByLabelText(/Gamer Tag/i), "TestGamer");
+  await user.type(screen.getByLabelText(/X username/i), "test_x");
   await user.type(screen.getByLabelText(/Instagram username/i), "test_ig");
   await user.type(screen.getByLabelText(/TikTok username/i), "test_tt");
-  await user.type(
-    screen.getByLabelText(/YouTube handle \/ channel name/i),
-    "test_yt",
-  );
   await user.click(
     screen.getByLabelText(/I confirm that I follow KIRAKITAH on all official social platforms/i),
   );
@@ -131,9 +128,9 @@ describe("registration domain", () => {
       timezone: "Africa/Lagos",
       availability: ["flexible"],
       socialHandles: {
+        x: "test_x",
         instagram: "test_ig",
         tiktok: "test_tt",
-        youtube: "test_yt",
       },
       socialFollowAttestation: true,
       consents: {
@@ -172,7 +169,7 @@ describe("registration domain", () => {
         socialHandles: {
           instagram: "test_ig",
           tiktok: "test_tt",
-          youtube: "test_yt",
+          x: "test_x",
         },
         socialFollowAttestation: true,
         consents: {

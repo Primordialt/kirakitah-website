@@ -44,9 +44,9 @@ const defaultValues: RegistrationFormValues = {
   timezone: "",
   availability: [],
   socialHandles: {
+    x: "",
     instagram: "",
     tiktok: "",
-    youtube: "",
   },
   socialFollowAttestation: false as unknown as true,
   consents: {

@@ -34,8 +34,9 @@ export default async function AdminSocialReviewsPage({
     <AdminShell session={session}>
       <h1 className="text-h2">Pending social reviews</h1>
       <p className="mt-2 text-body text-text-secondary">
-        Manual follow verification for Instagram, TikTok, and YouTube. No
-        automated social API.
+        Manual follow verification for X, Instagram, and TikTok. YouTube is not
+        required for KG926 until an official channel is published. No automated
+        social API.
       </p>
 
       {unavailable ? (

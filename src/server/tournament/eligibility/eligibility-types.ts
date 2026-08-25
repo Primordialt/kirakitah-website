@@ -1,7 +1,8 @@
 import type { EligibilityReasonCode } from "@/server/tournament/eligibility/eligibility-reasons";
+import type { SocialPlatform } from "@/config/social";
 
 /** Single source of truth for current KG926 eligibility rules version. */
-export const KG926_ELIGIBILITY_RULES_VERSION = "kg926-v2" as const;
+export const KG926_ELIGIBILITY_RULES_VERSION = "kg926-v3" as const;
 
 /**
  * Configurable tournament eligibility requirements.
@@ -24,6 +25,8 @@ export interface TournamentEligibilityRulesConfig {
    * before the applicant is eligible for tournament participant selection.
    */
   socialFollowingRequired: boolean;
+  /** KG926 required follow platforms (config-driven; extensible). */
+  requiredSocialPlatforms: readonly SocialPlatform[];
 }
 
 export interface EligibilityEvaluationResult {
