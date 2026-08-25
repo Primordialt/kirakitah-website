@@ -8,8 +8,11 @@ import {
   getIdentificationNumberPlaceholder,
 } from "@/lib/identification";
 import {
+  MAX_IDENTITY_FILE_SIZE_BYTES,
   PLAYER_PHOTO_ACCEPTED_TYPES,
   formatAcceptedTypes,
+  formatFileSize,
+  validateIdentityFile,
 } from "@/lib/identity-upload";
 import { useEffect } from "react";
 import { Controller, useWatch } from "react-hook-form";
@@ -88,13 +91,26 @@ export function IdentityVerification({
             label="Player photo"
             required
             accept={PLAYER_PHOTO_ACCEPTED_TYPES.join(",")}
-            description={`Upload a recent clear photo of yourself. Accepted formats: ${formatAcceptedTypes(PLAYER_PHOTO_ACCEPTED_TYPES)}.`}
+            description={`Upload a recent clear photo of yourself. Accepted formats: ${formatAcceptedTypes(PLAYER_PHOTO_ACCEPTED_TYPES)}. Maximum photo size: ${formatFileSize(MAX_IDENTITY_FILE_SIZE_BYTES)}.`}
             selectedFile={value instanceof File ? value : null}
             error={errors.identityVerification?.playerPhoto?.message}
             onBlur={onBlur}
             onChange={(event) => {
               const file = event.target.files?.[0];
-              onChange(file ?? undefined);
+              if (!file) {
+                onChange(undefined);
+                return;
+              }
+              onChange(file);
+              void validateIdentityFile(file, {
+                label: "Player photo",
+                acceptedTypes: PLAYER_PHOTO_ACCEPTED_TYPES,
+                maxSizeBytes: MAX_IDENTITY_FILE_SIZE_BYTES,
+              });
+              setValue("identityVerification.playerPhoto", file, {
+                shouldValidate: true,
+                shouldDirty: true,
+              });
             }}
           />
         )}

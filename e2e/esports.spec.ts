@@ -84,7 +84,10 @@ test.describe("Registration", () => {
     await page.getByLabel("Player photo").setInputFiles({
       name: "player-photo.jpg",
       mimeType: "image/jpeg",
-      buffer: Buffer.from("mock-player-photo"),
+      buffer: Buffer.from([
+        0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 0x46, 0x00, 0x01,
+        0xff, 0xd9,
+      ]),
     });
 
     await page.getByLabel("Gamer tag").fill("E2EPlayer");
@@ -99,7 +102,7 @@ test.describe("Registration", () => {
 
     await page.getByRole("button", { name: /SUBMIT APPLICATION/i }).click();
 
-    await expect(page.getByText(/YOU'RE IN THE SYSTEM/i)).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText(/APPLICATION RECEIVED/i)).toBeVisible({ timeout: 10000 });
   });
 
   test("invalid submission is blocked", async ({ page }) => {

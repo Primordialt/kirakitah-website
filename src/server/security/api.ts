@@ -1,5 +1,5 @@
 /** Maximum registration payload size (form fields + player photo). */
-export const MAX_REGISTRATION_BODY_BYTES = 6 * 1024 * 1024;
+export const MAX_REGISTRATION_BODY_BYTES = 256 * 1024;
 
 export function assertRegistrationBodySize(contentLength: string | null): boolean {
   if (!contentLength) {

@@ -21,8 +21,9 @@ Never paste real `DATABASE_URL` values into documentation, tickets, chat, or com
 | 8 | `drizzle/0008_knockout_execution.sql` | Knockout bracket execution |
 | 9 | `drizzle/0009_scheduling_and_policy.sql` | Match scheduling + competition policy history |
 | 10 | `drizzle/0010_phone_uniqueness.sql` | `phone_normalized` + active phone unique index |
+| 11 | `drizzle/0011_admin_password_auth.sql` | Admin password hash, lockout, login attempt rate limits, audit enum |
 
-Latest required for registration launch hardening: **0010**.
+Latest required for registration + admin login: **0011**.
 
 No duplicate migration numbers in the repository. Order is deterministic by numeric filename prefix.
 

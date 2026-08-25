@@ -10,10 +10,10 @@ describe("registration policy — KG926 MVP", () => {
     expect(registrationPolicy.mode).toBe("MVP_MANUAL_REVIEW");
   });
 
-  it("defers contact verification and keeps identity manual", () => {
+  it("defers contact verification, keeps identity manual, enables secure admin", () => {
     expect(registrationPolicy.contactVerification).toBe("DEFERRED");
     expect(registrationPolicy.identityVerification).toBe("MANUAL");
-    expect(registrationPolicy.adminWorkflow).toBe("MANUAL_DEFERRED_AUTH");
+    expect(registrationPolicy.adminWorkflow).toBe("SECURE_PROVIDER");
     expect(registrationPolicy.initiateContactVerificationOnSubmit).toBe(false);
   });
 });

@@ -14,6 +14,9 @@ export interface AdminSession {
 
 export interface AdminLoginCredentials {
   email: string;
+  password?: string;
+  /** Optional client IP for DB-backed login rate limiting. */
+  clientIp?: string | null;
   /** Development mock only — never used as production password auth. */
   role?: import("@/server/admin/authorization/permissions").AdminRole;
 }

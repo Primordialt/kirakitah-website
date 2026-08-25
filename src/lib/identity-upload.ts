@@ -1,4 +1,4 @@
-export const MAX_IDENTITY_FILE_SIZE_BYTES = 5 * 1024 * 1024;
+export const MAX_IDENTITY_FILE_SIZE_BYTES = 15 * 1024;
 
 export const PLAYER_PHOTO_ACCEPTED_TYPES = [
   "image/jpeg",

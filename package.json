@@ -16,7 +16,8 @@
     "test:e2e": "playwright test",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
-    "db:push": "drizzle-kit push"
+    "db:push": "drizzle-kit push",
+    "admin:create": "node scripts/admin-create.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.0.1",

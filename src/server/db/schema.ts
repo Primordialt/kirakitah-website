@@ -214,6 +214,9 @@ export const adminRoleEnum = pgEnum("admin_role", [
 
 export const adminAuditEventTypeEnum = pgEnum("admin_audit_event_type", [
   "ADMIN_LOGIN",
+  "ADMIN_LOGIN_SUCCESS",
+  "ADMIN_LOGIN_FAILURE",
+  "ADMIN_LOGOUT",
   "IDENTITY_REVIEW_APPROVED",
   "IDENTITY_REVIEW_REJECTED",
   "APPLICATION_STATUS_CHANGED",
@@ -1022,11 +1025,42 @@ export const adminUsers = pgTable("admin_users", {
   displayName: text("display_name").notNull(),
   role: adminRoleEnum("role").notNull(),
   active: boolean("active").notNull().default(true),
+  passwordHash: text("password_hash"),
+  passwordUpdatedAt: timestamp("password_updated_at", {
+    withTimezone: true,
+    mode: "string",
+  }),
+  failedLoginAttempts: integer("failed_login_attempts").notNull().default(0),
+  lockedUntil: timestamp("locked_until", {
+    withTimezone: true,
+    mode: "string",
+  }),
   createdAt: timestamp("created_at", { withTimezone: true, mode: "string" })
     .notNull()
     .defaultNow(),
   lastLoginAt: timestamp("last_login_at", { withTimezone: true, mode: "string" }),
 });
+
+/**
+ * DB-backed admin login rate-limit attempts (IP / email hashes only).
+ * Never store plaintext emails, passwords, or raw IPs.
+ */
+export const adminLoginAttempts = pgTable(
+  "admin_login_attempts",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    attemptKey: text("attempt_key").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "string" })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index("admin_login_attempts_key_created_idx").on(
+      table.attemptKey,
+      table.createdAt,
+    ),
+  ],
+);
 
 /**
  * Append-only administrative audit trail.

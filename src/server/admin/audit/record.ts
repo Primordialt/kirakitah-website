@@ -4,6 +4,9 @@ import type { AdminRole } from "@/server/admin/authorization/permissions";
 
 export type AdminAuditEventType =
   | "ADMIN_LOGIN"
+  | "ADMIN_LOGIN_SUCCESS"
+  | "ADMIN_LOGIN_FAILURE"
+  | "ADMIN_LOGOUT"
   | "IDENTITY_REVIEW_APPROVED"
   | "IDENTITY_REVIEW_REJECTED"
   | "APPLICATION_STATUS_CHANGED"

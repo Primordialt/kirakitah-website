@@ -5,33 +5,23 @@ import { RegistrationSuccess } from "@/components/features/registration/Registra
 
 describe("RegistrationSuccess — MVP messaging", () => {
   it("confirms application received without claiming verification or qualification", () => {
-    render(
-      <RegistrationSuccess
-        referenceId="KG926-2026-ABCDEF"
-        contactVerification={{
-          email: { status: "pending" },
-          phone: { status: "pending" },
-        }}
-      />,
-    );
+    render(<RegistrationSuccess referenceId="KG926-2026-ABCDEF" />);
 
-    expect(screen.getByText(/YOU'RE IN THE SYSTEM/i)).toBeInTheDocument();
+    expect(screen.getByText(/APPLICATION RECEIVED/i)).toBeInTheDocument();
     expect(
-      screen.getByText(/KIRAKITAH GAMING 926 application has been received/i),
+      screen.getByText(/Thank you for submitting your KIRAKITAH GAMING 926 application/i),
     ).toBeInTheDocument();
     expect(screen.getByText(/KG926-2026-ABCDEF/)).toBeInTheDocument();
-    expect(
-      screen.getByText(/Contact verification will follow/i),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/hq@kirakitah\.com/i)).toBeInTheDocument();
+    expect(screen.getByText(/keep this reference/i)).toBeInTheDocument();
 
+    expect(screen.queryByText(/YOU'RE IN THE SYSTEM/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Contact verification will follow/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/GAMING 2026/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/email has been verified/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/phone has been verified/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/you qualified/i)).not.toBeInTheDocument();
-    expect(
-      screen.queryByText(/You are confirmed/i),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.getByText(/not confirmed tournament participation/i),
-    ).toBeInTheDocument();
+    expect(screen.queryByText(/You are confirmed/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/identity has been verified/i)).not.toBeInTheDocument();
   });
 });

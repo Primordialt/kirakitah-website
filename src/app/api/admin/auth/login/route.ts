@@ -6,6 +6,7 @@ import {
   getAdminAuthProvider,
   setAdminSessionCookie,
 } from "@/server/admin/auth";
+import { AdminAuthError } from "@/server/admin/auth/database-provider";
 import { recordAdminAuditEvent } from "@/server/admin/audit/record";
 import { apiError } from "@/server/errors";
 import { API_SECURITY_HEADERS } from "@/server/security/api";
@@ -20,8 +21,19 @@ export const runtime = "nodejs";
 
 const loginSchema = z.object({
   email: z.string().email(),
-  role: z.enum(["SUPER_ADMIN", "TOURNAMENT_ADMIN", "REVIEWER", "SUPPORT"]).optional(),
+  password: z.string().min(1).optional(),
+  role: z
+    .enum(["SUPER_ADMIN", "TOURNAMENT_ADMIN", "REVIEWER", "SUPPORT"])
+    .optional(),
 });
+
+function getClientIp(request: Request): string | null {
+  const forwarded = request.headers.get("x-forwarded-for");
+  if (forwarded) {
+    return forwarded.split(",")[0]?.trim() ?? null;
+  }
+  return request.headers.get("x-real-ip");
+}
 
 export async function POST(request: Request) {
   const requestId = getOrCreateRequestId(request);
@@ -50,15 +62,28 @@ export async function POST(request: Request) {
     }
 
     const provider = getAdminAuthProvider();
+
+    if (provider.providerId === "database" && !parsed.data.password) {
+      return NextResponse.json(
+        apiError("UNAUTHORIZED", "Invalid email or password."),
+        {
+          status: 401,
+          headers: { ...API_SECURITY_HEADERS, ...requestIdHeaders(requestId) },
+        },
+      );
+    }
+
     const user = await provider.authenticate({
       email: parsed.data.email,
+      password: parsed.data.password,
+      clientIp: getClientIp(request),
       role: parsed.data.role as AdminRole | undefined,
     });
 
     await setAdminSessionCookie(user);
 
     await recordAdminAuditEvent({
-      eventType: "ADMIN_LOGIN",
+      eventType: "ADMIN_LOGIN_SUCCESS",
       actorId: user.id,
       actorRole: user.role,
       requestId,
@@ -68,12 +93,6 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         success: true,
-        user: {
-          id: user.id,
-          email: user.email,
-          displayName: user.displayName,
-          role: user.role,
-        },
         requestId,
       },
       {
@@ -82,13 +101,42 @@ export async function POST(request: Request) {
       },
     );
   } catch (error) {
+    if (error instanceof AdminAuthError) {
+      await recordAdminAuditEvent({
+        eventType: "ADMIN_LOGIN_FAILURE",
+        requestId,
+        metadata: {
+          reason: error.code,
+          provider: "database",
+        },
+      }).catch(() => undefined);
+
+      return NextResponse.json(
+        apiError(
+          error.code === "RATE_LIMITED" ? "RATE_LIMITED" : "UNAUTHORIZED",
+          error.message,
+        ),
+        {
+          status: error.code === "RATE_LIMITED" ? 429 : 401,
+          headers: { ...API_SECURITY_HEADERS, ...requestIdHeaders(requestId) },
+        },
+      );
+    }
+
     const message =
       error instanceof Error ? error.message : "Unable to authenticate.";
+
+    await recordAdminAuditEvent({
+      eventType: "ADMIN_LOGIN_FAILURE",
+      requestId,
+      metadata: { reason: "UNAUTHORIZED" },
+    }).catch(() => undefined);
+
     return NextResponse.json(
       apiError(
         "UNAUTHORIZED",
         serverEnv.isStrictProduction
-          ? "Admin authentication is unavailable."
+          ? "Invalid email or password."
           : message,
       ),
       {

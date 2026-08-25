@@ -127,4 +127,15 @@ describe("admin auth provider resolution", () => {
     resetAdminAuthProviderForTests();
     expect(getAdminAuthProvider().providerId).toBe("unavailable");
   });
+
+  it("defaults to database auth in production when DATABASE_URL is present", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("VERCEL_ENV", "production");
+    vi.stubEnv("DATABASE_URL", "postgresql://user:pass@ep-example.neon.tech/neondb");
+    vi.stubEnv("ADMIN_AUTH_PROVIDER", "");
+    const { resetAdminAuthProviderForTests, getAdminAuthProvider } =
+      await import("@/server/admin/auth/providers");
+    resetAdminAuthProviderForTests();
+    expect(getAdminAuthProvider().providerId).toBe("database");
+  });
 });
