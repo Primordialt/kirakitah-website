@@ -27,7 +27,7 @@ export const desktopNavigation: NavigationItem[] = primaryNavigation.filter(
 
 export const headerCta = {
   label: "JOIN KIRAKITAH",
-  href: "/community",
+  href: "/register",
   alternateLabel: "EXPLORE KIRAKITAH",
 } as const;
 
@@ -35,7 +35,7 @@ export const esportsNavigation: NavigationItem[] = [
   { label: "Overview", href: "/esports" },
   { label: "Rules", href: "/esports/rules" },
   { label: "FAQ", href: "/esports/faq" },
-  { label: "Register", href: "/esports/register" },
+  { label: "Register", href: "/register" },
 ];
 
 export interface FooterLink {
@@ -69,7 +69,7 @@ export const footerColumns: FooterColumn[] = [
   {
     title: "Participate",
     links: [
-      { label: "Register", href: "/esports/register" },
+      { label: "Register", href: "/register" },
       { label: "Tournament Rules", href: "/esports/rules" },
       { label: "FAQ", href: "/esports/faq" },
       { label: "Code of Conduct", href: "/code-of-conduct" },

@@ -27,10 +27,17 @@ Never paste real `DATABASE_URL` values into documentation, tickets, chat, or com
 | 14 | `drizzle/0014_admin_user_management.sql` | Admin management audit events + `admin_users.updated_at` |
 | 15 | `drizzle/0015_match_scheduling_ops.sql` | Match schedule history + internal notification events + `MATCH_NOTIFICATION_CREATED` audit |
 | 16 | `drizzle/0016_pre_registration_email_verification.sql` | Pre-registration email OTP challenges + short-lived verification proof tokens |
+| 17 | `drizzle/0017_participant_accounts.sql` | Participant accounts, profiles, sessions, audit + nullable application account link |
 
-Latest required for registration + admin login + social follow eligibility + admin user management + match scheduling ops + pre-registration email verification: **0016**.
+Latest required for participant accounts + pre-registration email verification + prior stacks: **0017**.
 
 No duplicate migration numbers in the repository. Order is deterministic by numeric filename prefix.
+
+### Migration 0017 notes
+
+- Creates `participant_accounts`, `participant_profiles`, `participant_sessions`, `participant_login_attempts`, `participant_audit_events`
+- Adds nullable `registration_applications.participant_account_id` (no backfill; existing applications untouched)
+- Does **not** convert historical KG926 applicants into accounts
 
 ### Migration 0016 notes
 

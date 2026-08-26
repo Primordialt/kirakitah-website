@@ -120,6 +120,13 @@
       "when": 1721174400000,
       "tag": "0016_pre_registration_email_verification",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1721260800000,
+      "tag": "0017_participant_accounts",
+      "breakpoints": true
     }
   ]
 }

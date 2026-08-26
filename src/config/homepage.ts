@@ -48,7 +48,7 @@ export const homepageHero = {
   supportingCopy:
     "KIRAKITAH is a growing platform creating experiences around competition, creativity, technology, community and participation.",
   primaryCta: { label: "EXPLORE KIRAKITAH", href: "/about" } satisfies HomepageCta,
-  secondaryCta: { label: "JOIN KIRAKITAH", href: "/community" } satisfies HomepageCta,
+  secondaryCta: { label: "JOIN KIRAKITAH", href: "/register" } satisfies HomepageCta,
 } as const;
 
 export const homepageBrandIntro = {
@@ -114,7 +114,7 @@ export const homepageFeaturedInitiative: FeaturedInitiativeData = {
     { label: "Grand Prize", value: "US$100" },
   ],
   primaryCta: { label: "EXPLORE THE COMPETITION", href: "/esports" },
-  secondaryCta: { label: "REGISTER NOW", href: "/esports/register" },
+  secondaryCta: { label: "REGISTER NOW", href: "/register" },
 };
 
 export const homepagePrinciples = {
@@ -145,5 +145,5 @@ export const homepageFinalCta = {
   headline: "READY TO ENTER THE KIRAKITAH?",
   supportingCopy: "Something new is always happening here.",
   primaryCta: { label: "EXPLORE KIRAKITAH", href: "/about" } satisfies HomepageCta,
-  secondaryCta: { label: "JOIN KIRAKITAH", href: "/community" } satisfies HomepageCta,
+  secondaryCta: { label: "JOIN KIRAKITAH", href: "/register" } satisfies HomepageCta,
 } as const;

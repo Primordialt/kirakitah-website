@@ -53,7 +53,7 @@ Whether you are playing for the experience, the recognition or the prize, compet
     publishedAt: "2026-08-20T00:00:00.000Z",
     category: "Gaming",
     featured: false,
-    cta: { label: "Register Now", href: "/esports/register" },
+    cta: { label: "Register Now", href: "/register" },
   },
   {
     id: "story-004",
