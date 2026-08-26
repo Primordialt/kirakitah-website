@@ -139,6 +139,7 @@ export async function createAndDeliverChallenge(options: {
   channel: ContactVerificationChannel;
   email: string;
   phone: string;
+  recipientFirstName?: string;
   supersedePrevious?: boolean;
 }): Promise<ContactChannelInitResult> {
   const encryptionKey = serverEnv.registrationPiiEncryptionKey;
@@ -190,6 +191,7 @@ export async function createAndDeliverChallenge(options: {
           referenceId: options.referenceId,
           code,
           expiresInMinutes: VERIFICATION_CHALLENGE_TTL_MINUTES,
+          recipientFirstName: options.recipientFirstName,
         })
       : await providers.phone.sendVerificationSms({
           phone: options.phone,
@@ -454,6 +456,7 @@ export async function resendContactChallenge(options: {
       id: registrationApplications.id,
       email: registrationApplications.email,
       phone: registrationApplications.phone,
+      fullName: registrationApplications.fullName,
       emailVerificationStatus: registrationApplications.emailVerificationStatus,
       phoneVerificationStatus: registrationApplications.phoneVerificationStatus,
     })
@@ -496,6 +499,7 @@ export async function resendContactChallenge(options: {
       channel: options.channel,
       email: application.email,
       phone: application.phone,
+      recipientFirstName: application.fullName?.trim().split(/\s+/)[0],
       supersedePrevious: true,
     });
   } catch (error) {

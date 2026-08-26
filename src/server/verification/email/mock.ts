@@ -27,6 +27,7 @@ export class MockEmailDeliveryProvider implements IEmailDeliveryProvider {
       referenceId: request.referenceId,
       code: request.code,
       expiresInMinutes: request.expiresInMinutes,
+      recipientFirstName: request.recipientFirstName,
     });
 
     // OTP may be logged only outside production (development / tests).

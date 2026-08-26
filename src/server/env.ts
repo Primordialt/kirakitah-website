@@ -9,7 +9,9 @@ function readEnv(key: string): string | undefined {
 }
 
 export type NinVerificationProviderMode = "mock" | "authorized";
-export type ContactVerificationProviderMode = "mock" | "none" | "http";
+export type ContactVerificationProviderMode = "mock" | "none" | "http" | "resend";
+
+const DEFAULT_EMAIL_FROM = "KIRAKITAH <no-reply@kirakitah.com>";
 
 export const serverEnv = {
   get databaseUrl() {
@@ -43,8 +45,13 @@ export const serverEnv = {
     const value = readEnv("EMAIL_VERIFICATION_PROVIDER");
     if (value === "none") return "none";
     if (value === "http") return "http";
+    if (value === "resend") return "resend";
     if (value === "mock") return "mock";
-    return this.isStrictProduction ? "http" : "mock";
+    // Production prefers Resend when RESEND_API_KEY is present; otherwise HTTP adapter.
+    if (this.isStrictProduction) {
+      return this.resendApiKey ? "resend" : "http";
+    }
+    return "mock";
   },
 
   get emailVerificationApiUrl() {
@@ -53,6 +60,19 @@ export const serverEnv = {
 
   get emailVerificationApiKey() {
     return readEnv("EMAIL_VERIFICATION_API_KEY");
+  },
+
+  /** Server-only Resend API key — never expose to the client. */
+  get resendApiKey() {
+    return readEnv("RESEND_API_KEY");
+  },
+
+  /**
+   * Transactional From header.
+   * Default: KIRAKITAH <no-reply@kirakitah.com>
+   */
+  get emailFrom() {
+    return readEnv("EMAIL_FROM") ?? DEFAULT_EMAIL_FROM;
   },
 
   get phoneVerificationProvider(): ContactVerificationProviderMode {
@@ -154,6 +174,9 @@ export function isVerificationConfigured(): boolean {
 }
 
 export function isEmailDeliveryConfigured(): boolean {
+  if (serverEnv.emailVerificationProvider === "resend") {
+    return Boolean(serverEnv.resendApiKey);
+  }
   return (
     serverEnv.emailVerificationProvider === "http" &&
     Boolean(serverEnv.emailVerificationApiUrl) &&

@@ -398,6 +398,7 @@ export async function createRegistrationApplication(
     referenceId,
     email: input.email,
     phone: input.phone,
+    recipientFirstName: input.fullName?.trim().split(/\s+/)[0],
   });
 
   return {
