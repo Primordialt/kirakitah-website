@@ -1,6 +1,11 @@
 import { serverEnv } from "@/server/env";
 import { buildEmailVerificationTemplate } from "@/server/verification/templates/contact-verification";
-import type { IEmailDeliveryProvider, EmailDeliveryRequest } from "./types";
+import { buildPasswordResetTemplate } from "@/server/verification/templates/password-reset";
+import type {
+  IEmailDeliveryProvider,
+  EmailDeliveryRequest,
+  PasswordResetEmailRequest,
+} from "./types";
 import type { DeliveryResult } from "@/server/verification/types";
 
 const RESEND_API_URL = "https://api.resend.com/emails";
@@ -8,7 +13,7 @@ const RESEND_API_URL = "https://api.resend.com/emails";
 /**
  * Production email delivery via Resend.
  * Delivery-only — OTP lifecycle remains in contact challenges.
- * Never logs API keys, OTP codes, or email bodies.
+ * Never logs API keys, OTP codes, reset tokens, or email bodies.
  */
 export class ResendEmailDeliveryProvider implements IEmailDeliveryProvider {
   readonly providerId = "resend";
@@ -16,6 +21,43 @@ export class ResendEmailDeliveryProvider implements IEmailDeliveryProvider {
   async sendVerificationEmail(
     request: EmailDeliveryRequest,
   ): Promise<DeliveryResult> {
+    const template = buildEmailVerificationTemplate({
+      referenceId: request.referenceId,
+      code: request.code,
+      expiresInMinutes: request.expiresInMinutes,
+      recipientFirstName: request.recipientFirstName,
+    });
+
+    return this.send({
+      to: request.email,
+      subject: template.subject,
+      text: template.text,
+      html: template.html,
+    });
+  }
+
+  async sendPasswordResetEmail(
+    request: PasswordResetEmailRequest,
+  ): Promise<DeliveryResult> {
+    const template = buildPasswordResetTemplate({
+      resetUrl: request.resetUrl,
+      expiresInHours: request.expiresInHours,
+    });
+
+    return this.send({
+      to: request.email,
+      subject: template.subject,
+      text: template.text,
+      html: template.html,
+    });
+  }
+
+  private async send(input: {
+    to: string;
+    subject: string;
+    text: string;
+    html: string;
+  }): Promise<DeliveryResult> {
     const apiKey = serverEnv.resendApiKey;
     if (!apiKey) {
       return {
@@ -24,13 +66,6 @@ export class ResendEmailDeliveryProvider implements IEmailDeliveryProvider {
         message: "Email verification provider is not configured.",
       };
     }
-
-    const template = buildEmailVerificationTemplate({
-      referenceId: request.referenceId,
-      code: request.code,
-      expiresInMinutes: request.expiresInMinutes,
-      recipientFirstName: request.recipientFirstName,
-    });
 
     try {
       const response = await fetch(RESEND_API_URL, {
@@ -41,10 +76,10 @@ export class ResendEmailDeliveryProvider implements IEmailDeliveryProvider {
         },
         body: JSON.stringify({
           from: serverEnv.emailFrom,
-          to: [request.email],
-          subject: template.subject,
-          text: template.text,
-          html: template.html,
+          to: [input.to],
+          subject: input.subject,
+          text: input.text,
+          html: input.html,
         }),
       });
 

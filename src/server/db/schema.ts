@@ -1427,6 +1427,43 @@ export const participantSessions = pgTable(
 );
 
 /**
+ * Single-use participant password reset tokens.
+ * Store only token_hash (never plaintext). Invalidate prior unused rows on new request.
+ */
+export const participantPasswordResetTokens = pgTable(
+  "participant_password_reset_tokens",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    accountId: uuid("account_id")
+      .notNull()
+      .references(() => participantAccounts.id, { onDelete: "cascade" }),
+    tokenHash: text("token_hash").notNull(),
+    expiresAt: timestamp("expires_at", {
+      withTimezone: true,
+      mode: "string",
+    }).notNull(),
+    usedAt: timestamp("used_at", {
+      withTimezone: true,
+      mode: "string",
+    }),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "string" })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("participant_password_reset_tokens_token_hash_uidx").on(
+      table.tokenHash,
+    ),
+    index("participant_password_reset_tokens_account_id_idx").on(
+      table.accountId,
+    ),
+    index("participant_password_reset_tokens_expires_at_idx")
+      .on(table.expiresAt)
+      .where(sql`${table.usedAt} IS NULL`),
+  ],
+);
+
+/**
  * DB-backed participant login rate-limit attempts (identifier / IP hashes only).
  * Never store plaintext emails, usernames, passwords, or raw IPs.
  */

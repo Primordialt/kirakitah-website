@@ -2,7 +2,12 @@ import { serverEnv } from "@/server/env";
 import {
   buildEmailVerificationTemplate,
 } from "@/server/verification/templates/contact-verification";
-import type { IEmailDeliveryProvider, EmailDeliveryRequest } from "./types";
+import { buildPasswordResetTemplate } from "@/server/verification/templates/password-reset";
+import type {
+  IEmailDeliveryProvider,
+  EmailDeliveryRequest,
+  PasswordResetEmailRequest,
+} from "./types";
 import type { DeliveryResult } from "@/server/verification/types";
 
 /**
@@ -34,6 +39,32 @@ export class MockEmailDeliveryProvider implements IEmailDeliveryProvider {
     if (serverEnv.nodeEnv === "development") {
       console.info(
         `[mock-email-verification] reference=${request.referenceId} subject=${template.subject} code=${request.code}`,
+      );
+    }
+
+    return { status: "sent", provider: this.providerId };
+  }
+
+  async sendPasswordResetEmail(
+    request: PasswordResetEmailRequest,
+  ): Promise<DeliveryResult> {
+    if (!serverEnv.allowMockContactProviders) {
+      return {
+        status: "unavailable",
+        provider: this.providerId,
+        message: "Mock email provider cannot operate in production.",
+      };
+    }
+
+    const template = buildPasswordResetTemplate({
+      resetUrl: request.resetUrl,
+      expiresInHours: request.expiresInHours,
+    });
+
+    // Never log the reset URL (contains the plaintext token).
+    if (serverEnv.nodeEnv === "development") {
+      console.info(
+        `[mock-email-password-reset] subject=${template.subject} expiresInHours=${request.expiresInHours}`,
       );
     }
 

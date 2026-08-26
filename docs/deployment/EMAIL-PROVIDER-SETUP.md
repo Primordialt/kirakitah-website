@@ -24,7 +24,7 @@ Abandoned / unverified pre-registration challenges do **not** permanently reserv
 | From | `KIRAKITAH <no-reply@kirakitah.com>` |
 | Delivery class | `ResendEmailDeliveryProvider` (`src/server/verification/email/resend.ts`) |
 
-Resend is **delivery only**. OTP generation, hashing, expiry, attempts, cooldown, and rate limits remain in the pre-registration challenge lifecycle.
+Resend is **delivery only**. OTP generation, hashing, expiry, attempts, cooldown, and rate limits remain in the pre-registration challenge lifecycle. Participant password-reset emails also use the same Resend delivery path (`sendPasswordResetEmail`) — token lifecycle stays in participant auth (hashed single-use tokens), not a parallel OTP system.
 
 ## Pre-registration APIs
 
@@ -68,11 +68,21 @@ Product Owner / ops (already completed for Production):
 
 ## Email content
 
+### Pre-registration verification
+
 Subject: `KIRAKITAH GAMING 926 — Verify Your Email`
 
 Includes: greeting, 6-digit code, 15-minute expiry, brand footer.
 
 Does **not** include: NIN, passport, phone, guardian, private socials, admin notes, unnecessary application PII.
+
+### Participant password reset
+
+Subject: `KIRAKITAH GAMING 926 — Reset Your Password`
+
+Includes: reset URL (token in query string), 1-hour expiry, single-use notice, brand footer.
+
+Does **not** include: NIN, passport, phone, guardian, or the raw token outside the reset URL.
 
 ## Duplicate email
 

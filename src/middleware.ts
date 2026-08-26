@@ -23,6 +23,8 @@ function isPublicParticipantAuthPath(pathname: string): boolean {
   return (
     pathname === "/api/participant/auth/login" ||
     pathname === "/api/participant/auth/register" ||
+    pathname === "/api/participant/auth/forgot-password" ||
+    pathname === "/api/participant/auth/reset-password" ||
     pathname.startsWith("/api/participant/auth/email/")
   );
 }
