@@ -9,7 +9,7 @@ import {
   KG926_QUALIFICATION_POSITIONS_PER_POD,
   KG926_QUALIFICATION_TARGET,
 } from "@/server/tournament/competition/competition-rules";
-import { isQualificationPhaseComplete } from "@/server/tournament/qualification/pod-service";
+import { isQualificationPhaseComplete, explainPodReadiness } from "@/server/tournament/qualification/pod-service";
 import { roleHasPermission } from "@/server/admin/authorization/permissions";
 import { CompetitionOperationsError } from "@/server/tournament/competition/errors";
 
@@ -110,6 +110,52 @@ describe("qualification RBAC", () => {
   it("allows result recording for tournament admin only", () => {
     expect(roleHasPermission("TOURNAMENT_ADMIN", "tournament:result_record")).toBe(true);
     expect(roleHasPermission("REVIEWER", "tournament:result_record")).toBe(false);
+  });
+
+  it("denies REVIEWER match_manage and participant_select", () => {
+    expect(roleHasPermission("REVIEWER", "tournament:match_manage")).toBe(false);
+    expect(roleHasPermission("REVIEWER", "tournament:participant_select")).toBe(false);
+  });
+});
+
+describe("pod readiness messaging", () => {
+  it("explains underfilled draft pods", () => {
+    expect(
+      explainPodReadiness({
+        status: "draft",
+        capacity: 4,
+        memberCount: 2,
+        hostSemifinalIndex: null,
+        matchesGenerated: 0,
+        qualifierPublicCode: null,
+      }),
+    ).toBe("2 of 4 participant positions filled.");
+  });
+
+  it("marks ready pods for match generation", () => {
+    expect(
+      explainPodReadiness({
+        status: "ready",
+        capacity: 4,
+        memberCount: 4,
+        hostSemifinalIndex: null,
+        matchesGenerated: 0,
+        qualifierPublicCode: null,
+      }),
+    ).toMatch(/Ready for match generation/i);
+  });
+
+  it("surfaces completed qualifier public code when available", () => {
+    expect(
+      explainPodReadiness({
+        status: "completed",
+        capacity: 4,
+        memberCount: 4,
+        hostSemifinalIndex: null,
+        matchesGenerated: 3,
+        qualifierPublicCode: "KG926-P0007",
+      }),
+    ).toContain("KG926-P0007");
   });
 });
 

@@ -93,7 +93,7 @@ Table: `match_results`
 
 ---
 
-## Qualification (IMPLEMENTED — Step 8)
+## Qualification (IMPLEMENTED — Step 8 + operational admin UX)
 
 **FINALIZED PRODUCT RULE:** 32 pods, 4 positions each, single elimination, 1 qualifier per pod.
 
@@ -101,22 +101,46 @@ Services (`src/server/tournament/qualification/`):
 
 | Service | Purpose |
 |---------|---------|
-| `pod-service` | Pod CRUD, dashboard, Top 32 list |
-| `assignment-service` | Manual pod assignment / reassignment |
+| `pod-service` | Pod CRUD, readiness dashboard, roster, Top 32 list |
+| `assignment-service` | Manual pod assignment / reassignment / remove |
 | `match-engine` | Match generation, results, host auto-advance, Top 32 advancement |
+
+### Qualification operations workflow (admin)
+
+1. Select eligible participants (separate from qualification assignment)
+2. Open `/admin/tournaments/[id]/qualification` readiness panel
+3. Manually assign participants → pod + position (`/qualification/participants` for roster)
+4. Optionally configure HOST semifinal (host is not a participant; opponent auto-advances)
+5. When pod status is `ready` (4/4), generate matches (idempotent: SF1 · SF2 · Final)
+6. Record semifinal results → winners populate Final
+7. Record final → pod completes with QUALIFIER (public code)
+8. Advance completed pod winners to KIRAKITAH TOP 32 (`/qualification/top-32`)
+
+**Pairing and assignment are manually controlled by the tournament team.** There is no automatic random assignment.
 
 Key operations:
 
-- `ensureQualificationPods()` / `assignParticipantToPod()`
-- `generateQualificationPodMatches(podId)`
-- `recordQualificationMatchResult()`
+- `ensureQualificationPods()` / `assignParticipantToPod()` / `reassignParticipantToPod()`
+- `setPodHostSemifinal()` / `generateQualificationPodMatches(podId)`
+- `recordQualificationMatchResult()` / `completeQualificationPod()`
 - `advancePodWinnerToTop32()` / `advanceAllPodWinnersToTop32()`
 
-`advanceQualifiers()` now derives Top 32 from completed pod winners. Returns `QUALIFICATION_INCOMPLETE` if any pod lacks a qualifier.
+`advanceQualifiers()` derives Top 32 from completed pod winners. Returns `QUALIFICATION_INCOMPLETE` if any pod lacks a qualifier.
 
-Host rule: opponent auto-advances against host slot (`auto_advance` outcome). Host is not a participant.
+Host rule: opponent auto-advances against host slot (`auto_advance` outcome). Host is not a participant. No fake score is recorded. Audit: `QUALIFICATION_AUTO_ADVANCED` (reason category `HOST_POSITION` where recorded by the engine).
 
 Tie-break for draws: **PENDING PRODUCT DECISION** (`requires_resolution` status).
+
+### Role responsibilities (qualification)
+
+| Role | Capability |
+|------|------------|
+| SUPER_ADMIN | All qualification operations |
+| TOURNAMENT_ADMIN | Assignment, host, matches, results, Top 32 advancement |
+| REVIEWER | View qualification / eligibility only |
+| SUPPORT | View standings / limited tournament view — no qualification mutations |
+
+REVIEWER does **not** receive `tournament:pod_manage`, `tournament:result_record`, `tournament:match_manage`, or `tournament:participant_select`.
 
 ---
 
@@ -191,11 +215,13 @@ Routes:
 - `/admin/tournaments/[id]`
 - `/admin/tournaments/[id]/phases`
 - `/admin/tournaments/[id]/matches`
-- `/admin/tournaments/[id]/qualification`
-- `/admin/tournaments/[id]/qualification/pods/[n]`
-- `/admin/tournaments/participants` (from Step 6)
+- `/admin/tournaments/[id]/qualification` (readiness dashboard + pods 1–32)
+- `/admin/tournaments/[id]/qualification/participants` (selected roster + assignments)
+- `/admin/tournaments/[id]/qualification/pods/[n]` (assign / host / matches / results)
+- `/admin/tournaments/[id]/qualification/top-32` (pod winners + advancement status)
+- `/admin/tournaments/participants` (global selection list from Step 6)
 
-APIs under `/api/admin/tournaments/[tournamentId]/…` for phases, matches, standings, qualification, advance-qualifiers.
+APIs under `/api/admin/tournaments/[tournamentId]/…` for phases, matches, standings, qualification, advance-qualifiers / advance-top32.
 
 ---
 
