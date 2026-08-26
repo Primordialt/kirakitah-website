@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Montserrat } from "next/font/google";
+import { Analytics } from "@vercel/analytics/next";
 import "@/styles/globals.css";
 import { siteConfig } from "@/config/site";
 import { withSocialMetadata } from "@/lib/social-metadata";
@@ -30,6 +31,7 @@ export default function RootLayout({
     <html lang="en">
       <body className={`${montserrat.variable} font-sans antialiased`}>
         {children}
+        <Analytics />
       </body>
     </html>
   );
