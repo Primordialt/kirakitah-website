@@ -154,6 +154,22 @@ export async function POST(
     });
   }
 
+  if (body.action === "remove") {
+    return withAdminApi(request, "tournament:pod_manage", async (session, requestId) => {
+      const { removeParticipantFromPod } = await import(
+        "@/server/tournament/qualification/assignment-service"
+      );
+      const result = await removeParticipantFromPod({
+        podId: pod.id,
+        participantId: body.participantId ?? "",
+        actorId: session.user.id,
+        actorRole: session.user.role,
+        requestId,
+      });
+      return adminJson({ success: true, ...result, requestId }, 200, requestId);
+    });
+  }
+
   return withAdminApi(request, "tournament:view", async (_s, requestId) =>
     adminJson({ error: { code: "VALIDATION_ERROR", message: "Unknown action." } }, 400, requestId),
   );

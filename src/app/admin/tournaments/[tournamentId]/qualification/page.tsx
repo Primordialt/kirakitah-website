@@ -1,29 +1,17 @@
 import Link from "next/link";
 import { AdminShell, loadAdminSession } from "@/components/admin/AdminShell";
-import { QualificationPodActions } from "@/components/admin/QualificationActions";
+import {
+  QualificationBulkAdvanceButton,
+  QualificationPodActions,
+} from "@/components/admin/QualificationActions";
 import { roleHasPermission } from "@/server/admin/authorization/permissions";
 import { isRegistrationBackendConfigured } from "@/server/env";
+import { getTournamentById } from "@/server/tournament/participant-service";
 import {
   ensureQualificationPods,
   getQualificationDashboard,
-  listQualificationPods,
+  listQualificationPodSummaries,
 } from "@/server/tournament/qualification/pod-service";
-import { count, eq } from "drizzle-orm";
-import { getDb } from "@/server/db";
-import { qualificationPodMembers } from "@/server/db/schema";
-
-async function getPodMemberCounts(pods: Array<{ id: string }>) {
-  const db = getDb();
-  const counts = new Map<string, number>();
-  for (const pod of pods) {
-    const [row] = await db
-      .select({ value: count() })
-      .from(qualificationPodMembers)
-      .where(eq(qualificationPodMembers.podId, pod.id));
-    counts.set(pod.id, Number(row?.value ?? 0));
-  }
-  return counts;
-}
 
 export default async function AdminQualificationPage({
   params,
@@ -41,13 +29,48 @@ export default async function AdminQualificationPage({
     );
   }
 
+  const tournament = await getTournamentById(tournamentId);
   await ensureQualificationPods(tournamentId);
   const dashboard = await getQualificationDashboard(tournamentId);
-  const pods = await listQualificationPods(tournamentId);
-  const memberCounts = await getPodMemberCounts(pods);
+  const pods = await listQualificationPodSummaries(tournamentId);
 
   const canManage = roleHasPermission(session.user.role, "tournament:pod_manage");
-  const canRecord = roleHasPermission(session.user.role, "tournament:result_record");
+  const canAdvance = roleHasPermission(session.user.role, "tournament:phase_manage");
+
+  const readinessCards = [
+    {
+      label: "SELECTED PARTICIPANTS",
+      value: `${dashboard.selectedParticipants} / ${dashboard.selectedParticipantsTarget}`,
+    },
+    {
+      label: "PODS READY",
+      value: `${dashboard.podsReady} / ${dashboard.targetPods}`,
+    },
+    {
+      label: "TOTAL POD CAPACITY",
+      value: `${dashboard.participantsAssigned} / ${dashboard.totalPodCapacityTarget}`,
+    },
+    {
+      label: "PARTICIPANTS UNASSIGNED",
+      value: String(dashboard.participantsUnassigned),
+    },
+    {
+      label: "MATCHES GENERATED",
+      value: String(dashboard.matchesGenerated),
+    },
+    {
+      label: "MATCHES COMPLETED",
+      value: String(dashboard.matchesCompleted),
+    },
+    {
+      label: "PODS COMPLETED",
+      value: `${dashboard.podsCompleted} / ${dashboard.targetPods}`,
+    },
+    {
+      label: "TOP 32 ADVANCED",
+      value: `${dashboard.top32Advanced} / ${dashboard.top32Target}`,
+    },
+  ];
 
   return (
     <AdminShell session={session}>
@@ -56,79 +79,116 @@ export default async function AdminQualificationPage({
           Tournament
         </Link>
       </p>
-      <h1 className="mt-2 text-h2">Qualification</h1>
+      <h1 className="mt-2 text-h2">Qualification operations</h1>
       <p className="mt-1 text-body text-text-secondary">
-        32 pods · single elimination · 1 qualifier per pod → KIRAKITAH TOP 32
+        {tournament?.name ?? "KIRAKITAH GAMING 926"} · phase status:{" "}
+        {dashboard.phaseStatus}
+      </p>
+      <p className="mt-2 text-body-sm text-text-muted">
+        128 participants · 32 pods · 4 positions per pod · single elimination · 1
+        qualifier per pod · KIRAKITAH TOP 32. Pairing and assignment are manually
+        controlled by the tournament team.
       </p>
 
-      <section className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="rounded-xl border border-border bg-surface-elevated p-4">
-          <p className="text-body-sm text-text-muted">Participants</p>
-          <p className="text-h3">
-            {dashboard.totalParticipants} / {dashboard.targetParticipants}
-          </p>
-        </div>
-        <div className="rounded-xl border border-border bg-surface-elevated p-4">
-          <p className="text-body-sm text-text-muted">Pods filled</p>
-          <p className="text-h3">
-            {dashboard.podsFilled} / {dashboard.targetPods}
-          </p>
-        </div>
-        <div className="rounded-xl border border-border bg-surface-elevated p-4">
-          <p className="text-body-sm text-text-muted">Pods completed</p>
-          <p className="text-h3">{dashboard.podsCompleted}</p>
-        </div>
-        <div className="rounded-xl border border-border bg-surface-elevated p-4">
-          <p className="text-body-sm text-text-muted">Qualifiers</p>
-          <p className="text-h3">
-            {dashboard.qualifiersProduced} / {dashboard.targetQualifiers}
-          </p>
-          <p className="text-body-sm text-text-muted">
-            {dashboard.remainingQualifiers} remaining
-          </p>
-        </div>
+      <nav className="mt-4 flex flex-wrap gap-3 text-body-sm">
+        <Link
+          href={`/admin/tournaments/${tournamentId}/qualification/participants`}
+          className="text-accent underline"
+        >
+          Participants
+        </Link>
+        <Link
+          href={`/admin/tournaments/${tournamentId}/qualification/top-32`}
+          className="text-accent underline"
+        >
+          KIRAKITAH TOP 32
+        </Link>
+        <Link
+          href={`/admin/tournaments/${tournamentId}/phases`}
+          className="text-accent underline"
+        >
+          Phase status
+        </Link>
+      </nav>
+
+      <section aria-labelledby="qualification-readiness-heading" className="mt-6">
+        <h2 id="qualification-readiness-heading" className="text-h3">
+          Qualification readiness
+        </h2>
+        <ul className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {readinessCards.map((card) => (
+            <li
+              key={card.label}
+              className="rounded-xl border border-border bg-surface-elevated p-4"
+            >
+              <p className="text-label tracking-wide text-text-muted">{card.label}</p>
+              <p className="mt-2 text-h3">{card.value}</p>
+            </li>
+          ))}
+        </ul>
       </section>
 
-      <div className="mt-6 overflow-x-auto rounded-xl border border-border">
-        <table className="min-w-full text-body-sm">
-          <thead className="bg-surface-elevated text-left text-text-muted">
-            <tr>
-              <th className="px-4 py-3">Pod</th>
-              <th className="px-4 py-3">Players</th>
-              <th className="px-4 py-3">Status</th>
-              <th className="px-4 py-3">Host SF</th>
-              <th className="px-4 py-3">Winner</th>
-              <th className="px-4 py-3">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {pods.map((pod) => (
-              <tr key={pod.id} className="border-t border-border">
-                <td className="px-4 py-3">Pod {pod.podNumber}</td>
-                <td className="px-4 py-3">
-                  {memberCounts.get(pod.id) ?? 0}/{pod.capacity}
-                </td>
-                <td className="px-4 py-3">{pod.status}</td>
-                <td className="px-4 py-3">{pod.hostSemifinalIndex ?? "—"}</td>
-                <td className="px-4 py-3 font-mono text-xs">
-                  {pod.qualifierParticipantId
-                    ? pod.qualifierParticipantId.slice(0, 8)
-                    : "—"}
-                </td>
-                <td className="px-4 py-3">
-                  <QualificationPodActions
-                    tournamentId={tournamentId}
-                    podNumber={pod.podNumber}
-                    status={pod.status}
-                    canManage={canManage}
-                    canRecord={canRecord}
-                  />
-                </td>
+      {canAdvance ? (
+        <section className="mt-6">
+          <QualificationBulkAdvanceButton tournamentId={tournamentId} />
+        </section>
+      ) : null}
+
+      <section className="mt-8">
+        <h2 className="text-h3">Pods 1–32</h2>
+        <div className="mt-3 overflow-x-auto rounded-xl border border-border">
+          <table className="min-w-full text-left text-body-sm">
+            <thead className="bg-surface-elevated text-text-muted">
+              <tr>
+                <th className="px-4 py-3 font-medium">Pod</th>
+                <th className="px-4 py-3 font-medium">Members</th>
+                <th className="px-4 py-3 font-medium">Status</th>
+                <th className="px-4 py-3 font-medium">Host</th>
+                <th className="px-4 py-3 font-medium">Matches</th>
+                <th className="px-4 py-3 font-medium">Qualifier</th>
+                <th className="px-4 py-3 font-medium">Readiness</th>
+                <th className="px-4 py-3 font-medium">Actions</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              {pods.map((pod) => (
+                <tr key={pod.id} className="border-t border-border">
+                  <td className="px-4 py-3">Pod {pod.podNumber}</td>
+                  <td className="px-4 py-3">
+                    {pod.memberCount} / {pod.capacity}
+                  </td>
+                  <td className="px-4 py-3">{pod.status}</td>
+                  <td className="px-4 py-3">
+                    {pod.hostConfigured
+                      ? `HOST SF${pod.hostSemifinalIndex}`
+                      : "—"}
+                  </td>
+                  <td className="px-4 py-3">
+                    {pod.matchesGenerated === 0
+                      ? "—"
+                      : `${pod.matchesCompleted} / ${pod.matchesGenerated} completed`}
+                  </td>
+                  <td className="px-4 py-3 font-mono text-xs">
+                    {pod.qualifierPublicCode ?? "pending"}
+                  </td>
+                  <td className="px-4 py-3 text-text-secondary">
+                    {pod.readinessReason}
+                  </td>
+                  <td className="px-4 py-3">
+                    <QualificationPodActions
+                      tournamentId={tournamentId}
+                      podNumber={pod.podNumber}
+                      status={pod.status}
+                      canManage={canManage}
+                      canAdvance={canAdvance}
+                    />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
     </AdminShell>
   );
 }

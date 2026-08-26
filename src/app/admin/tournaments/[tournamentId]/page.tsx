@@ -78,23 +78,43 @@ export default async function AdminTournamentDetailPage({
       <section className="mt-6 rounded-xl border border-border bg-surface-elevated p-4">
         <h2 className="text-h3">Qualification progress</h2>
         <p className="mt-2 text-body-sm text-text-secondary">
-          {qualificationDashboard.totalParticipants} / {qualificationDashboard.targetParticipants}{" "}
-          participants · {qualificationDashboard.totalPods} / {qualificationDashboard.targetPods}{" "}
-          pods · {qualificationDashboard.qualifiersProduced} / {qualificationDashboard.targetQualifiers}{" "}
-          qualifiers
+          Selected {qualificationDashboard.selectedParticipants} /{" "}
+          {qualificationDashboard.selectedParticipantsTarget} · Assigned{" "}
+          {qualificationDashboard.participantsAssigned} /{" "}
+          {qualificationDashboard.totalPodCapacityTarget} · Qualifiers{" "}
+          {qualificationDashboard.qualifiersProduced} /{" "}
+          {qualificationDashboard.targetQualifiers} · Top 32 advanced{" "}
+          {qualificationDashboard.top32Advanced} /{" "}
+          {qualificationDashboard.top32Target}
         </p>
         <ul className="mt-3 space-y-1 text-body-sm text-text-muted">
+          <li>Pods ready: {qualificationDashboard.podsReady}</li>
           <li>Pods filled: {qualificationDashboard.podsFilled}</li>
           <li>Pods active: {qualificationDashboard.podsActive}</li>
           <li>Pods completed: {qualificationDashboard.podsCompleted}</li>
-          <li>Remaining qualifiers: {qualificationDashboard.remainingQualifiers}</li>
+          <li>Matches completed: {qualificationDashboard.matchesCompleted} / {qualificationDashboard.matchesGenerated}</li>
+          <li>Unassigned selected: {qualificationDashboard.participantsUnassigned}</li>
         </ul>
-        <Link
-          href={`/admin/tournaments/${tournamentId}/qualification`}
-          className="mt-3 inline-block text-accent underline"
-        >
-          Manage qualification
-        </Link>
+        <div className="mt-3 flex flex-wrap gap-3 text-body-sm">
+          <Link
+            href={`/admin/tournaments/${tournamentId}/qualification`}
+            className="text-accent underline"
+          >
+            Manage qualification
+          </Link>
+          <Link
+            href={`/admin/tournaments/${tournamentId}/qualification/participants`}
+            className="text-accent underline"
+          >
+            Participants
+          </Link>
+          <Link
+            href={`/admin/tournaments/${tournamentId}/qualification/top-32`}
+            className="text-accent underline"
+          >
+            KIRAKITAH TOP 32
+          </Link>
+        </div>
       </section>
 
       <section className="mt-6 rounded-xl border border-border bg-surface-elevated p-4">
