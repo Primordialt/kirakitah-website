@@ -53,3 +53,19 @@ export {
   getProfileApplicationBlock,
 } from "@/server/participant/application-gate";
 export { applyParticipantToTournament } from "@/server/participant/apply-to-tournament";
+export {
+  resolveParticipantTournamentContext,
+  assertApplicationOwnedByAccount,
+  ParticipantTournamentAccessError,
+} from "@/server/participant/tournament-context";
+export {
+  listParticipantTournamentSummaries,
+  getParticipantTournamentExperience,
+  listParticipantMatches,
+  listParticipantNotifications,
+  type ParticipantTournamentExperience,
+  type ParticipantTournamentSummary,
+  type ParticipantApplicationView,
+  type ParticipantMatchView,
+  type ParticipantNotificationView,
+} from "@/server/participant/tournament-experience-service";

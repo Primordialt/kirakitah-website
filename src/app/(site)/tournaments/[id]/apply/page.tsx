@@ -1,10 +1,9 @@
 import { TournamentApplyForm } from "@/components/features/participant/TournamentApplyForm";
 import { Button } from "@/components/ui";
 import { SectionShell } from "@/components/sections/esports/SectionShell";
+import { resolveTournamentId } from "@/lib/tournament/resolve-id";
 import {
   COMPETITION_NAME,
-  TOURNAMENT_EVENT_ID,
-  TOURNAMENT_SLUG,
 } from "@/config/competition";
 import {
   ApplicationGateError,
@@ -24,11 +23,8 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-function resolveTournamentId(id: string): string | null {
-  if (id === TOURNAMENT_EVENT_ID || id === TOURNAMENT_SLUG) {
-    return TOURNAMENT_EVENT_ID;
-  }
-  return null;
+function resolveTournamentIdParam(id: string): string | null {
+  return resolveTournamentId(id);
 }
 
 export default async function TournamentApplyPage({
@@ -37,7 +33,7 @@ export default async function TournamentApplyPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const tournamentId = resolveTournamentId(id);
+  const tournamentId = resolveTournamentIdParam(id);
   if (!tournamentId) {
     notFound();
   }
