@@ -1,4 +1,4 @@
-import { and, eq, ne, or } from "drizzle-orm";
+import { and, eq, ne, or, isNotNull } from "drizzle-orm";
 import { getDb } from "@/server/db";
 import { matches, tournaments } from "@/server/db/schema";
 import type { AdminRole } from "@/server/admin/authorization/permissions";
@@ -8,6 +8,28 @@ import {
   areMatchSchedulingRulesConfigured,
   buildCompetitionPolicy,
 } from "@/server/tournament/rules/competition-policy";
+import {
+  appendMatchScheduleHistory,
+  describeNotificationBoundary,
+  recordMatchNotificationEvents,
+} from "@/server/tournament/scheduling/notification-service";
+import {
+  scheduleWindowsOverlap,
+  TOURNAMENT_DEFAULT_TIMEZONE,
+} from "@/server/tournament/scheduling/timezone";
+
+export {
+  describeNotificationBoundary,
+  TOURNAMENT_DEFAULT_TIMEZONE as TOURNAMENT_TIMEZONE,
+  TOURNAMENT_DEFAULT_TIMEZONE,
+};
+export {
+  formatInTimezone,
+  formatScheduleInAfricaLagos,
+  formatTimezoneLabel,
+  parseLocalDateTimeInTimezone,
+  scheduleWindowsOverlap,
+} from "@/server/tournament/scheduling/timezone";
 
 /** Common IANA zones accepted for admin scheduling (extensible; not forced). */
 const COMMON_IANA_TIMEZONES = new Set([
@@ -83,7 +105,7 @@ async function assertSchedulingRulesConfigured(tournamentId: string) {
 }
 
 /**
- * Detects exact scheduled_at conflicts for either participant.
+ * Detects direct schedule window overlaps for either participant.
  * Does NOT invent a minimum rest buffer (PENDING PRODUCT DECISION).
  */
 export async function detectPlayerScheduleConflict(input: {
@@ -92,6 +114,8 @@ export async function detectPlayerScheduleConflict(input: {
   participantAId: string | null;
   participantBId: string | null;
   scheduledAt: string;
+  scheduledWindowStart?: string | null;
+  scheduledWindowEnd?: string | null;
 }): Promise<{ conflict: boolean; conflictingMatchId?: string }> {
   const participantIds = [input.participantAId, input.participantBId].filter(
     (id): id is string => Boolean(id),
@@ -100,6 +124,9 @@ export async function detectPlayerScheduleConflict(input: {
     return { conflict: false };
   }
 
+  const proposedStart = input.scheduledWindowStart ?? input.scheduledAt;
+  const proposedEnd = input.scheduledWindowEnd ?? input.scheduledAt;
+
   const db = getDb();
   const candidates = await db
     .select({
@@ -107,6 +134,8 @@ export async function detectPlayerScheduleConflict(input: {
       participantAId: matches.participantAId,
       participantBId: matches.participantBId,
       scheduledAt: matches.scheduledAt,
+      scheduledWindowStart: matches.scheduledWindowStart,
+      scheduledWindowEnd: matches.scheduledWindowEnd,
       schedulingStatus: matches.schedulingStatus,
       status: matches.status,
     })
@@ -114,7 +143,7 @@ export async function detectPlayerScheduleConflict(input: {
     .where(
       and(
         eq(matches.tournamentId, input.tournamentId),
-        eq(matches.scheduledAt, input.scheduledAt),
+        isNotNull(matches.scheduledAt),
         ne(matches.id, input.matchId),
         ne(matches.schedulingStatus, "cancelled"),
         ne(matches.status, "cancelled"),
@@ -122,9 +151,17 @@ export async function detectPlayerScheduleConflict(input: {
     );
 
   for (const row of candidates) {
-    const overlaps =
+    const sharesParticipant =
       (row.participantAId && participantIds.includes(row.participantAId)) ||
       (row.participantBId && participantIds.includes(row.participantBId));
+    if (!sharesParticipant || !row.scheduledAt) continue;
+
+    const overlaps = scheduleWindowsOverlap({
+      aStart: proposedStart,
+      aEnd: proposedEnd,
+      bStart: row.scheduledWindowStart ?? row.scheduledAt,
+      bEnd: row.scheduledWindowEnd ?? row.scheduledAt,
+    });
     if (overlaps) {
       return { conflict: true, conflictingMatchId: row.id };
     }
@@ -197,6 +234,13 @@ export async function scheduleMatch(input: {
       400,
     );
   }
+  if (!windowStart && windowEnd && scheduledAt > windowEnd) {
+    throw new CompetitionOperationsError(
+      "scheduledWindowEnd must be after scheduledAt.",
+      "VALIDATION_ERROR",
+      400,
+    );
+  }
 
   if (
     match.schedulingStatus === "scheduled" &&
@@ -225,11 +269,13 @@ export async function scheduleMatch(input: {
     participantAId: match.participantAId,
     participantBId: match.participantBId,
     scheduledAt,
+    scheduledWindowStart: windowStart,
+    scheduledWindowEnd: windowEnd,
   });
 
   if (conflict.conflict) {
     throw new CompetitionOperationsError(
-      "A participant already has a match at this exact time.",
+      "This participant is already scheduled for another match during this time.",
       "PLAYER_SCHEDULE_CONFLICT",
       409,
     );
@@ -273,6 +319,28 @@ export async function scheduleMatch(input: {
     );
   }
 
+  await appendMatchScheduleHistory({
+    matchId: match.id,
+    tournamentId: match.tournamentId,
+    action: "scheduled",
+    previousScheduledAt: null,
+    scheduledAt,
+    scheduledWindowStart: windowStart,
+    scheduledWindowEnd: windowEnd,
+    timezone: input.timezone.trim(),
+    actorId: input.actorId,
+  });
+
+  await recordMatchNotificationEvents({
+    eventType: "MATCH_SCHEDULED",
+    matchId: match.id,
+    tournamentId: match.tournamentId,
+    recipientParticipantIds: [match.participantAId, match.participantBId],
+    actorId: input.actorId,
+    actorRole: input.actorRole,
+    requestId: input.requestId,
+  });
+
   await recordAdminAuditEvent({
     eventType: "MATCH_SCHEDULED",
     actorId: input.actorId,
@@ -292,6 +360,7 @@ export async function scheduleMatch(input: {
     alreadyScheduled: false,
     scheduledAt: updated.scheduledAt,
     timezone: updated.timezone,
+    notification: describeNotificationBoundary("MATCH_SCHEDULED"),
   };
 }
 
@@ -347,7 +416,25 @@ export async function rescheduleMatch(input: {
   }
 
   const scheduledAt = parseScheduledAtIso(input.scheduledAt);
+  const windowStart = input.scheduledWindowStart
+    ? parseScheduledAtIso(input.scheduledWindowStart)
+    : null;
+  const windowEnd = input.scheduledWindowEnd
+    ? parseScheduledAtIso(input.scheduledWindowEnd)
+    : null;
+
+  if (windowStart && windowEnd && windowStart > windowEnd) {
+    throw new CompetitionOperationsError(
+      "scheduledWindowStart must be before scheduledWindowEnd.",
+      "VALIDATION_ERROR",
+      400,
+    );
+  }
+
   const previousScheduledAt = match.scheduledAt;
+  const previousWindowStart = match.scheduledWindowStart;
+  const previousWindowEnd = match.scheduledWindowEnd;
+  const previousTimezone = match.timezone;
 
   const conflict = await detectPlayerScheduleConflict({
     matchId: match.id,
@@ -355,11 +442,13 @@ export async function rescheduleMatch(input: {
     participantAId: match.participantAId,
     participantBId: match.participantBId,
     scheduledAt,
+    scheduledWindowStart: windowStart,
+    scheduledWindowEnd: windowEnd,
   });
 
   if (conflict.conflict) {
     throw new CompetitionOperationsError(
-      "A participant already has a match at this exact time.",
+      "This participant is already scheduled for another match during this time.",
       "PLAYER_SCHEDULE_CONFLICT",
       409,
     );
@@ -372,12 +461,8 @@ export async function rescheduleMatch(input: {
     .set({
       scheduledAt,
       timezone: input.timezone.trim(),
-      scheduledWindowStart: input.scheduledWindowStart
-        ? parseScheduledAtIso(input.scheduledWindowStart)
-        : null,
-      scheduledWindowEnd: input.scheduledWindowEnd
-        ? parseScheduledAtIso(input.scheduledWindowEnd)
-        : null,
+      scheduledWindowStart: windowStart,
+      scheduledWindowEnd: windowEnd,
       schedulingStatus: "scheduled",
       scheduledBy: input.actorId,
       scheduleUpdatedAt: now,
@@ -385,6 +470,32 @@ export async function rescheduleMatch(input: {
       updatedAt: now,
     })
     .where(eq(matches.id, match.id));
+
+  await appendMatchScheduleHistory({
+    matchId: match.id,
+    tournamentId: match.tournamentId,
+    action: "rescheduled",
+    previousScheduledAt,
+    previousWindowStart,
+    previousWindowEnd,
+    previousTimezone,
+    scheduledAt,
+    scheduledWindowStart: windowStart,
+    scheduledWindowEnd: windowEnd,
+    timezone: input.timezone.trim(),
+    reason,
+    actorId: input.actorId,
+  });
+
+  await recordMatchNotificationEvents({
+    eventType: "MATCH_RESCHEDULED",
+    matchId: match.id,
+    tournamentId: match.tournamentId,
+    recipientParticipantIds: [match.participantAId, match.participantBId],
+    actorId: input.actorId,
+    actorRole: input.actorRole,
+    requestId: input.requestId,
+  });
 
   await recordAdminAuditEvent({
     eventType: "MATCH_RESCHEDULED",
@@ -407,6 +518,7 @@ export async function rescheduleMatch(input: {
     previousScheduledAt,
     scheduledAt,
     timezone: input.timezone.trim(),
+    notification: describeNotificationBoundary("MATCH_RESCHEDULED"),
   };
 }
 
@@ -432,10 +544,7 @@ export async function cancelMatchSchedule(input: {
     return { matchId: match.id, alreadyCancelled: true };
   }
 
-  if (
-    match.status === "completed" ||
-    match.status === "forfeited"
-  ) {
+  if (match.status === "completed" || match.status === "forfeited") {
     throw new CompetitionOperationsError(
       "Cannot cancel schedule for a completed or forfeited match.",
       "VALIDATION_ERROR",
@@ -468,6 +577,28 @@ export async function cancelMatchSchedule(input: {
     return { matchId: match.id, alreadyCancelled: true };
   }
 
+  await appendMatchScheduleHistory({
+    matchId: match.id,
+    tournamentId: match.tournamentId,
+    action: "cancelled",
+    previousScheduledAt: match.scheduledAt,
+    previousWindowStart: match.scheduledWindowStart,
+    previousWindowEnd: match.scheduledWindowEnd,
+    previousTimezone: match.timezone,
+    reason,
+    actorId: input.actorId,
+  });
+
+  await recordMatchNotificationEvents({
+    eventType: "MATCH_CANCELLED",
+    matchId: match.id,
+    tournamentId: match.tournamentId,
+    recipientParticipantIds: [match.participantAId, match.participantBId],
+    actorId: input.actorId,
+    actorRole: input.actorRole,
+    requestId: input.requestId,
+  });
+
   await recordAdminAuditEvent({
     eventType: "MATCH_SCHEDULE_CANCELLED",
     actorId: input.actorId,
@@ -481,12 +612,14 @@ export async function cancelMatchSchedule(input: {
     },
   });
 
-  return { matchId: match.id, alreadyCancelled: false };
+  return {
+    matchId: match.id,
+    alreadyCancelled: false,
+    notification: describeNotificationBoundary("MATCH_CANCELLED"),
+  };
 }
 
-/**
- * Future notification boundary — does not send email/SMS.
- */
+/** @deprecated Prefer notification-service describeNotificationBoundary */
 export type MatchNotificationEvent =
   | "match_scheduled"
   | "match_rescheduled"
@@ -494,16 +627,3 @@ export type MatchNotificationEvent =
   | "result_recorded"
   | "qualification_achieved"
   | "tournament_completed";
-
-export function describeNotificationBoundary(event: MatchNotificationEvent): {
-  event: MatchNotificationEvent;
-  delivery: "pending";
-  message: string;
-} {
-  return {
-    event,
-    delivery: "pending",
-    message:
-      "Notification delivery is PENDING PRODUCT DECISION / provider integration (Step 11).",
-  };
-}

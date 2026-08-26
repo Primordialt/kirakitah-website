@@ -25,10 +25,19 @@ Never paste real `DATABASE_URL` values into documentation, tickets, chat, or com
 | 12 | `drizzle/0012_social_follow_eligibility.sql` | Social follow attestation + per-platform manual review + kg926-v2 eligibility |
 | 13 | `drizzle/0013_kg926_social_channels.sql` | Add `x` social platform; KG926 required set X+Instagram+TikTok; eligibility `kg926-v3` |
 | 14 | `drizzle/0014_admin_user_management.sql` | Admin management audit events + `admin_users.updated_at` |
+| 15 | `drizzle/0015_match_scheduling_ops.sql` | Match schedule history + internal notification events + `MATCH_NOTIFICATION_CREATED` audit |
 
-Latest required for registration + admin login + social follow eligibility + admin user management: **0014**.
+Latest required for registration + admin login + social follow eligibility + admin user management + match scheduling ops: **0015**.
 
 No duplicate migration numbers in the repository. Order is deterministic by numeric filename prefix.
+
+### Migration 0015 notes
+
+- Creates `match_schedule_history` (append-only schedule/reschedule/cancel history)
+- Creates `match_notification_events` (internal/in-app only; email/SMS deferred)
+- Adds audit enum `MATCH_NOTIFICATION_CREATED`
+- Does not invent competition policies (duration, no-show, forfeit, etc.)
+- Scheduling columns on `matches` already exist from migration `0009`
 
 ### Migration 0012 notes
 

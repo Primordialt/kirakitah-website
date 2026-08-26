@@ -62,7 +62,8 @@ export type AdminAuditEventType =
   | "COMPETITION_POLICY_CHANGED"
   | "NO_SHOW_RECORDED"
   | "DISCONNECT_RESOLVED"
-  | "DISPUTE_RESOLVED";
+  | "DISPUTE_RESOLVED"
+  | "MATCH_NOTIFICATION_CREATED";
 
 /**
  * Append-only admin audit writer.

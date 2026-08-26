@@ -9,6 +9,7 @@ import {
   QualificationRemoveButton,
 } from "@/components/admin/QualificationActions";
 import { MatchResultActions } from "@/components/admin/MatchResultActions";
+import { MatchSchedulePanel } from "@/components/admin/MatchSchedulePanel";
 import { roleHasPermission } from "@/server/admin/authorization/permissions";
 import { isRegistrationBackendConfigured } from "@/server/env";
 import {
@@ -17,6 +18,7 @@ import {
   getPodDetail,
 } from "@/server/tournament/qualification/pod-service";
 import { getPodMatchDetail } from "@/server/tournament/qualification/match-engine";
+import { listMatchScheduleHistory } from "@/server/tournament/scheduling/notification-service";
 
 export default async function AdminQualificationPodPage({
   params,
@@ -42,6 +44,7 @@ export default async function AdminQualificationPodPage({
   const canCorrect = roleHasPermission(session.user.role, "tournament:result_correct");
   const canForfeit = roleHasPermission(session.user.role, "tournament:forfeit");
   const canDispute = roleHasPermission(session.user.role, "tournament:match_manage");
+  const canSchedule = roleHasPermission(session.user.role, "tournament:match_schedule");
 
   const readinessReason = explainPodReadiness({
     status: pod.status,
@@ -58,6 +61,13 @@ export default async function AdminQualificationPodPage({
     const member = members.find((row) => row.positionNumber === positionNumber);
     return { positionNumber, member };
   });
+
+  const matchesWithHistory = await Promise.all(
+    matches.map(async (match) => ({
+      match,
+      history: await listMatchScheduleHistory(match.id),
+    })),
+  );
 
   return (
     <AdminShell session={session}>
@@ -151,7 +161,7 @@ export default async function AdminQualificationPodPage({
               : readinessReason}
           </p>
         ) : (
-          matches.map((match) => {
+          matchesWithHistory.map(({ match, history }) => {
             const isHostMatch =
               match.slotAType === "host" || match.slotBType === "host";
             const canEnterScore =
@@ -162,6 +172,10 @@ export default async function AdminQualificationPodPage({
               !isHostMatch &&
               match.participantAId &&
               match.participantBId;
+            const matchResolved =
+              match.status === "completed" ||
+              match.status === "forfeited" ||
+              match.status === "cancelled";
 
             return (
               <div
@@ -194,6 +208,19 @@ export default async function AdminQualificationPodPage({
                     rules.
                   </p>
                 ) : null}
+
+                <MatchSchedulePanel
+                  matchId={match.id}
+                  canSchedule={canSchedule}
+                  schedulingStatus={match.schedulingStatus}
+                  scheduledAt={match.scheduledAt}
+                  timezone={match.timezone}
+                  participantsReady={Boolean(
+                    match.participantAId && match.participantBId && !isHostMatch,
+                  )}
+                  matchResolved={matchResolved}
+                  history={history}
+                />
 
                 <div className="mt-3 space-y-3">
                   {canEnterScore ? (

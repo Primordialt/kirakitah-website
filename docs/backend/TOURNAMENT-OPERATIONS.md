@@ -14,9 +14,9 @@ Backend Step 8 **finalized KG926 qualification** (32 pods). See [QUALIFICATION-S
 
 Backend Step 9 **implements KIRAKITAH TOP 32 knockout execution**. See [KNOCKOUT-SYSTEM.md](./KNOCKOUT-SYSTEM.md).
 
-Backend Step 10 adds **manual match scheduling** and a centralized **competition policy** catalog. See [SCHEDULING-SYSTEM.md](./SCHEDULING-SYSTEM.md) and [COMPETITION-POLICY.md](./COMPETITION-POLICY.md).
+Backend Step 10 adds **manual match scheduling** and a centralized **competition policy** catalog. See [MATCH-SCHEDULING.md](./MATCH-SCHEDULING.md), [SCHEDULING-SYSTEM.md](./SCHEDULING-SYSTEM.md), and [COMPETITION-POLICY.md](./COMPETITION-POLICY.md).
 
-Qualification is **single-elimination pods**. Knockout is **single-elimination Top 32** with **manual R32 pairing**. Scheduling is **manual admin only**.
+Qualification is **single-elimination pods**. Knockout is **single-elimination Top 32** with **manual R32 pairing**. Scheduling is **manual admin only** (operational layer). Email/SMS match notifications remain **deferred**. Authenticated participant schedule access is a **follow-up**.
 
 ---
 

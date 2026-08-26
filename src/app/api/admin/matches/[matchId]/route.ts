@@ -5,6 +5,10 @@ import {
   rescheduleMatch,
   scheduleMatch,
 } from "@/server/tournament/scheduling/scheduling-service";
+import {
+  listMatchNotificationEvents,
+  listMatchScheduleHistory,
+} from "@/server/tournament/scheduling/notification-service";
 
 export const runtime = "nodejs";
 
@@ -23,6 +27,9 @@ export async function GET(
       );
     }
 
+    const history = await listMatchScheduleHistory(matchId);
+    const notifications = await listMatchNotificationEvents(matchId);
+
     return adminJson(
       {
         success: true,
@@ -39,6 +46,8 @@ export async function GET(
           participantBId: match.participantBId,
           rulesVersion: match.rulesVersion,
         },
+        history,
+        notifications,
         requestId,
       },
       200,

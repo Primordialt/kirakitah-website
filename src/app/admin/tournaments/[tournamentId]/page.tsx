@@ -108,13 +108,19 @@ export default async function AdminTournamentDetailPage({
           >
             Participants
           </Link>
-          <Link
-            href={`/admin/tournaments/${tournamentId}/qualification/top-32`}
-            className="text-accent underline"
-          >
-            KIRAKITAH TOP 32
-          </Link>
-        </div>
+        <Link
+          href={`/admin/tournaments/${tournamentId}/qualification/top-32`}
+          className="text-accent underline"
+        >
+          KIRAKITAH TOP 32
+        </Link>
+        <Link
+          href={`/admin/tournaments/${tournamentId}/schedule`}
+          className="text-accent underline"
+        >
+          Match schedule
+        </Link>
+      </div>
       </section>
 
       <section className="mt-6 rounded-xl border border-border bg-surface-elevated p-4">
