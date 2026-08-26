@@ -40,7 +40,7 @@ describe("Footer", () => {
 
     expect(screen.getByRole("link", { name: "Register" })).toHaveAttribute(
       "href",
-      "/esports/register",
+      "/register",
     );
     expect(screen.getByRole("link", { name: "X" })).toHaveAttribute(
       "href",

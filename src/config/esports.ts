@@ -43,7 +43,7 @@ export const esportsHero = {
   headline: "YOUR GAME. YOUR SKILL. YOUR SHOT.",
   supportingCopy:
     "The inaugural KIRAKITAH Gaming competition brings players together for an online eFootball Mobile championship built around competition, skill and the chance to become the first KIRAKITAH champion.",
-  primaryCta: { label: "REGISTER NOW", href: "/esports/register" } satisfies EsportsCta,
+  primaryCta: { label: "REGISTER NOW", href: "/register" } satisfies EsportsCta,
   secondaryCta: {
     label: "VIEW TOURNAMENT DETAILS",
     href: "#tournament-details",
@@ -169,7 +169,7 @@ export const esportsWhyEnter = {
         "Selected matches and moments may feature across KIRAKITAH's official content channels.",
     },
   ],
-  cta: { label: "REGISTER NOW", href: "/esports/register" } satisfies EsportsCta,
+  cta: { label: "REGISTER NOW", href: "/register" } satisfies EsportsCta,
 } as const;
 
 export const esportsWhatYouNeed = {
@@ -255,7 +255,7 @@ export const esportsFaqPreview = {
 export const esportsFinalCta = {
   title: "READY TO ENTER THE ARENA?",
   copy: "Your game. Your skill. Your shot.",
-  primaryCta: { label: "REGISTER NOW", href: "/esports/register" } satisfies EsportsCta,
+  primaryCta: { label: "REGISTER NOW", href: "/register" } satisfies EsportsCta,
   secondaryCta: { label: "READ THE RULES", href: "/esports/rules" } satisfies EsportsCta,
 } as const;
 

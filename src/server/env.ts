@@ -143,6 +143,11 @@ export const serverEnv = {
     return readEnv("ADMIN_SESSION_SECRET");
   },
 
+  /** HMAC signing secret for participant session cookies. */
+  get participantSessionSecret() {
+    return readEnv("PARTICIPANT_SESSION_SECRET");
+  },
+
   get adminAuthApiUrl() {
     return readEnv("ADMIN_AUTH_API_URL");
   },

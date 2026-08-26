@@ -162,6 +162,11 @@ export const registrationApplications = pgTable(
     identityReviewedBy: text("identity_reviewed_by"),
     identityReviewNotes: text("identity_review_notes"),
     submitIpHash: text("submit_ip_hash"),
+    /** Optional link to a participant account (nullable; not backfilled). */
+    participantAccountId: uuid("participant_account_id").references(
+      (): AnyPgColumn => participantAccounts.id,
+      { onDelete: "set null" },
+    ),
     createdAt: timestamp("created_at", { withTimezone: true, mode: "string" })
       .notNull()
       .defaultNow(),
@@ -181,6 +186,9 @@ export const registrationApplications = pgTable(
       .where(sql`${table.status} NOT IN ('rejected', 'withdrawn')`),
     index("registration_applications_social_follow_status_idx").on(
       table.socialFollowStatus,
+    ),
+    index("registration_applications_participant_account_id_idx").on(
+      table.participantAccountId,
     ),
   ],
 );
@@ -1289,3 +1297,187 @@ export const adminAuditEvents = pgTable("admin_audit_events", {
     .notNull()
     .defaultNow(),
 });
+
+export const participantProfileStatusEnum = pgEnum("participant_profile_status", [
+  "incomplete",
+  "submitted_for_review",
+  "needs_correction",
+  "verified",
+]);
+
+export interface ParticipantGuardianRecord {
+  fullName: string;
+  relationship: string;
+  email: string;
+  phone: string;
+  consentAt: string;
+}
+
+export const participantAccounts = pgTable(
+  "participant_accounts",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    email: text("email").notNull(),
+    emailNormalized: text("email_normalized").notNull(),
+    username: text("username").notNull(),
+    usernameNormalized: text("username_normalized").notNull(),
+    passwordHash: text("password_hash").notNull(),
+    emailVerifiedAt: timestamp("email_verified_at", {
+      withTimezone: true,
+      mode: "string",
+    }),
+    active: boolean("active").notNull().default(true),
+    failedLoginAttempts: integer("failed_login_attempts").notNull().default(0),
+    lockedUntil: timestamp("locked_until", {
+      withTimezone: true,
+      mode: "string",
+    }),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "string" })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true, mode: "string" })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("participant_accounts_email_normalized_uidx").on(
+      table.emailNormalized,
+    ),
+    uniqueIndex("participant_accounts_username_normalized_uidx").on(
+      table.usernameNormalized,
+    ),
+  ],
+);
+
+export const participantProfiles = pgTable(
+  "participant_profiles",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    accountId: uuid("account_id")
+      .notNull()
+      .references(() => participantAccounts.id, { onDelete: "cascade" }),
+    status: participantProfileStatusEnum("status")
+      .notNull()
+      .default("incomplete"),
+    firstName: text("first_name"),
+    lastName: text("last_name"),
+    dateOfBirth: date("date_of_birth"),
+    country: text("country"),
+    city: text("city"),
+    phone: text("phone"),
+    phoneNormalized: text("phone_normalized"),
+    identificationType: identificationTypeEnum("identification_type"),
+    identificationNumberHash: text("identification_number_hash"),
+    identificationNumberEncrypted: text("identification_number_encrypted"),
+    gamerTag: text("gamer_tag"),
+    playerPhotoBlobKey: text("player_photo_blob_key"),
+    playerPhotoMeta: jsonb("player_photo_meta").$type<PlayerPhotoMeta>(),
+    guardian: jsonb("guardian").$type<ParticipantGuardianRecord | null>(),
+    completionPercent: integer("completion_percent").notNull().default(0),
+    submittedAt: timestamp("submitted_at", {
+      withTimezone: true,
+      mode: "string",
+    }),
+    verifiedAt: timestamp("verified_at", {
+      withTimezone: true,
+      mode: "string",
+    }),
+    verifiedBy: text("verified_by"),
+    correctionReason: text("correction_reason"),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "string" })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true, mode: "string" })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("participant_profiles_account_id_uidx").on(table.accountId),
+    index("participant_profiles_status_idx").on(table.status),
+  ],
+);
+
+export const participantSessions = pgTable(
+  "participant_sessions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    accountId: uuid("account_id")
+      .notNull()
+      .references(() => participantAccounts.id, { onDelete: "cascade" }),
+    tokenHash: text("token_hash").notNull(),
+    expiresAt: timestamp("expires_at", {
+      withTimezone: true,
+      mode: "string",
+    }).notNull(),
+    revokedAt: timestamp("revoked_at", {
+      withTimezone: true,
+      mode: "string",
+    }),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "string" })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("participant_sessions_token_hash_uidx").on(table.tokenHash),
+    index("participant_sessions_account_id_idx").on(table.accountId),
+    index("participant_sessions_expires_at_idx")
+      .on(table.expiresAt)
+      .where(sql`${table.revokedAt} IS NULL`),
+  ],
+);
+
+/**
+ * DB-backed participant login rate-limit attempts (identifier / IP hashes only).
+ * Never store plaintext emails, usernames, passwords, or raw IPs.
+ */
+export const participantLoginAttempts = pgTable(
+  "participant_login_attempts",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    keyHash: text("key_hash").notNull(),
+    attemptedAt: timestamp("attempted_at", {
+      withTimezone: true,
+      mode: "string",
+    })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index("participant_login_attempts_key_attempted_idx").on(
+      table.keyHash,
+      table.attemptedAt,
+    ),
+  ],
+);
+
+/**
+ * Append-only participant audit trail.
+ * Never store passwords, OTP, NIN, passport, email, phone, or guardian contacts.
+ */
+export const participantAuditEvents = pgTable(
+  "participant_audit_events",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    accountId: uuid("account_id").references(() => participantAccounts.id, {
+      onDelete: "set null",
+    }),
+    eventType: text("event_type").notNull(),
+    actor: text("actor"),
+    metadata: jsonb("metadata").$type<
+      Record<string, string | number | boolean | null>
+    >(),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "string" })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index("participant_audit_events_account_created_idx").on(
+      table.accountId,
+      table.createdAt,
+    ),
+    index("participant_audit_events_type_created_idx").on(
+      table.eventType,
+      table.createdAt,
+    ),
+  ],
+);

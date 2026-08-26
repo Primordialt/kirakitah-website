@@ -77,12 +77,20 @@ export function AdminShell({
               Applications
             </Link>
             {canReviewIdentity ? (
-              <Link
-                className="hover:text-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-border-focus"
-                href="/admin/reviews/identity"
-              >
-                Identity reviews
-              </Link>
+              <>
+                <Link
+                  className="hover:text-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-border-focus"
+                  href="/admin/reviews/identity"
+                >
+                  Identity reviews
+                </Link>
+                <Link
+                  className="hover:text-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-border-focus"
+                  href="/admin/reviews/profiles"
+                >
+                  Profile reviews
+                </Link>
+              </>
             ) : null}
             {canReviewSocial ? (
               <Link

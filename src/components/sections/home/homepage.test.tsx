@@ -63,7 +63,7 @@ describe("HomePage", () => {
 
     expect(screen.getByRole("link", { name: /REGISTER NOW/i })).toHaveAttribute(
       "href",
-      "/esports/register",
+      "/register",
     );
   });
 
