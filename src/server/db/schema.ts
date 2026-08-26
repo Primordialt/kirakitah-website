@@ -257,6 +257,35 @@ export const registrationVerificationChallenges = pgTable(
 );
 
 /**
+ * Pre-registration email OTP + short-lived verification proof.
+ * Does not create an application. Does not reserve email for duplicates
+ * until a successful application is inserted.
+ */
+export const preRegistrationEmailChallenges = pgTable(
+  "pre_registration_email_challenges",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    emailNormalized: text("email_normalized").notNull(),
+    emailHash: text("email_hash").notNull(),
+    codeHash: text("code_hash").notNull(),
+    attempts: integer("attempts").notNull().default(0),
+    maxAttempts: integer("max_attempts").notNull().default(5),
+    expiresAt: timestamp("expires_at", { withTimezone: true, mode: "string" }).notNull(),
+    verifiedAt: timestamp("verified_at", { withTimezone: true, mode: "string" }),
+    verificationTokenHash: text("verification_token_hash"),
+    verificationExpiresAt: timestamp("verification_expires_at", {
+      withTimezone: true,
+      mode: "string",
+    }),
+    supersededAt: timestamp("superseded_at", { withTimezone: true, mode: "string" }),
+    consumedAt: timestamp("consumed_at", { withTimezone: true, mode: "string" }),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "string" })
+      .notNull()
+      .defaultNow(),
+  },
+);
+
+/**
  * Administrative audit trail — never store OTP, NIN, passport, email, phone,
  * or guardian contacts in metadata payloads.
  */

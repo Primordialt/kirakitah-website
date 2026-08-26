@@ -19,6 +19,9 @@ describe("RegistrationSuccess — MVP messaging", () => {
     expect(
       screen.getByText(/Participation is subject to eligibility and manual review/i),
     ).toBeInTheDocument();
+    expect(
+      screen.getByText(/Your email ownership was verified before submission/i),
+    ).toBeInTheDocument();
     expect(screen.getByText(/KG926-2026-ABCDEF/)).toBeInTheDocument();
     expect(screen.getByText(/keep this reference/i)).toBeInTheDocument();
 

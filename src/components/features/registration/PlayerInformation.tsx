@@ -35,14 +35,7 @@ export function PlayerInformation({ register, errors }: FormSectionProps) {
         error={errors.city?.message}
         {...register("city")}
       />
-      <Input
-        label="Email"
-        type="email"
-        required
-        autoComplete="email"
-        error={errors.email?.message}
-        {...register("email")}
-      />
+      {/* Email is collected and verified in EmailPreVerificationGate */}
       <Input
         label="Phone number"
         type="tel"

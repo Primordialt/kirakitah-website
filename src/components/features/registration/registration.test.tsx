@@ -56,12 +56,66 @@ function createTestFile(name: string, type: string, content = "test-content") {
   return new File([content], name, { type });
 }
 
+async function mockEmailVerificationFetch() {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url.includes("/api/registrations/email/challenge")) {
+        return {
+          ok: true,
+          json: async () => ({
+            success: true,
+            challengeId: "00000000-0000-4000-8000-000000000001",
+            resendAvailableAt: new Date(Date.now() + 60_000).toISOString(),
+            message: "Verification email sent.",
+          }),
+        } as Response;
+      }
+      if (url.includes("/api/registrations/email/verify")) {
+        return {
+          ok: true,
+          json: async () => ({
+            success: true,
+            emailVerificationToken: "unit-test-token",
+            expiresAt: new Date(Date.now() + 15 * 60_000).toISOString(),
+            message: "Email verified.",
+          }),
+        } as Response;
+      }
+      if (url.includes("/api/registrations/email/resend")) {
+        return {
+          ok: true,
+          json: async () => ({
+            success: true,
+            challengeId: "00000000-0000-4000-8000-000000000002",
+            resendAvailableAt: new Date(Date.now() + 60_000).toISOString(),
+            message: "Verification email sent.",
+          }),
+        } as Response;
+      }
+      throw new Error(`Unexpected fetch in test: ${url} ${init?.method ?? ""}`);
+    }),
+  );
+}
+
+async function verifyEmailInForm(user: ReturnType<typeof userEvent.setup>) {
+  await user.type(screen.getByLabelText(/Email address/i), "player@example.com");
+  await user.click(
+    screen.getByRole("button", { name: /SEND VERIFICATION CODE/i }),
+  );
+  await screen.findByText(/Verification email sent/i);
+  await user.type(screen.getByLabelText(/Verification code/i), "123456");
+  await user.click(screen.getByRole("button", { name: /VERIFY EMAIL/i }));
+  await screen.findByText(/^Email verified\.$/i);
+}
+
 async function fillRequiredRegistrationFields(user: ReturnType<typeof userEvent.setup>) {
+  await verifyEmailInForm(user);
   await user.type(screen.getByLabelText(/Full name/i), "Test Player");
   await user.type(screen.getByLabelText(/Date of birth/i), adultDob());
   await user.selectOptions(screen.getByLabelText(/Country/i), "NG");
   await user.type(screen.getByLabelText(/City \/ location/i), "Lagos");
-  await user.type(screen.getByLabelText(/^Email/i), "player@example.com");
   await user.type(screen.getByLabelText(/Phone number/i), "08012345678");
 
   await user.selectOptions(
@@ -203,6 +257,7 @@ describe("RegistrationForm", () => {
   beforeEach(() => {
     mockSubmit.mockReset();
     mockSubmit.mockResolvedValue({ success: true, referenceId: "MOCK-123" });
+    mockEmailVerificationFetch();
   });
 
   it("clarifies that Gamer Tag is the eFootball username", () => {
@@ -217,17 +272,36 @@ describe("RegistrationForm", () => {
     ).toBeInTheDocument();
   });
 
-  it("shows validation errors for required fields", async () => {
+  it("keeps submit disabled until email is verified", () => {
+    render(<RegistrationForm />);
+    expect(
+      screen.getByRole("button", { name: /SUBMIT APPLICATION/i }),
+    ).toBeDisabled();
+    expect(
+      screen.getByText(/Verify your email above before submitting/i),
+    ).toBeInTheDocument();
+    expect(mockSubmit).not.toHaveBeenCalled();
+  });
+
+  it("invalidates verification when email changes after verify", async () => {
     render(<RegistrationForm />);
     const user = userEvent.setup();
 
-    await user.click(screen.getByRole("button", { name: /SUBMIT APPLICATION/i }));
+    await verifyEmailInForm(user);
+    expect(
+      screen.getByRole("button", { name: /SUBMIT APPLICATION/i }),
+    ).not.toBeDisabled();
 
-    expect(await screen.findByText("Full name is required")).toBeInTheDocument();
-    expect(await screen.findByText("Identification type is required")).toBeInTheDocument();
-    expect(await screen.findByText("Player photo is required")).toBeInTheDocument();
-    expect(mockSubmit).not.toHaveBeenCalled();
-  });
+    await user.clear(screen.getByLabelText(/Email address/i));
+    await user.type(screen.getByLabelText(/Email address/i), "other@example.com");
+
+    expect(
+      screen.getByRole("button", { name: /SUBMIT APPLICATION/i }),
+    ).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: /SEND VERIFICATION CODE/i }),
+    ).toBeInTheDocument();
+  }, 20000);
 
   it("shows guardian fields for minors and hides for adults", async () => {
     render(<RegistrationForm />);
@@ -280,8 +354,11 @@ describe("RegistrationForm", () => {
     expect(submitted.identityVerification.identificationType).toBe("nin");
     expect(submitted.identityVerification.identificationNumber).toBe("12345678901");
     expect(submitted.identityVerification.playerPhoto).toBeInstanceOf(File);
-    expect(options).toEqual({ includeGuardian: false });
-  }, 15000);
+    expect(options).toEqual({
+      includeGuardian: false,
+      emailVerificationToken: "unit-test-token",
+    });
+  }, 20000);
 
   it("shows failure state when mock submission fails", async () => {
     mockSubmit.mockResolvedValueOnce({ success: false, referenceId: "" });
@@ -294,5 +371,5 @@ describe("RegistrationForm", () => {
     await waitFor(() => {
       expect(screen.getByText(/SOMETHING WENT WRONG/i)).toBeInTheDocument();
     });
-  }, 15000);
+  }, 20000);
 });

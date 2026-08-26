@@ -22,6 +22,10 @@ import { ConsentSection } from "./ConsentSection";
 import { GuardianInformation } from "./GuardianInformation";
 import { RegistrationSuccess } from "./RegistrationSuccess";
 import { RegistrationError } from "./RegistrationError";
+import {
+  EmailPreVerificationGate,
+  type EmailPreVerificationState,
+} from "./EmailPreVerificationGate";
 
 type FormStatus = "idle" | "submitting" | "success" | "failure";
 
@@ -65,6 +69,12 @@ export function RegistrationForm() {
   const [contactVerification, setContactVerification] = useState<
     RegistrationResult["contactVerification"] | undefined
   >(undefined);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [emailVerification, setEmailVerification] =
+    useState<EmailPreVerificationState>({
+      email: "",
+      verified: false,
+    });
 
   const {
     register,
@@ -83,7 +93,11 @@ export function RegistrationForm() {
   });
 
   const dateOfBirth = watch("dateOfBirth");
+  const fullName = watch("fullName");
   const showGuardian = requiresGuardian(dateOfBirth);
+  const emailVerified = Boolean(
+    emailVerification.verified && emailVerification.emailVerificationToken,
+  );
 
   useEffect(() => {
     if (!showGuardian) {
@@ -91,12 +105,29 @@ export function RegistrationForm() {
     }
   }, [showGuardian, setValue]);
 
+  useEffect(() => {
+    setValue("email", emailVerification.email, { shouldValidate: true });
+  }, [emailVerification.email, setValue]);
+
   const onSubmit = async (data: RegistrationFormValues) => {
+    if (!emailVerification.emailVerificationToken || !emailVerification.verified) {
+      setSubmitError("Verify your email address before submitting your application.");
+      return;
+    }
+
     setStatus("submitting");
+    setSubmitError(null);
     try {
-      const result = await services.registration.submit(data, {
-        includeGuardian: showGuardian,
-      });
+      const result = await services.registration.submit(
+        {
+          ...data,
+          email: emailVerification.email.trim().toLowerCase(),
+        },
+        {
+          includeGuardian: showGuardian,
+          emailVerificationToken: emailVerification.emailVerificationToken,
+        },
+      );
 
       if (result.success) {
         setReferenceId(result.referenceId);
@@ -106,6 +137,19 @@ export function RegistrationForm() {
         setStatus("failure");
       }
     } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Unable to submit registration.";
+      if (
+        message.includes("already registered") ||
+        message.includes("Verify your email") ||
+        message.includes("expired")
+      ) {
+        setSubmitError(message);
+        setStatus("idle");
+        return;
+      }
       if (process.env.NODE_ENV === "development") {
         console.error("Registration submission failed", error);
       }
@@ -115,6 +159,7 @@ export function RegistrationForm() {
 
   const handleRetry = () => {
     setStatus("idle");
+    setSubmitError(null);
   };
 
   if (status === "success") {
@@ -157,6 +202,16 @@ export function RegistrationForm() {
         {formStatusLabel}
       </p>
 
+      <EmailPreVerificationGate
+        fullName={fullName}
+        value={emailVerification}
+        onChange={setEmailVerification}
+        disabled={isSubmitting}
+      />
+      {errors.email?.message ? (
+        <p className="text-body-sm text-error">{errors.email.message}</p>
+      ) : null}
+
       <PlayerInformation register={register} control={control} errors={errors} />
       <IdentityVerification
         register={register}
@@ -177,15 +232,27 @@ export function RegistrationForm() {
 
       <input type="hidden" {...register("eventId")} />
       <input type="hidden" {...register("game")} />
+      <input type="hidden" {...register("email")} />
+
+      {submitError ? (
+        <p role="alert" className="text-body-sm text-error">
+          {submitError}
+        </p>
+      ) : null}
 
       <Button
         type="submit"
         size="lg"
         loading={isSubmitting || status === "submitting"}
-        disabled={isSubmitting}
+        disabled={isSubmitting || !emailVerified}
       >
         SUBMIT APPLICATION
       </Button>
+      {!emailVerified ? (
+        <p className="text-body-sm text-text-muted">
+          Verify your email above before submitting.
+        </p>
+      ) : null}
     </form>
   );
 }

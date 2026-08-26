@@ -29,7 +29,7 @@ function assertPlayerPhotoMetadataOnly(
 export class MockRegistrationService implements IRegistrationService {
   async submit(
     data: RegistrationFormValues,
-    options: { includeGuardian: boolean },
+    options: { includeGuardian: boolean; emailVerificationToken?: string },
   ): Promise<RegistrationResult> {
     if (!isMockRegistrationAllowed()) {
       throw new Error(

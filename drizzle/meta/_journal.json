@@ -113,6 +113,13 @@
       "when": 1721088000000,
       "tag": "0015_match_scheduling_ops",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1721174400000,
+      "tag": "0016_pre_registration_email_verification",
+      "breakpoints": true
     }
   ]
 }

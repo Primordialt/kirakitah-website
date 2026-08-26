@@ -3,6 +3,7 @@ import {
   createRegistrationApplication,
   DuplicateRegistrationError,
   PhotoValidationError,
+  PreRegistrationEmailError,
   RateLimitError,
 } from "@/server/registration/create-application";
 import { RegistrationGateError } from "@/server/registration/registration-gate";
@@ -140,12 +141,10 @@ export async function POST(request: Request) {
         contactVerification: result.contactVerification,
         nextSteps: {
           applicationReceived: true,
-          emailVerificationRequired:
-            registrationPolicy.contactVerification === "REQUIRED",
-          phoneVerificationRequired:
-            registrationPolicy.contactVerification === "REQUIRED",
-          contactVerificationDeferred:
-            registrationPolicy.contactVerification === "DEFERRED",
+          emailVerificationRequired: true,
+          phoneVerificationRequired: false,
+          contactVerificationDeferred: false,
+          emailVerifiedBeforeSubmit: true,
           identityReview: "pending_review",
           tournamentParticipationConfirmed: false,
           registrationMode: registrationPolicy.mode,
@@ -162,6 +161,15 @@ export async function POST(request: Request) {
 
     if (error instanceof DuplicateRegistrationError) {
       return jsonResponse(apiError(error.code, error.message), 409, requestId);
+    }
+
+    if (error instanceof PreRegistrationEmailError) {
+      const status =
+        error.code === "EMAIL_VERIFICATION_REQUIRED" ||
+        error.code === "VERIFICATION_EXPIRED"
+          ? 403
+          : 400;
+      return jsonResponse(apiError(error.code, error.message), status, requestId);
     }
 
     if (error instanceof RateLimitError) {

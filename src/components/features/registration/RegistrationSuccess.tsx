@@ -2,15 +2,14 @@
 
 import { useEffect, useRef } from "react";
 import { Button } from "@/components/ui";
-import { ContactVerificationPanel } from "@/components/features/registration/ContactVerificationPanel";
 import { COMPETITION_NAME } from "@/config/competition";
 import type { ContactChannelVerificationState } from "@/domain/registration";
 
 export function RegistrationSuccess({
   referenceId,
-  contactVerification,
 }: {
   referenceId?: string;
+  /** Retained for API compatibility; email is verified before submit. */
   contactVerification?: {
     email: ContactChannelVerificationState;
     phone: ContactChannelVerificationState;
@@ -21,19 +20,6 @@ export function RegistrationSuccess({
   useEffect(() => {
     headingRef.current?.focus();
   }, []);
-
-  const emailChallengeActive =
-    Boolean(contactVerification?.email?.challengeId) &&
-    contactVerification?.email?.status === "pending";
-  const emailUnavailable =
-    contactVerification?.email?.status === "unavailable";
-  const showContactPanel =
-    Boolean(referenceId) &&
-    Boolean(contactVerification) &&
-    (emailChallengeActive ||
-      emailUnavailable ||
-      contactVerification?.email?.status === "verified" ||
-      contactVerification?.phone?.status === "pending");
 
   return (
     <div
@@ -52,8 +38,8 @@ export function RegistrationSuccess({
         Thank you for submitting your {COMPETITION_NAME} application.
       </p>
       <p className="text-body-sm text-text-secondary">
-        Our team will review your application and contact you regarding the next
-        steps.
+        Your email ownership was verified before submission. Our team will review
+        your application and contact you regarding the next steps.
       </p>
       <p className="text-body-sm font-medium text-text-primary">
         Participation is subject to eligibility and manual review.
@@ -69,16 +55,6 @@ export function RegistrationSuccess({
       <p className="text-body-sm text-text-muted">
         Please keep this reference for your records.
       </p>
-
-      {showContactPanel && referenceId ? (
-        <div className="w-full text-left">
-          <ContactVerificationPanel
-            referenceId={referenceId}
-            contactVerification={contactVerification}
-            deferred={false}
-          />
-        </div>
-      ) : null}
 
       <Button href="/esports" variant="outline" size="lg">
         BACK TO TOURNAMENT
