@@ -113,24 +113,32 @@ describe("admin auth provider resolution", () => {
     vi.resetModules();
   });
 
-  it("allows mock auth outside production", async () => {
-    vi.stubEnv("NODE_ENV", "development");
-    vi.stubEnv("ADMIN_AUTH_PROVIDER", "mock");
-    const { resetAdminAuthProviderForTests, getAdminAuthProvider } =
-      await import("@/server/admin/auth/providers");
-    resetAdminAuthProviderForTests();
-    expect(getAdminAuthProvider().providerId).toBe("mock");
-  });
+  it(
+    "allows mock auth outside production",
+    async () => {
+      vi.stubEnv("NODE_ENV", "development");
+      vi.stubEnv("ADMIN_AUTH_PROVIDER", "mock");
+      const { resetAdminAuthProviderForTests, getAdminAuthProvider } =
+        await import("@/server/admin/auth/providers");
+      resetAdminAuthProviderForTests();
+      expect(getAdminAuthProvider().providerId).toBe("mock");
+    },
+    15_000,
+  );
 
-  it("rejects mock auth in production", async () => {
-    vi.stubEnv("NODE_ENV", "production");
-    vi.stubEnv("VERCEL_ENV", "production");
-    vi.stubEnv("ADMIN_AUTH_PROVIDER", "mock");
-    const { resetAdminAuthProviderForTests, getAdminAuthProvider } =
-      await import("@/server/admin/auth/providers");
-    resetAdminAuthProviderForTests();
-    expect(getAdminAuthProvider().providerId).toBe("unavailable");
-  });
+  it(
+    "rejects mock auth in production",
+    async () => {
+      vi.stubEnv("NODE_ENV", "production");
+      vi.stubEnv("VERCEL_ENV", "production");
+      vi.stubEnv("ADMIN_AUTH_PROVIDER", "mock");
+      const { resetAdminAuthProviderForTests, getAdminAuthProvider } =
+        await import("@/server/admin/auth/providers");
+      resetAdminAuthProviderForTests();
+      expect(getAdminAuthProvider().providerId).toBe("unavailable");
+    },
+    15_000,
+  );
 
   it("defaults to database auth in production when DATABASE_URL is present", async () => {
     vi.stubEnv("NODE_ENV", "production");

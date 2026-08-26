@@ -4,8 +4,8 @@ import {
   KnockoutGenerateButton,
   KnockoutMatchResultForm,
   KnockoutPairingForm,
-  MatchScheduleForm,
 } from "@/components/admin/KnockoutActions";
+import { MatchSchedulePanel } from "@/components/admin/MatchSchedulePanel";
 import { roleHasPermission } from "@/server/admin/authorization/permissions";
 import { isRegistrationBackendConfigured } from "@/server/env";
 import { listKnockoutBracket } from "@/server/tournament/knockout/bracket-service";
@@ -153,7 +153,7 @@ export default async function AdminKnockoutPage({
                   {match.participantBCode ??
                     (match.slotBType === "match_winner" ? "Winner TBD" : "—")}
                 </p>
-                <MatchScheduleForm
+                <MatchSchedulePanel
                   matchId={match.id}
                   canSchedule={canSchedule}
                   schedulingStatus={match.schedulingStatus}

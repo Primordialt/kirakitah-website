@@ -341,6 +341,7 @@ export const adminAuditEventTypeEnum = pgEnum("admin_audit_event_type", [
   "NO_SHOW_RECORDED",
   "DISCONNECT_RESOLVED",
   "DISPUTE_RESOLVED",
+  "MATCH_NOTIFICATION_CREATED",
 ]);
 
 export const tournamentPhaseTypeEnum = pgEnum("tournament_phase_type", [
@@ -382,6 +383,21 @@ export const matchSchedulingStatusEnum = pgEnum("match_scheduling_status", [
   "reschedule_requested",
   "cancelled",
 ]);
+
+export const matchScheduleHistoryActionEnum = pgEnum(
+  "match_schedule_history_action",
+  ["scheduled", "rescheduled", "cancelled"],
+);
+
+export const matchNotificationEventTypeEnum = pgEnum(
+  "match_notification_event_type",
+  ["MATCH_SCHEDULED", "MATCH_RESCHEDULED", "MATCH_REMINDER", "MATCH_CANCELLED"],
+);
+
+export const matchNotificationDeliveryStatusEnum = pgEnum(
+  "match_notification_delivery_status",
+  ["pending", "recorded", "delivered", "failed"],
+);
 
 export const matchResultSourceEnum = pgEnum("match_result_source", [
   "admin",
@@ -964,6 +980,90 @@ export const matches = pgTable(
     index("matches_participant_b_scheduled_idx").on(
       table.participantBId,
       table.scheduledAt,
+    ),
+  ],
+);
+
+export const matchScheduleHistory = pgTable(
+  "match_schedule_history",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    matchId: uuid("match_id")
+      .notNull()
+      .references(() => matches.id, { onDelete: "cascade" }),
+    tournamentId: text("tournament_id")
+      .notNull()
+      .references(() => tournaments.id, { onDelete: "cascade" }),
+    action: matchScheduleHistoryActionEnum("action").notNull(),
+    previousScheduledAt: timestamp("previous_scheduled_at", {
+      withTimezone: true,
+      mode: "string",
+    }),
+    previousWindowStart: timestamp("previous_window_start", {
+      withTimezone: true,
+      mode: "string",
+    }),
+    previousWindowEnd: timestamp("previous_window_end", {
+      withTimezone: true,
+      mode: "string",
+    }),
+    previousTimezone: text("previous_timezone"),
+    scheduledAt: timestamp("scheduled_at", {
+      withTimezone: true,
+      mode: "string",
+    }),
+    scheduledWindowStart: timestamp("scheduled_window_start", {
+      withTimezone: true,
+      mode: "string",
+    }),
+    scheduledWindowEnd: timestamp("scheduled_window_end", {
+      withTimezone: true,
+      mode: "string",
+    }),
+    timezone: text("timezone"),
+    reason: text("reason"),
+    actorId: text("actor_id").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "string" })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index("match_schedule_history_match_idx").on(table.matchId, table.createdAt),
+  ],
+);
+
+export const matchNotificationEvents = pgTable(
+  "match_notification_events",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    eventType: matchNotificationEventTypeEnum("event_type").notNull(),
+    matchId: uuid("match_id")
+      .notNull()
+      .references(() => matches.id, { onDelete: "cascade" }),
+    tournamentId: text("tournament_id")
+      .notNull()
+      .references(() => tournaments.id, { onDelete: "cascade" }),
+    recipientParticipantId: uuid("recipient_participant_id").references(
+      () => tournamentParticipants.id,
+      { onDelete: "set null" },
+    ),
+    deliveryStatus: matchNotificationDeliveryStatusEnum("delivery_status")
+      .notNull()
+      .default("recorded"),
+    channel: text("channel").notNull().default("internal"),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "string" })
+      .notNull()
+      .defaultNow(),
+    processedAt: timestamp("processed_at", {
+      withTimezone: true,
+      mode: "string",
+    }),
+  },
+  (table) => [
+    index("match_notification_events_match_idx").on(table.matchId, table.createdAt),
+    index("match_notification_events_participant_idx").on(
+      table.recipientParticipantId,
+      table.createdAt,
     ),
   ],
 );

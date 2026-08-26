@@ -6,10 +6,18 @@ import {
   listFinalizedPolicyItems,
   listPendingPolicyItems,
 } from "@/server/tournament/rules/competition-policy";
-import { isValidIanaTimezone } from "@/server/tournament/scheduling/scheduling-service";
+import {
+  describeNotificationBoundary,
+  formatScheduleInAfricaLagos,
+  isValidIanaTimezone,
+  parseLocalDateTimeInTimezone,
+  scheduleWindowsOverlap,
+  TOURNAMENT_TIMEZONE,
+} from "@/server/tournament/scheduling/scheduling-service";
 import { roleHasPermission } from "@/server/admin/authorization/permissions";
 import { CompetitionOperationsError } from "@/server/tournament/competition/errors";
 import { KG926_COMPETITION_RULES_VERSION } from "@/server/tournament/competition/competition-rules";
+import { assertNoSensitivePublicFields } from "@/server/tournament/competition/public-projections";
 
 describe("KG926 competition policy (FINALIZED vs PENDING)", () => {
   it("uses kg926-v1 and KIRAKITAH GAMING 926 branding", () => {
@@ -69,6 +77,66 @@ describe("timezone validation", () => {
     expect(isValidIanaTimezone("")).toBe(false);
     expect(isValidIanaTimezone("Not/AZone")).toBe(false);
   });
+
+  it("formats Africa/Lagos with WAT label", () => {
+    const formatted = formatScheduleInAfricaLagos(new Date("2026-09-14T17:00:00.000Z"));
+    expect(formatted).toContain("14 Sep 2026");
+    expect(formatted).toContain("WAT");
+    expect(TOURNAMENT_TIMEZONE).toBe("Africa/Lagos");
+  });
+
+  it("parses Lagos local date/time into UTC", () => {
+    const utc = parseLocalDateTimeInTimezone({
+      date: "2026-09-14",
+      time: "18:00",
+      timezone: "Africa/Lagos",
+    });
+    expect(utc).toBe("2026-09-14T17:00:00.000Z");
+  });
+
+  it("detects overlapping participant windows", () => {
+    expect(
+      scheduleWindowsOverlap({
+        aStart: "2026-09-14T17:00:00.000Z",
+        aEnd: "2026-09-14T17:30:00.000Z",
+        bStart: "2026-09-14T17:15:00.000Z",
+        bEnd: "2026-09-14T17:45:00.000Z",
+      }),
+    ).toBe(true);
+    expect(
+      scheduleWindowsOverlap({
+        aStart: "2026-09-14T17:00:00.000Z",
+        aEnd: "2026-09-14T17:30:00.000Z",
+        bStart: "2026-09-14T17:30:00.000Z",
+        bEnd: "2026-09-14T18:00:00.000Z",
+      }),
+    ).toBe(false);
+  });
+
+  it("documents that email and SMS are deferred", () => {
+    expect(describeNotificationBoundary("MATCH_SCHEDULED").emailSms).toBe("deferred");
+    expect(describeNotificationBoundary("MATCH_RESCHEDULED").delivery).toBe("recorded");
+  });
+
+  it("keeps player-safe schedule fields free of PII keys", () => {
+    assertNoSensitivePublicFields({
+      matchId: "m1",
+      tournamentId: "t1",
+      phase: "QUALIFICATION",
+      podNumber: 1,
+      round: 1,
+      yourPublicCode: "KG926-P0001",
+      yourGamerTag: "Ace",
+      opponentPublicCode: "KG926-P0002",
+      opponentGamerTag: "Bolt",
+      scheduledAt: "2026-09-14T17:00:00.000Z",
+      scheduledEndAt: null,
+      timezone: "Africa/Lagos",
+      scheduledDisplay: "14 Sep 2026, 6:00 PM WAT",
+      matchStatus: "ready",
+      schedulingStatus: "scheduled",
+    });
+  });
 });
 
 describe("scheduling error boundaries", () => {
@@ -81,14 +149,15 @@ describe("scheduling error boundaries", () => {
     expect(error.code).toBe("MATCH_RULES_NOT_CONFIGURED");
   });
 
-  it("defines PLAYER_SCHEDULE_CONFLICT", () => {
+  it("defines PLAYER_SCHEDULE_CONFLICT with overlap messaging", () => {
     const error = new CompetitionOperationsError(
-      "A participant already has a match at this exact time.",
+      "This participant is already scheduled for another match during this time.",
       "PLAYER_SCHEDULE_CONFLICT",
       409,
     );
     expect(error.code).toBe("PLAYER_SCHEDULE_CONFLICT");
     expect(error.status).toBe(409);
+    expect(error.message).toContain("already scheduled");
   });
 });
 
@@ -111,11 +180,12 @@ describe("scheduling RBAC", () => {
 });
 
 describe("scheduling audit inventory", () => {
-  it("lists Step 10 scheduling and policy audit events", () => {
+  it("lists Step 10 scheduling and notification audit events", () => {
     const events = [
       "MATCH_SCHEDULED",
       "MATCH_RESCHEDULED",
       "MATCH_SCHEDULE_CANCELLED",
+      "MATCH_NOTIFICATION_CREATED",
       "MATCH_ACTIVATED",
       "MATCH_RULES_VIEWED",
       "COMPETITION_POLICY_VIEWED",
@@ -124,6 +194,19 @@ describe("scheduling audit inventory", () => {
       "DISCONNECT_RESOLVED",
       "DISPUTE_RESOLVED",
     ] as const;
-    expect(events).toHaveLength(10);
+    expect(events).toHaveLength(11);
+  });
+});
+
+describe("scheduling operational boundary", () => {
+  it("does not invent match duration or no-show policy", () => {
+    const policy = buildCompetitionPolicy();
+    expect(policy.matchGameplay.matchDuration).toBe("pending");
+    expect(policy.operational.noShowTiming).toBe("pending");
+  });
+
+  it("keeps scheduling separate from results", () => {
+    expect(buildCompetitionPolicy().operational.resultSource).toBe("admin");
+    expect(buildCompetitionPolicy().operational.schedulingMode).toBe("manual");
   });
 });
