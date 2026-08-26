@@ -2,7 +2,6 @@ import { eq } from "drizzle-orm";
 import { registrationPolicy } from "@/config/registration-policy";
 import { getDb } from "@/server/db";
 import { registrationApplications } from "@/server/db/schema";
-import { isEmailDeliveryConfigured, serverEnv } from "@/server/env";
 import {
   ContactVerificationError,
   createAndDeliverChallenge,
@@ -22,13 +21,9 @@ const DEFERRED_PHONE: ContactChannelInitResult = {
 };
 
 /**
- * Starts contact ownership challenges after registration persistence.
- * Identity verification remains independent (pending_review / manual).
- *
- * MVP_MANUAL_REVIEW:
- * - Email OTP is delivered when Resend is configured (verifiable, not eligibility-required).
- * - Phone OTP remains deferred (SMS not enabled).
- * - Application remains valid while email is pending.
+ * Post-application contact verification.
+ * When email was verified pre-registration, email is recorded as verified
+ * and no second OTP is sent. Phone/SMS remains deferred in MVP.
  */
 export async function initiateContactVerification(options: {
   applicationId: string;
@@ -36,14 +31,31 @@ export async function initiateContactVerification(options: {
   email: string;
   phone: string;
   recipientFirstName?: string;
+  emailAlreadyVerified?: boolean;
 }): Promise<InitiateContactVerificationResult> {
-  const shouldDeliverEmail =
-    registrationPolicy.initiateContactVerificationOnSubmit ||
-    (registrationPolicy.isMvpManualReview &&
-      serverEnv.emailVerificationProvider === "resend" &&
-      isEmailDeliveryConfigured());
+  const db = getDb();
 
-  if (!shouldDeliverEmail) {
+  if (options.emailAlreadyVerified) {
+    await db
+      .update(registrationApplications)
+      .set({
+        emailVerificationStatus: "verified",
+        phoneVerificationStatus: "pending",
+        updatedAt: new Date().toISOString(),
+      })
+      .where(eq(registrationApplications.id, options.applicationId));
+
+    return {
+      email: {
+        status: "verified",
+        provider: "pre-registration",
+        message: "Email verified before application submission.",
+      },
+      phone: DEFERRED_PHONE,
+    };
+  }
+
+  if (!registrationPolicy.initiateContactVerificationOnSubmit) {
     const deferred: ContactChannelInitResult = {
       status: "pending",
       provider: "deferred",
@@ -51,7 +63,6 @@ export async function initiateContactVerification(options: {
         "Contact verification is deferred for MVP_MANUAL_REVIEW. The KIRAKITAH team will contact you with next steps.",
     };
 
-    const db = getDb();
     await db
       .update(registrationApplications)
       .set({
@@ -63,8 +74,6 @@ export async function initiateContactVerification(options: {
 
     return { email: deferred, phone: deferred };
   }
-
-  const db = getDb();
 
   let emailResult: ContactChannelInitResult;
   try {
@@ -123,7 +132,6 @@ export async function initiateContactVerification(options: {
     }
   }
 
-  // DB enum is pending | verified | skipped — never persist "unavailable".
   await db
     .update(registrationApplications)
     .set({

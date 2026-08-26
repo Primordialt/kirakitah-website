@@ -6,6 +6,7 @@ import { toRegistrationSubmission } from "@/domain/registration";
 
 export interface RegistrationSubmitOptions {
   includeGuardian: boolean;
+  emailVerificationToken?: string;
 }
 
 export interface IRegistrationService {

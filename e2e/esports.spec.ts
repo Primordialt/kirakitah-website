@@ -66,6 +66,32 @@ test.describe("Registration", () => {
   test("registration flow with mock success", async ({ page }) => {
     test.setTimeout(60_000);
     await page.setViewportSize({ width: 390, height: 844 });
+
+    await page.route("**/api/registrations/email/challenge", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          success: true,
+          challengeId: "00000000-0000-4000-8000-000000000001",
+          resendAvailableAt: new Date(Date.now() + 60_000).toISOString(),
+          message: "Verification email sent.",
+        }),
+      });
+    });
+    await page.route("**/api/registrations/email/verify", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          success: true,
+          emailVerificationToken: "e2e-test-verification-token",
+          expiresAt: new Date(Date.now() + 15 * 60_000).toISOString(),
+          message: "Email verified.",
+        }),
+      });
+    });
+
     await page.goto("/esports/register");
 
     await expect(
@@ -78,11 +104,16 @@ test.describe("Registration", () => {
       page.getByRole("group", { name: /FOLLOW KIRAKITAH/i }),
     ).toBeVisible();
 
+    await page.getByLabel("Email address").fill("e2e.player@example.com");
+    await page.getByRole("button", { name: /SEND VERIFICATION CODE/i }).click();
+    await page.getByLabel("Verification code").fill("123456");
+    await page.getByRole("button", { name: /VERIFY EMAIL/i }).click();
+    await expect(page.getByText(/^Email verified\.$/i)).toBeVisible();
+
     await page.getByLabel("Full name").fill("E2E Test Player");
     await page.getByLabel("Date of birth").fill("1995-06-15");
     await page.getByLabel("Country").selectOption("NG");
     await page.getByLabel("City / location").fill("Lagos");
-    await page.getByLabel(/^Email/i).fill("e2e.player@example.com");
     await page.getByLabel("Phone number").fill("08000000000");
 
     await page.getByLabel("Identification type").selectOption("nin");
@@ -125,8 +156,12 @@ test.describe("Registration", () => {
 
   test("invalid submission is blocked", async ({ page }) => {
     await page.goto("/esports/register");
-    await page.getByRole("button", { name: /SUBMIT APPLICATION/i }).click();
-    await expect(page.getByText("Full name is required")).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: /SUBMIT APPLICATION/i }),
+    ).toBeDisabled();
+    await expect(
+      page.getByText(/Verify your email above before submitting/i),
+    ).toBeVisible();
   });
 });
 

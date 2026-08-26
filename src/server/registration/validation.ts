@@ -44,6 +44,8 @@ export interface ParsedRegistrationRequest {
   };
   eventId: string;
   playerPhoto: File;
+  /** Opaque short-lived proof from pre-registration email verify. */
+  emailVerificationToken?: string;
 }
 
 const consentSchema = z.object({
@@ -115,6 +117,7 @@ export async function parseRegistrationFormData(
   let consents: ParsedRegistrationRequest["consents"] | undefined;
   let eventId = "";
   let playerPhoto: File | undefined;
+  let emailVerificationToken: string | undefined;
 
   try {
     fullName = requiredString(formData, "fullName", "Full name is required");
@@ -138,6 +141,11 @@ export async function parseRegistrationFormData(
     platform = requiredString(formData, "platform", "Platform is required");
     timezone = requiredString(formData, "timezone", "Time zone is required");
     eventId = requiredString(formData, "eventId", "Event is required");
+
+    const tokenRaw = formData.get("emailVerificationToken");
+    if (typeof tokenRaw === "string" && tokenRaw.trim()) {
+      emailVerificationToken = tokenRaw.trim();
+    }
 
     const gamingProfileRaw = formData.get("gamingProfile");
     if (typeof gamingProfileRaw === "string" && gamingProfileRaw.trim()) {
@@ -320,5 +328,6 @@ export async function parseRegistrationFormData(
     consents,
     eventId,
     playerPhoto,
+    emailVerificationToken,
   };
 }

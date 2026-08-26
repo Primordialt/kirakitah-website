@@ -26,10 +26,18 @@ Never paste real `DATABASE_URL` values into documentation, tickets, chat, or com
 | 13 | `drizzle/0013_kg926_social_channels.sql` | Add `x` social platform; KG926 required set X+Instagram+TikTok; eligibility `kg926-v3` |
 | 14 | `drizzle/0014_admin_user_management.sql` | Admin management audit events + `admin_users.updated_at` |
 | 15 | `drizzle/0015_match_scheduling_ops.sql` | Match schedule history + internal notification events + `MATCH_NOTIFICATION_CREATED` audit |
+| 16 | `drizzle/0016_pre_registration_email_verification.sql` | Pre-registration email OTP challenges + short-lived verification proof tokens |
 
-Latest required for registration + admin login + social follow eligibility + admin user management + match scheduling ops: **0015**.
+Latest required for registration + admin login + social follow eligibility + admin user management + match scheduling ops + pre-registration email verification: **0016**.
 
 No duplicate migration numbers in the repository. Order is deterministic by numeric filename prefix.
+
+### Migration 0016 notes
+
+- Creates `pre_registration_email_challenges`
+- Supports email OTP + short-lived verification token **before** application creation
+- Abandoned/unverified challenges do **not** reserve email for duplicates
+- Email becomes reserved only after a successful application insert (existing unique index)
 
 ### Migration 0015 notes
 

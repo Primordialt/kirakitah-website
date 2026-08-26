@@ -1,5 +1,6 @@
 import { and, eq, gte, inArray, sql } from "drizzle-orm";
 import { randomUUID } from "crypto";
+import { COMPETITION_NAME } from "@/config/competition";
 import { getDb } from "@/server/db";
 import {
   registrationApplications,
@@ -21,6 +22,13 @@ import { generateReferenceId } from "@/server/registration/reference-id";
 import { assertRegistrationOpen } from "@/server/registration/registration-gate";
 import type { ParsedRegistrationRequest } from "@/server/registration/validation";
 import { initiateContactVerification } from "@/server/verification/contact/initiate";
+import {
+  assertPreRegistrationEmailVerified,
+  consumePreRegistrationEmailVerification,
+} from "@/server/verification/email/pre-registration";
+import { PreRegistrationEmailError } from "@/server/verification/email/pre-registration";
+
+export { PreRegistrationEmailError };
 
 export type DuplicateConflictCode =
   | "DUPLICATE_EMAIL"
@@ -81,7 +89,7 @@ function duplicateFromUniqueViolation(error: unknown): DuplicateRegistrationErro
   }
   if (message.includes("registration_event_email_active_idx")) {
     return new DuplicateRegistrationError(
-      "An active application already exists for this email address.",
+      `This email address is already registered for ${COMPETITION_NAME}.`,
       "DUPLICATE_EMAIL",
     );
   }
@@ -167,7 +175,7 @@ async function assertNoActiveDuplicate(
 
   if (emailHit) {
     throw new DuplicateRegistrationError(
-      "An active application already exists for this email address.",
+      `This email address is already registered for ${COMPETITION_NAME}.`,
       "DUPLICATE_EMAIL",
     );
   }
@@ -262,6 +270,11 @@ export async function createRegistrationApplication(
     identificationNumberHash,
   );
 
+  const emailProof = await assertPreRegistrationEmailVerified({
+    email: input.email,
+    emailVerificationToken: input.emailVerificationToken,
+  });
+
   // Automated NIN/passport provider lookup is NOT invoked on registration.
   // Identity verification is manual (pending_review) until KIRAKITAH staff review.
   const identityCheckedAt = new Date().toISOString();
@@ -330,8 +343,9 @@ export async function createRegistrationApplication(
             ? "NIN submitted for manual KIRAKITAH identity review. Automated provider lookup is not enabled."
             : "International passport submitted for manual KIRAKITAH identity review. Automated verification is not available.",
       },
-      // Contact OTP may be deferred (MVP); never mark verified without ownership proof.
-      emailVerificationStatus: "pending",
+      // Email ownership verified before submit; SMS remains deferred.
+      emailVerificationStatus: "verified",
+      emailVerifiedAt: emailProof.verifiedAt,
       phoneVerificationStatus: "pending",
       // Social follow is attested at submit but remains pending_review until manual admin verification.
       socialFollowStatus: "pending_review",
@@ -399,7 +413,10 @@ export async function createRegistrationApplication(
     email: input.email,
     phone: input.phone,
     recipientFirstName: input.fullName?.trim().split(/\s+/)[0],
+    emailAlreadyVerified: true,
   });
+
+  await consumePreRegistrationEmailVerification(emailProof.challengeId);
 
   return {
     referenceId,

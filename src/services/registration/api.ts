@@ -21,7 +21,7 @@ interface ApiRegistrationErrorResponse {
 
 function buildRegistrationFormData(
   data: RegistrationFormValues,
-  options: { includeGuardian: boolean },
+  options: { includeGuardian: boolean; emailVerificationToken?: string },
 ): FormData {
   const formData = new FormData();
 
@@ -31,6 +31,9 @@ function buildRegistrationFormData(
   formData.append("city", data.city);
   formData.append("email", data.email);
   formData.append("phone", data.phone);
+  if (options.emailVerificationToken) {
+    formData.append("emailVerificationToken", options.emailVerificationToken);
+  }
   formData.append(
     "identificationType",
     data.identityVerification.identificationType,
@@ -73,7 +76,7 @@ function buildRegistrationFormData(
 export class ApiRegistrationService implements IRegistrationService {
   async submit(
     data: RegistrationFormValues,
-    options: { includeGuardian: boolean },
+    options: { includeGuardian: boolean; emailVerificationToken?: string },
   ): Promise<RegistrationResult> {
     const response = await fetch("/api/registrations", {
       method: "POST",

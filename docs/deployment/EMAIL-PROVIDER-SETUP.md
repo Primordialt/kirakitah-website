@@ -2,7 +2,18 @@
 
 **Status:** Production email verification uses **Resend** on the verified `kirakitah.com` domain.
 
-SMS remains deferred. Email verification is **verifiable** but **not yet required** for KG926 eligibility.
+SMS remains deferred.
+
+## Product policy (current)
+
+```text
+EMAIL VERIFICATION = REQUIRED BEFORE APPLICATION SUBMISSION
+SMS / PHONE OTP = DEFERRED
+```
+
+Applicants must verify email ownership **before** `POST /api/registrations` can create an application. Frontend disable alone is not sufficient — the server enforces a short-lived verification proof token bound to the normalized email.
+
+Abandoned / unverified pre-registration challenges do **not** permanently reserve an email. Duplicate protection applies only after a successful application is created.
 
 ## Production provider: Resend
 
@@ -13,7 +24,18 @@ SMS remains deferred. Email verification is **verifiable** but **not yet require
 | From | `KIRAKITAH <no-reply@kirakitah.com>` |
 | Delivery class | `ResendEmailDeliveryProvider` (`src/server/verification/email/resend.ts`) |
 
-Resend is **delivery only**. OTP generation, hashing, expiry, attempts, cooldown, and rate limits remain in the contact challenge lifecycle.
+Resend is **delivery only**. OTP generation, hashing, expiry, attempts, cooldown, and rate limits remain in the pre-registration challenge lifecycle.
+
+## Pre-registration APIs
+
+| Endpoint | Purpose |
+|----------|---------|
+| `POST /api/registrations/email/challenge` | Send OTP (no application created) |
+| `POST /api/registrations/email/verify` | Verify OTP → short-lived `emailVerificationToken` |
+| `POST /api/registrations/email/resend` | Resend with 60s cooldown + DB rate limits |
+| `POST /api/registrations` | Requires valid token bound to submitted email |
+
+Post-submit `POST /api/registrations/verify` and `/verify/resend` remain for historical / application-bound challenges and must not be broken.
 
 ## Environment variables
 
@@ -52,6 +74,15 @@ Includes: greeting, 6-digit code, 15-minute expiry, brand footer.
 
 Does **not** include: NIN, passport, phone, guardian, private socials, admin notes, unnecessary application PII.
 
+## Duplicate email
+
+If the email already belongs to an active/successful KG926 application:
+
+- Challenge send and final submit both reject with `DUPLICATE_EMAIL`
+- User-facing message: `This email address is already registered for KIRAKITAH GAMING 926.`
+- No second application is created
+- No other applicant PII is exposed
+
 ## Failure behavior
 
 If Resend rejects the request or the network fails:
@@ -62,30 +93,43 @@ If Resend rejects the request or the network fails:
 - Applicant sees a controlled “messaging unavailable” message
 - Logs include only safe metadata (provider, HTTP status category) — never OTP, API key, or email body
 
-## Smoke test (Product Owner mailbox only)
+## Production smoke test (Product Owner mailbox only)
 
-1. Confirm Production has `RESEND_API_KEY` (never paste into chat/git).
-2. Optionally set `EMAIL_VERIFICATION_PROVIDER=resend` and `EMAIL_FROM=KIRAKITAH <no-reply@kirakitah.com>`.
-3. Submit a **synthetic** adult registration to a mailbox you control (not a real applicant).
-4. Confirm email arrives From `KIRAKITAH <no-reply@kirakitah.com>` with the correct subject and readable OTP.
-5. Enter OTP via the success-page panel or `POST /api/registrations/verify`.
-6. Confirm `email_verification_status = verified` and `email_verified_at` populated.
-7. Confirm wrong OTP / cooldown / resend still behave correctly.
+Do **not** use a real applicant for the first smoke tests.
 
-Until steps 3–6 succeed on a controlled mailbox: treat live delivery as **pending smoke confirmation**.
+**Test A — happy path**
+
+1. Controlled test mailbox → send code → verify OTP → complete form → submit
+2. Receive `KG926-…` reference
+3. Confirm `email_verification_status = verified` and `email_verified_at` populated
+
+**Test B — duplicate**
+
+1. Same verified/registered email → start second registration
+2. Expect: `This email address is already registered for KIRAKITAH GAMING 926.`
+
+**Test C — unverified submit**
+
+1. New email → do **not** verify → attempt final submission (API)
+2. Expect: `EMAIL_VERIFICATION_REQUIRED`
+
+Also confirm wrong OTP / cooldown / resend still behave correctly.
 
 ## Security requirements
 
 - `RESEND_API_KEY` is server-only
 - No `NEXT_PUBLIC_RESEND_API_KEY`
+- Hash-only OTP storage; opaque short-lived verification token (hashed at rest)
+- No client-trusted `emailVerified: true` flags
 - No secrets in client bundle, logs, tests, screenshots, or Git
 - Mock providers never operate in Production
 
 ## Policy boundary
 
 ```text
-EMAIL = VERIFIABLE
-EMAIL ≠ REQUIRED FOR ELIGIBILITY (yet)
+EMAIL = REQUIRED BEFORE APPLICATION SUBMISSION
+EMAIL ≠ SEPARATE POST-SUBMIT ELIGIBILITY RULE (application is created already verified)
+SMS = DEFERRED
 ```
 
-Applications remain valid while email verification is pending.
+Migration: `drizzle/0016_pre_registration_email_verification.sql` (operator-applied on Production Neon; not auto-applied from Cursor).
