@@ -3,6 +3,7 @@ import { Montserrat } from "next/font/google";
 import "@/styles/globals.css";
 import { siteConfig } from "@/config/site";
 import { withSocialMetadata } from "@/lib/social-metadata";
+import { Analytics } from "@vercel/analytics/next";
 
 const montserrat = Montserrat({
   subsets: ["latin"],
@@ -30,6 +31,7 @@ export default function RootLayout({
     <html lang="en">
       <body className={`${montserrat.variable} font-sans antialiased`}>
         {children}
+        <Analytics />
       </body>
     </html>
   );
