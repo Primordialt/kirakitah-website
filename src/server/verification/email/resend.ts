@@ -3,21 +3,21 @@ import { buildEmailVerificationTemplate } from "@/server/verification/templates/
 import type { IEmailDeliveryProvider, EmailDeliveryRequest } from "./types";
 import type { DeliveryResult } from "@/server/verification/types";
 
+const RESEND_API_URL = "https://api.resend.com/emails";
+
 /**
- * Authorized HTTP email delivery for production.
- * Requires EMAIL_VERIFICATION_API_URL and EMAIL_VERIFICATION_API_KEY.
- * Does not invent credentials — fails closed when unset.
+ * Production email delivery via Resend.
+ * Delivery-only — OTP lifecycle remains in contact challenges.
+ * Never logs API keys, OTP codes, or email bodies.
  */
-export class HttpEmailDeliveryProvider implements IEmailDeliveryProvider {
-  readonly providerId = "http";
+export class ResendEmailDeliveryProvider implements IEmailDeliveryProvider {
+  readonly providerId = "resend";
 
   async sendVerificationEmail(
     request: EmailDeliveryRequest,
   ): Promise<DeliveryResult> {
-    const url = serverEnv.emailVerificationApiUrl;
-    const apiKey = serverEnv.emailVerificationApiKey;
-
-    if (!url || !apiKey) {
+    const apiKey = serverEnv.resendApiKey;
+    if (!apiKey) {
       return {
         status: "unavailable",
         provider: this.providerId,
@@ -33,22 +33,34 @@ export class HttpEmailDeliveryProvider implements IEmailDeliveryProvider {
     });
 
     try {
-      const response = await fetch(url, {
+      const response = await fetch(RESEND_API_URL, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${apiKey}`,
         },
         body: JSON.stringify({
-          to: request.email,
+          from: serverEnv.emailFrom,
+          to: [request.email],
           subject: template.subject,
           text: template.text,
           html: template.html,
-          // Never log this payload; code is intentionally included for provider delivery only.
         }),
       });
 
       if (!response.ok) {
+        // Safe diagnostic only — never log response body (may echo content) or keys.
+        if (serverEnv.nodeEnv !== "test") {
+          console.error(
+            JSON.stringify({
+              level: "error",
+              event: "email.delivery.failed",
+              provider: this.providerId,
+              httpStatus: response.status,
+              category: "provider_rejected",
+            }),
+          );
+        }
         return {
           status: "unavailable",
           provider: this.providerId,
@@ -58,31 +70,21 @@ export class HttpEmailDeliveryProvider implements IEmailDeliveryProvider {
 
       return { status: "sent", provider: this.providerId };
     } catch {
+      if (serverEnv.nodeEnv !== "test") {
+        console.error(
+          JSON.stringify({
+            level: "error",
+            event: "email.delivery.failed",
+            provider: this.providerId,
+            category: "network_failure",
+          }),
+        );
+      }
       return {
         status: "unavailable",
         provider: this.providerId,
         message: "Email delivery provider is unavailable.",
       };
     }
-  }
-}
-
-export class UnavailableEmailDeliveryProvider implements IEmailDeliveryProvider {
-  readonly providerId = "unavailable";
-
-  async sendVerificationEmail(): Promise<DeliveryResult> {
-    return {
-      status: "unavailable",
-      provider: this.providerId,
-      message: "Email verification provider is not configured.",
-    };
-  }
-}
-
-export class SkippedEmailDeliveryProvider implements IEmailDeliveryProvider {
-  readonly providerId = "none";
-
-  async sendVerificationEmail(): Promise<DeliveryResult> {
-    return { status: "skipped", provider: this.providerId };
   }
 }

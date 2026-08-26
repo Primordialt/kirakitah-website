@@ -5,6 +5,8 @@ export interface EmailDeliveryRequest {
   referenceId: string;
   code: string;
   expiresInMinutes: number;
+  /** Optional first name for greeting only — never NIN/phone/guardian. */
+  recipientFirstName?: string;
 }
 
 /**

@@ -37,15 +37,26 @@ Applicant submits registration
    ↓
 Application persisted (status: received)
    ↓
-Email + phone challenges generated (secure OTP)
+Email challenge generated when Resend is configured (secure OTP)
    ↓
+Resend delivers verification email (delivery-only)
+   ↓
+Applicant verifies OTP → email_verified_at
+```
+
+**Production email delivery:** Resend (`ResendEmailDeliveryProvider`).  
+See [EMAIL-PROVIDER-SETUP.md](../deployment/EMAIL-PROVIDER-SETUP.md).
+
+Phone/SMS delivery remains deferred. Email is **verifiable** but **not required** for KG926 eligibility yet. Applications remain valid while email is pending.
+
+```text
 Provider delivery attempted
    ↓
 On success: persist challenge (code hash only)
    ↓
 Applicant submits code via POST /api/registrations/verify
    ↓
-email_verified_at / phone_verified_at set
+email_verified_at set
 ```
 
 ### Challenge rules
@@ -66,10 +77,11 @@ email_verified_at / phone_verified_at set
 | Provider | Non-production | Production |
 |----------|----------------|------------|
 | Mock email/SMS | Allowed | **Rejected (fail closed)** |
-| HTTP email/SMS | Optional | Required for delivery (`*_API_URL` + `*_API_KEY`) |
+| Resend email | Optional | **Production delivery** (`RESEND_API_KEY`) |
+| HTTP email/SMS | Optional | Legacy adapter (`*_API_URL` + `*_API_KEY`) |
 | `none` | Skips channel | Skips channel |
 
-**PENDING PROVIDER:** Real transactional email and SMS vendors must be configured with production credentials before live delivery. Mock delivery tests do **not** prove real provider delivery.
+SMS remains deferred until a Product Owner–approved provider is configured. Mock delivery tests do **not** prove real provider delivery.
 
 ### Provider failure behaviour
 
@@ -94,11 +106,11 @@ Endpoints are enumeration-safe: missing applications and missing challenges retu
 
 ## Frontend
 
-After success (`YOU'RE IN THE SYSTEM.`):
+After success (`APPLICATION RECEIVED`):
 
 - Application received messaging (not approved/qualified)
 - Manual identity review messaging
-- Contact verification panel when challenge state is available
+- Email verification panel when a challenge was delivered
 - Unavailable/pending safe states when providers are not configured
 
 ---
@@ -159,8 +171,10 @@ Registration and verification rate limits are **DB-backed** (not process-local m
 
 | Variable | Notes |
 |----------|-------|
-| `EMAIL_VERIFICATION_PROVIDER` | `mock` \| `http` \| `none` |
-| `EMAIL_VERIFICATION_API_URL` / `API_KEY` | Production HTTP delivery |
-| `PHONE_VERIFICATION_PROVIDER` | `mock` \| `http` \| `none` |
-| `PHONE_VERIFICATION_API_URL` / `API_KEY` | Production HTTP delivery |
+| `EMAIL_VERIFICATION_PROVIDER` | `mock` \| `resend` \| `http` \| `none` |
+| `RESEND_API_KEY` | Production Resend delivery (server-only) |
+| `EMAIL_FROM` | Defaults to `KIRAKITAH <no-reply@kirakitah.com>` |
+| `EMAIL_VERIFICATION_API_URL` / `API_KEY` | Legacy HTTP delivery adapter |
+| `PHONE_VERIFICATION_PROVIDER` | `mock` \| `http` \| `none` (SMS deferred) |
+| `PHONE_VERIFICATION_API_URL` / `API_KEY` | Production HTTP SMS delivery (not enabled) |
 | `NIN_VERIFICATION_*` | Optional future only — **not used on submit** |

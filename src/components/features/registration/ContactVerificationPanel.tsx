@@ -210,7 +210,9 @@ function ChannelVerificationCard({
     <div className="rounded-xl border border-border-interactive bg-surface p-4 text-left">
       <h3 className="text-label font-semibold text-text-primary">{label}</h3>
       <p className="mt-2 text-body-sm text-text-secondary">
-        Enter the 6-digit code sent to your {channel}.
+        {channel === "email"
+          ? "Verification email sent. Enter the 6-digit code."
+          : `Enter the 6-digit code sent to your ${channel}.`}
       </p>
 
       <div className="mt-4 space-y-2">
@@ -334,7 +336,8 @@ export function ContactVerificationPanel({
     <div className="flex w-full flex-col gap-4 text-left">
       <h3 className="text-h3 text-text-primary">Contact verification</h3>
       <p className="text-body-sm text-text-secondary">
-        Complete the required contact verification steps when available.
+        Confirm email ownership when a code is available. Your application
+        remains received while email verification is pending.
       </p>
       <ChannelVerificationCard
         channel="email"
@@ -343,13 +346,17 @@ export function ContactVerificationPanel({
         state={emailState}
         onChange={setEmailState}
       />
-      <ChannelVerificationCard
-        channel="phone"
-        label="Phone verification"
-        referenceId={referenceId}
-        state={phoneState}
-        onChange={setPhoneState}
-      />
+      {phoneState.localStatus !== "skipped" &&
+      phoneState.challengeId &&
+      phoneState.status !== "unavailable" ? (
+        <ChannelVerificationCard
+          channel="phone"
+          label="Phone verification"
+          referenceId={referenceId}
+          state={phoneState}
+          onChange={setPhoneState}
+        />
+      ) : null}
     </div>
   );
 }

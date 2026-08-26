@@ -3,6 +3,7 @@ import { getDataSource } from "@/config/data-source";
 import { registrationPolicy } from "@/config/registration-policy";
 import { getDb } from "@/server/db";
 import {
+  isEmailDeliveryConfigured,
   isRegistrationBackendConfigured,
   serverEnv,
 } from "@/server/env";
@@ -64,22 +65,22 @@ function isValidPiiEncryptionKey(value: string | undefined): boolean {
 }
 
 function emailProviderStatus(): ReadinessCheck {
+  const configured = isEmailDeliveryConfigured();
+
   if (registrationPolicy.contactVerification === "DEFERRED") {
     return {
       id: "EMAIL_PROVIDER",
       label: "EMAIL PROVIDER",
-      status: "DEFERRED",
+      status: configured ? "CONFIGURED" : "DEFERRED",
       requiredForFullProduction: true,
       requiredForMvp: false,
-      detail:
-        "EMAIL VERIFICATION DEFERRED (MVP_MANUAL_REVIEW) — architecture intact; not required to accept applications",
+      detail: configured
+        ? serverEnv.emailVerificationProvider === "resend"
+          ? "Resend email delivery configured — email is verifiable; not required for KG926 eligibility yet"
+          : "Email delivery configured — verifiable; not required for KG926 eligibility yet"
+        : "EMAIL VERIFICATION DEFERRED (MVP_MANUAL_REVIEW) — architecture intact; not required to accept applications",
     };
   }
-
-  const configured =
-    serverEnv.emailVerificationProvider === "http" &&
-    Boolean(serverEnv.emailVerificationApiUrl) &&
-    Boolean(serverEnv.emailVerificationApiKey);
 
   return {
     id: "EMAIL_PROVIDER",
@@ -88,7 +89,9 @@ function emailProviderStatus(): ReadinessCheck {
     requiredForFullProduction: true,
     requiredForMvp: false,
     detail: configured
-      ? "HTTP email verification env configured (delivery still requires real-world smoke test)"
+      ? serverEnv.emailVerificationProvider === "resend"
+        ? "Resend email verification env configured (delivery still requires real-world smoke test)"
+        : "HTTP email verification env configured (delivery still requires real-world smoke test)"
       : "PRODUCTION EMAIL PROVIDER REQUIRED — EMAIL DELIVERY = BLOCKED",
   };
 }
@@ -261,11 +264,7 @@ async function migrationVersionStatus(): Promise<ReadinessCheck> {
 }
 
 function emailProviderReady(): boolean {
-  return (
-    serverEnv.emailVerificationProvider === "http" &&
-    Boolean(serverEnv.emailVerificationApiUrl) &&
-    Boolean(serverEnv.emailVerificationApiKey)
-  );
+  return isEmailDeliveryConfigured();
 }
 
 function phoneProviderReady(): boolean {

@@ -60,6 +60,32 @@ describe("contact verification provider resolution", () => {
     expect(email.status).toBe("unavailable");
   });
 
+  it("selects Resend when configured in production", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("VERCEL_ENV", "production");
+    vi.stubEnv("EMAIL_VERIFICATION_PROVIDER", "resend");
+    vi.stubEnv("RESEND_API_KEY", "re_test_key");
+
+    const { resetVerificationProvidersForTests, getVerificationProviders } =
+      await import("@/server/verification");
+    resetVerificationProvidersForTests();
+
+    expect(getVerificationProviders().email.providerId).toBe("resend");
+  });
+
+  it("fails closed for resend mode without RESEND_API_KEY", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("VERCEL_ENV", "production");
+    vi.stubEnv("EMAIL_VERIFICATION_PROVIDER", "resend");
+    vi.stubEnv("RESEND_API_KEY", "");
+
+    const { resetVerificationProvidersForTests, getVerificationProviders } =
+      await import("@/server/verification");
+    resetVerificationProvidersForTests();
+
+    expect(getVerificationProviders().email.providerId).toBe("unavailable");
+  });
+
   it("never returns OTP in delivery failure responses", async () => {
     vi.stubEnv("NODE_ENV", "production");
     vi.stubEnv("EMAIL_VERIFICATION_PROVIDER", "http");

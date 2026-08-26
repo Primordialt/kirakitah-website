@@ -49,14 +49,18 @@ describe("contact verification templates", () => {
     const template = buildEmailVerificationTemplate({
       referenceId: "KG926-2026-ABCDEF",
       code: "654321",
+      recipientFirstName: "Ada",
     });
 
     expect(template.subject).toContain("KIRAKITAH GAMING 926");
+    expect(template.subject).toContain("Verify Your Email");
+    expect(template.text).toContain("Hi Ada,");
     expect(template.text).toContain("654321");
     expect(template.text).toContain("15 minutes");
-    expect(template.text).toContain("Do not share");
+    expect(template.text).toContain("PLAY. COMPETE. CREATE.");
     expect(template.text).not.toMatch(/NIN|passport|guardian|date of birth/i);
     expect(template.html).not.toMatch(/NIN|passport|guardian/i);
+    expect(template.text).not.toContain("KG926-2026-ABCDEF");
   });
 
   it("builds concise SMS content", () => {

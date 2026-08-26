@@ -11,6 +11,7 @@ import {
   UnavailableEmailDeliveryProvider,
 } from "@/server/verification/email/http";
 import { MockEmailDeliveryProvider } from "@/server/verification/email/mock";
+import { ResendEmailDeliveryProvider } from "@/server/verification/email/resend";
 import type { IEmailDeliveryProvider } from "@/server/verification/email/types";
 import {
   HttpPhoneDeliveryProvider,
@@ -72,6 +73,13 @@ function resolveEmailProvider(): IEmailDeliveryProvider {
       return new UnavailableEmailDeliveryProvider();
     }
     return new MockEmailDeliveryProvider();
+  }
+
+  if (mode === "resend") {
+    if (!serverEnv.resendApiKey) {
+      return new UnavailableEmailDeliveryProvider();
+    }
+    return new ResendEmailDeliveryProvider();
   }
 
   if (mode === "http") {
