@@ -160,6 +160,14 @@ export async function assertCanApplyToTournament(
     throw new ApplicationGateError(block.code, block.message);
   }
 
+  // Belt-and-suspenders: verified status alone is not enough if completion drifted.
+  if (profile.completionPercent < 100) {
+    throw new ApplicationGateError(
+      "PROFILE_INCOMPLETE",
+      "Complete your participant profile before applying.",
+    );
+  }
+
   const [duplicateByAccount] = await db
     .select({ id: registrationApplications.id })
     .from(registrationApplications)

@@ -28,3 +28,23 @@ describe("getProfileApplicationBlock", () => {
     expect(getProfileApplicationBlock("verified")).toBeNull();
   });
 });
+
+describe("dashboard status labels", () => {
+  it("maps all profile statuses", async () => {
+    const { getProfileStatusLabel, getDashboardProfileCta } = await import(
+      "@/lib/participant/dashboard-status"
+    );
+    expect(getProfileStatusLabel("incomplete")).toMatch(/Incomplete/i);
+    expect(getProfileStatusLabel("submitted_for_review")).toMatch(/Submitted/i);
+    expect(getProfileStatusLabel("needs_correction")).toMatch(/correction/i);
+    expect(getProfileStatusLabel("verified")).toMatch(/Verified/i);
+    expect(getDashboardProfileCta("incomplete").headline).toMatch(/COMPLETE/i);
+    expect(getDashboardProfileCta("submitted_for_review").headline).toMatch(
+      /PENDING/i,
+    );
+    expect(getDashboardProfileCta("needs_correction").headline).toMatch(
+      /UPDATE REQUIRED/i,
+    );
+    expect(getDashboardProfileCta("verified").headline).toMatch(/READY TO APPLY/i);
+  });
+});

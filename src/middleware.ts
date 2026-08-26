@@ -82,7 +82,8 @@ export function middleware(request: NextRequest) {
     pathname.startsWith("/dashboard/") ||
     pathname === "/profile" ||
     pathname.startsWith("/profile/") ||
-    (pathname.startsWith("/tournaments") && pathname !== "/tournaments");
+    pathname === "/tournaments" ||
+    pathname.startsWith("/tournaments/");
 
   if (
     isParticipantApi &&

@@ -506,6 +506,18 @@ export async function adminApproveProfile(input: {
     );
   }
 
+  const completionInput = toCompletionInput(existing);
+  if (
+    !isProfileComplete(completionInput) ||
+    existing.completionPercent < 100
+  ) {
+    throw new ParticipantProfileError(
+      "PROFILE_INCOMPLETE",
+      "Profile must be 100% complete before it can be verified.",
+      400,
+    );
+  }
+
   const now = new Date().toISOString();
   const [updated] = await db
     .update(participantProfiles)
