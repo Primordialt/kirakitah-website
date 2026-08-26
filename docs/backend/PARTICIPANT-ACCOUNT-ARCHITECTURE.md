@@ -1,6 +1,6 @@
 # Participant Account Architecture — KIRAKITAH
 
-**Status:** Implemented on `development` (migration `0017`).  
+**Status:** Implemented on `development` (migrations `0017`–`0018`).  
 **Do not** auto-apply Production migrations from Cursor.
 
 ## Product journey
@@ -65,7 +65,15 @@ Abandoned challenges do **not** permanently reserve email.
 - Logout revokes session
 - Middleware gates `/dashboard`, `/profile`, tournament apply routes, `/api/participant/*`
 
-Password recovery: **DEFERRED** (no insecure reset in this phase).
+Password recovery: **IMPLEMENTED** (migration `0018`).
+
+- `POST /api/participant/auth/forgot-password` — enumeration-safe; same success message whether the email exists
+- `POST /api/participant/auth/reset-password` — requires `password` + `confirmPassword`; single-use hashed token (1h TTL) consumed atomically (`UPDATE … WHERE used_at IS NULL`); clears lockout; revokes all participant sessions; does **not** auto-login; does **not** reactivate inactive accounts
+- Tokens stored as `token_hash` only (`hashSensitiveValue` + `REGISTRATION_PII_ENCRYPTION_KEY`); plaintext never logged or returned
+- Rate limits via `participant_login_attempts` hashed keys: 5/hour per email (**active accounts only**, after lookup), 20/hour per IP (all requests)
+- Inactive accounts: no email sent, still returns generic success; reset completion rejects inactive accounts with the generic invalid-token message
+- Delivery via existing Resend/`IEmailDeliveryProvider.sendPasswordResetEmail` (no parallel OTP system)
+- Pages: `/forgot-password`, `/reset-password`
 
 ## Profile
 
@@ -128,11 +136,12 @@ Controlled codes: `PROFILE_INCOMPLETE`, `PROFILE_NOT_VERIFIED`, `PROFILE_REQUIRE
 |-----------|---------|
 | `0016` | Pre-registration email OTP (existing) |
 | `0017` | `participant_accounts`, `participant_profiles`, `participant_sessions`, login attempts, audit events, nullable `registration_applications.participant_account_id` |
+| `0018` | `participant_password_reset_tokens` (hashed single-use reset tokens) |
 
 Operator: `npm run db:migrate` (never `db:push`).
 
 ## Audit events (participant)
 
-`PARTICIPANT_ACCOUNT_CREATED`, `PARTICIPANT_EMAIL_VERIFIED`, `PARTICIPANT_LOGIN_SUCCESS`, `PARTICIPANT_LOGIN_FAILURE`, `PARTICIPANT_LOGOUT`, `PARTICIPANT_PROFILE_SUBMITTED`, `PARTICIPANT_PROFILE_UPDATED`, `PARTICIPANT_PROFILE_APPROVED`, `PARTICIPANT_PROFILE_REJECTED`
+`PARTICIPANT_ACCOUNT_CREATED`, `PARTICIPANT_EMAIL_VERIFIED`, `PARTICIPANT_LOGIN_SUCCESS`, `PARTICIPANT_LOGIN_FAILURE`, `PARTICIPANT_LOGOUT`, `PARTICIPANT_PASSWORD_RESET_REQUESTED`, `PARTICIPANT_PASSWORD_RESET_COMPLETED`, `PARTICIPANT_PROFILE_SUBMITTED`, `PARTICIPANT_PROFILE_UPDATED`, `PARTICIPANT_PROFILE_APPROVED`, `PARTICIPANT_PROFILE_REJECTED`
 
 Never log passwords, hashes, OTPs, tokens, NIN, passport contents, photos, or guardian PII.

@@ -28,10 +28,18 @@ Never paste real `DATABASE_URL` values into documentation, tickets, chat, or com
 | 15 | `drizzle/0015_match_scheduling_ops.sql` | Match schedule history + internal notification events + `MATCH_NOTIFICATION_CREATED` audit |
 | 16 | `drizzle/0016_pre_registration_email_verification.sql` | Pre-registration email OTP challenges + short-lived verification proof tokens |
 | 17 | `drizzle/0017_participant_accounts.sql` | Participant accounts, profiles, sessions, audit + nullable application account link |
+| 18 | `drizzle/0018_participant_password_reset.sql` | Participant password reset tokens (hashed, single-use, 1h TTL) |
 
-Latest required for participant accounts + pre-registration email verification + prior stacks: **0017**.
+Latest required for participant password reset + participant accounts + pre-registration email verification + prior stacks: **0018**.
 
 No duplicate migration numbers in the repository. Order is deterministic by numeric filename prefix.
+
+### Migration 0018 notes
+
+- Creates `participant_password_reset_tokens` (`token_hash` unique, `expires_at`, `used_at`)
+- Indexes on `account_id` and partial `expires_at WHERE used_at IS NULL`
+- Does **not** auto-apply on Production from Cursor — operator-applied only
+- Apply only after **0017** is present
 
 ### Migration 0017 notes
 

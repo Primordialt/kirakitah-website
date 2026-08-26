@@ -85,8 +85,13 @@ export function LoginForm() {
         </Button>
       </form>
 
-      <p className="mt-6 text-body-sm text-text-muted">
-        Forgot password? Password recovery is not available yet.
+      <p className="mt-6 text-body-sm text-text-secondary">
+        <Link
+          href="/forgot-password"
+          className="font-medium text-accent underline-offset-2 hover:underline"
+        >
+          Forgot password?
+        </Link>
       </p>
       <p className="mt-4 text-body-sm text-text-secondary">
         Need an account?{" "}

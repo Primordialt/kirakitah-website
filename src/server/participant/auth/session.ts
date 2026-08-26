@@ -228,6 +228,25 @@ export async function revokeParticipantSessionToken(
     );
 }
 
+/**
+ * Revoke every active participant session for an account.
+ * Does not touch admin sessions.
+ */
+export async function revokeAllParticipantSessionsForAccount(
+  accountId: string,
+): Promise<void> {
+  const db = getDb();
+  await db
+    .update(participantSessions)
+    .set({ revokedAt: new Date().toISOString() })
+    .where(
+      and(
+        eq(participantSessions.accountId, accountId),
+        isNull(participantSessions.revokedAt),
+      ),
+    );
+}
+
 export async function getParticipantSessionFromCookies(): Promise<ParticipantSession | null> {
   const jar = await cookies();
   const token = jar.get(PARTICIPANT_SESSION_COOKIE)?.value;

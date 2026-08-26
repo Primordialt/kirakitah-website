@@ -1,6 +1,11 @@
 import { serverEnv } from "@/server/env";
 import { buildEmailVerificationTemplate } from "@/server/verification/templates/contact-verification";
-import type { IEmailDeliveryProvider, EmailDeliveryRequest } from "./types";
+import { buildPasswordResetTemplate } from "@/server/verification/templates/password-reset";
+import type {
+  IEmailDeliveryProvider,
+  EmailDeliveryRequest,
+  PasswordResetEmailRequest,
+} from "./types";
 import type { DeliveryResult } from "@/server/verification/types";
 
 /**
@@ -14,6 +19,43 @@ export class HttpEmailDeliveryProvider implements IEmailDeliveryProvider {
   async sendVerificationEmail(
     request: EmailDeliveryRequest,
   ): Promise<DeliveryResult> {
+    const template = buildEmailVerificationTemplate({
+      referenceId: request.referenceId,
+      code: request.code,
+      expiresInMinutes: request.expiresInMinutes,
+      recipientFirstName: request.recipientFirstName,
+    });
+
+    return this.send({
+      to: request.email,
+      subject: template.subject,
+      text: template.text,
+      html: template.html,
+    });
+  }
+
+  async sendPasswordResetEmail(
+    request: PasswordResetEmailRequest,
+  ): Promise<DeliveryResult> {
+    const template = buildPasswordResetTemplate({
+      resetUrl: request.resetUrl,
+      expiresInHours: request.expiresInHours,
+    });
+
+    return this.send({
+      to: request.email,
+      subject: template.subject,
+      text: template.text,
+      html: template.html,
+    });
+  }
+
+  private async send(input: {
+    to: string;
+    subject: string;
+    text: string;
+    html: string;
+  }): Promise<DeliveryResult> {
     const url = serverEnv.emailVerificationApiUrl;
     const apiKey = serverEnv.emailVerificationApiKey;
 
@@ -25,13 +67,6 @@ export class HttpEmailDeliveryProvider implements IEmailDeliveryProvider {
       };
     }
 
-    const template = buildEmailVerificationTemplate({
-      referenceId: request.referenceId,
-      code: request.code,
-      expiresInMinutes: request.expiresInMinutes,
-      recipientFirstName: request.recipientFirstName,
-    });
-
     try {
       const response = await fetch(url, {
         method: "POST",
@@ -40,11 +75,11 @@ export class HttpEmailDeliveryProvider implements IEmailDeliveryProvider {
           Authorization: `Bearer ${apiKey}`,
         },
         body: JSON.stringify({
-          to: request.email,
-          subject: template.subject,
-          text: template.text,
-          html: template.html,
-          // Never log this payload; code is intentionally included for provider delivery only.
+          to: input.to,
+          subject: input.subject,
+          text: input.text,
+          html: input.html,
+          // Never log this payload; may include OTP or reset URL for provider delivery only.
         }),
       });
 
@@ -77,12 +112,24 @@ export class UnavailableEmailDeliveryProvider implements IEmailDeliveryProvider 
       message: "Email verification provider is not configured.",
     };
   }
+
+  async sendPasswordResetEmail(): Promise<DeliveryResult> {
+    return {
+      status: "unavailable",
+      provider: this.providerId,
+      message: "Email verification provider is not configured.",
+    };
+  }
 }
 
 export class SkippedEmailDeliveryProvider implements IEmailDeliveryProvider {
   readonly providerId = "none";
 
   async sendVerificationEmail(): Promise<DeliveryResult> {
+    return { status: "skipped", provider: this.providerId };
+  }
+
+  async sendPasswordResetEmail(): Promise<DeliveryResult> {
     return { status: "skipped", provider: this.providerId };
   }
 }

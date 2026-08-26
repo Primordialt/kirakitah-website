@@ -10,6 +10,17 @@ export {
   ParticipantLoginError,
 } from "@/server/participant/auth/login";
 export {
+  requestPasswordReset,
+  resetPasswordWithToken,
+  ParticipantPasswordResetError,
+  PASSWORD_RESET_SUCCESS_MESSAGE,
+  PASSWORD_RESET_INVALID_TOKEN_MESSAGE,
+  RESET_EMAIL_MAX_PER_HOUR,
+  RESET_IP_MAX_PER_HOUR,
+  PASSWORD_RESET_TOKEN_BYTES,
+  generatePasswordResetToken,
+} from "@/server/participant/auth/password-reset";
+export {
   setParticipantSessionCookie,
   clearParticipantSessionCookie,
   getParticipantSessionFromCookies,
@@ -18,6 +29,7 @@ export {
   requireParticipantApiSession,
   requireParticipantSession,
   assertParticipantCsrf,
+  revokeAllParticipantSessionsForAccount,
   ParticipantAuthenticationError,
   type ParticipantSession,
   type ParticipantSessionUser,

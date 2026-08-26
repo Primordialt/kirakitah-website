@@ -90,8 +90,8 @@ test.describe("Participant account UI", () => {
     await expect(page.getByLabel(/^Password/i)).toBeVisible();
     await expect(page.getByRole("button", { name: /^LOGIN$/i })).toBeVisible();
     await expect(
-      page.getByText(/Forgot password\? Password recovery is not available yet/i),
-    ).toBeVisible();
+      page.getByRole("link", { name: /Forgot password\?/i }),
+    ).toHaveAttribute("href", "/forgot-password");
     await expect(page.getByRole("link", { name: "REGISTER", exact: true })).toHaveAttribute(
       "href",
       "/register",
@@ -241,5 +241,69 @@ test.describe("Participant account UI", () => {
     await expect(page).toHaveURL(/\/admin\/login/);
     await page.goto("/admin/reviews/profiles");
     await expect(page).toHaveURL(/\/admin\/login/);
+  });
+
+  test("forgot-password page submits and shows generic success", async ({
+    page,
+  }) => {
+    await page.route("**/api/participant/auth/forgot-password", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          success: true,
+          message:
+            "If an account exists for this email, we've sent a password reset link.",
+        }),
+      });
+    });
+
+    await page.goto("/forgot-password");
+    await expect(
+      page.getByRole("heading", { level: 1, name: /FORGOT PASSWORD/i }),
+    ).toBeVisible();
+    await page.getByRole("textbox", { name: /Email/i }).fill("player@example.com");
+    await page.getByRole("button", { name: /SEND RESET LINK/i }).click();
+    await expect(
+      page.getByText(
+        /If an account exists for this email, we've sent a password reset link\./i,
+      ),
+    ).toBeVisible();
+  });
+
+  test("reset-password page requires token and updates password", async ({
+    page,
+  }) => {
+    await page.goto("/reset-password");
+    await expect(
+      page.getByText(/This reset link is invalid or has expired/i),
+    ).toBeVisible();
+
+    await page.route("**/api/participant/auth/reset-password", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          success: true,
+          message: "Your password has been reset successfully.",
+        }),
+      });
+    });
+
+    await page.goto("/reset-password?token=e2e-reset-token");
+    await page.getByRole("textbox", { name: /New password/i }).fill(
+      "a-reasonably-long-passphrase",
+    );
+    await page
+      .getByRole("textbox", { name: /^Confirm password/i })
+      .fill("a-reasonably-long-passphrase");
+    await page.getByRole("button", { name: /RESET PASSWORD/i }).click();
+    await expect(
+      page.getByText(/Your password has been reset successfully/i),
+    ).toBeVisible();
+    await expect(page.getByRole("link", { name: /^LOGIN$/i })).toHaveAttribute(
+      "href",
+      "/login",
+    );
   });
 });
