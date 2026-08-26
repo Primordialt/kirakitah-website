@@ -68,10 +68,10 @@ Abandoned challenges do **not** permanently reserve email.
 Password recovery: **IMPLEMENTED** (migration `0018`).
 
 - `POST /api/participant/auth/forgot-password` — enumeration-safe; same success message whether the email exists
-- `POST /api/participant/auth/reset-password` — single-use hashed token (1h TTL); clears lockout; revokes all participant sessions; does **not** auto-login
+- `POST /api/participant/auth/reset-password` — requires `password` + `confirmPassword`; single-use hashed token (1h TTL) consumed atomically (`UPDATE … WHERE used_at IS NULL`); clears lockout; revokes all participant sessions; does **not** auto-login; does **not** reactivate inactive accounts
 - Tokens stored as `token_hash` only (`hashSensitiveValue` + `REGISTRATION_PII_ENCRYPTION_KEY`); plaintext never logged or returned
-- Rate limits via `participant_login_attempts` hashed keys: 5/hour per email, 20/hour per IP
-- Inactive accounts: no email sent, still returns generic success
+- Rate limits via `participant_login_attempts` hashed keys: 5/hour per email (**active accounts only**, after lookup), 20/hour per IP (all requests)
+- Inactive accounts: no email sent, still returns generic success; reset completion rejects inactive accounts with the generic invalid-token message
 - Delivery via existing Resend/`IEmailDeliveryProvider.sendPasswordResetEmail` (no parallel OTP system)
 - Pages: `/forgot-password`, `/reset-password`
 

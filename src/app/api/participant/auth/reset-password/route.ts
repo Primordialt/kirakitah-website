@@ -22,6 +22,7 @@ export const runtime = "nodejs";
 const schema = z.object({
   token: z.string().min(1).max(200),
   password: z.string().min(1).max(200),
+  confirmPassword: z.string().min(1).max(200),
 });
 
 export async function POST(request: Request) {
@@ -67,6 +68,7 @@ export async function POST(request: Request) {
     await resetPasswordWithToken({
       token: parsed.data.token,
       password: parsed.data.password,
+      confirmPassword: parsed.data.confirmPassword,
     });
 
     return NextResponse.json(

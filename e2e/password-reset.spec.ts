@@ -49,6 +49,15 @@ test.describe("Participant password recovery", () => {
     page,
   }) => {
     await page.route("**/api/participant/auth/reset-password", async (route) => {
+      const body = route.request().postDataJSON() as {
+        token?: string;
+        password?: string;
+        confirmPassword?: string;
+      };
+      expect(body.token).toBeTruthy();
+      expect(body.password).toBeTruthy();
+      expect(body.confirmPassword).toBe(body.password);
+
       await route.fulfill({
         status: 200,
         contentType: "application/json",

@@ -39,7 +39,7 @@ export function ResetPasswordForm() {
       "/api/participant/auth/reset-password",
       {
         method: "POST",
-        body: JSON.stringify({ token, password }),
+        body: JSON.stringify({ token, password, confirmPassword }),
       },
     );
 
