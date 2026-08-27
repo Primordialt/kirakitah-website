@@ -107,3 +107,85 @@ export function getMissingRequiredFields(
 export function isProfileComplete(input: ProfileCompletionInput): boolean {
   return getMissingRequiredFields(input).length === 0;
 }
+
+export type ProfileCompletionSectionId =
+  | "personal"
+  | "contact"
+  | "gaming"
+  | "identity"
+  | "documents"
+  | "guardian";
+
+export type ProfileCompletionSection = {
+  id: ProfileCompletionSectionId;
+  label: string;
+  complete: boolean;
+  fields: string[];
+  missingFields: string[];
+};
+
+const SECTION_DEFS: Array<{
+  id: ProfileCompletionSectionId;
+  label: string;
+  fields: string[];
+  conditional?: "guardian";
+}> = [
+  {
+    id: "personal",
+    label: "Personal information",
+    fields: ["firstName", "lastName", "dateOfBirth", "country", "city"],
+  },
+  {
+    id: "contact",
+    label: "Contact information",
+    fields: ["phone"],
+  },
+  {
+    id: "gaming",
+    label: "Gaming information",
+    fields: ["gamerTag"],
+  },
+  {
+    id: "identity",
+    label: "Identity information",
+    fields: ["identificationType", "identificationNumber"],
+  },
+  {
+    id: "documents",
+    label: "Required documents",
+    fields: ["playerPhoto"],
+  },
+  {
+    id: "guardian",
+    label: "Parent / guardian",
+    fields: ["guardian"],
+    conditional: "guardian",
+  },
+];
+
+/**
+ * Server-authoritative completion breakdown for participant UI.
+ * Only includes sections that apply to the current profile requirements.
+ */
+export function getCompletionSections(
+  input: ProfileCompletionInput,
+): ProfileCompletionSection[] {
+  const missing = new Set(getMissingRequiredFields(input));
+  const guardianRequired = Boolean(
+    input.dateOfBirth && requiresGuardian(input.dateOfBirth),
+  );
+
+  return SECTION_DEFS.filter((section) => {
+    if (section.conditional === "guardian") return guardianRequired;
+    return true;
+  }).map((section) => {
+    const missingFields = section.fields.filter((field) => missing.has(field));
+    return {
+      id: section.id,
+      label: section.label,
+      complete: missingFields.length === 0,
+      fields: section.fields,
+      missingFields,
+    };
+  });
+}

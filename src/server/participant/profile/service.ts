@@ -22,9 +22,11 @@ import type { ApiErrorCode } from "@/server/errors";
 import { recordParticipantAuditEvent } from "@/server/participant/audit";
 import {
   calculateCompletionPercent,
+  getCompletionSections,
   getMissingRequiredFields,
   isProfileComplete,
   type ProfileCompletionInput,
+  type ProfileCompletionSection,
 } from "@/server/participant/profile/completion";
 import {
   detectPlayerPhotoMimeFromBytes,
@@ -74,6 +76,7 @@ export interface ParticipantProfileView {
   guardian: ParticipantGuardianRecord | null;
   completionPercent: number;
   missingFields: string[];
+  completionSections: ProfileCompletionSection[];
   submittedAt: string | null;
   verifiedAt: string | null;
   correctionReason: string | null;
@@ -131,6 +134,7 @@ function toView(row: typeof participantProfiles.$inferSelect): ParticipantProfil
     guardian: row.guardian ?? null,
     completionPercent,
     missingFields: getMissingRequiredFields(completionInput),
+    completionSections: getCompletionSections(completionInput),
     submittedAt: row.submittedAt,
     verifiedAt: row.verifiedAt,
     correctionReason: row.correctionReason,

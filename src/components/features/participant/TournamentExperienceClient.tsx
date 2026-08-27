@@ -1,6 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui";
+import { getApplyGateAction } from "@/lib/participant/profile-presentation";
 import { TOURNAMENT_EVENT_ID } from "@/config/competition";
 import { apiErrorMessage, participantFetch } from "@/lib/participant/api";
 import { ParticipantNav } from "@/components/features/participant/ParticipantNav";
@@ -136,8 +137,16 @@ export function TournamentExperienceClient({
                 {experience.profileGate.message ??
                   "Complete and verify your profile to apply."}
               </p>
-              <Button href="/profile" className="mt-4">
-                COMPLETE PROFILE
+              <Button
+                href={
+                  getApplyGateAction(experience.profileGate.code).href
+                }
+                className="mt-4"
+              >
+                {
+                  getApplyGateAction(experience.profileGate.code)
+                    .buttonLabel
+                }
               </Button>
             </>
           )}

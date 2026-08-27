@@ -67,7 +67,7 @@ export function getProfileApplicationBlock(
     return {
       code: "PROFILE_INCOMPLETE",
       message:
-        "Complete and submit your profile for review before applying.",
+        "Complete your profile before applying for a tournament.",
     };
   }
 
@@ -76,7 +76,7 @@ export function getProfileApplicationBlock(
       code: "PROFILE_REQUIRES_CORRECTION",
       message:
         correctionReason?.trim() ||
-        "Your profile needs corrections before you can apply.",
+        "Update your profile and resubmit it for verification before applying.",
     };
   }
 
@@ -84,7 +84,7 @@ export function getProfileApplicationBlock(
     return {
       code: "PROFILE_NOT_VERIFIED",
       message:
-        "Your profile is still under review. You can apply once it is verified.",
+        "Your profile is awaiting verification. You can apply once an administrator has verified your profile.",
     };
   }
 

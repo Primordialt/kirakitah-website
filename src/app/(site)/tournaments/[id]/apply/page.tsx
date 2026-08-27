@@ -14,6 +14,7 @@ import {
 } from "@/server/participant";
 import { assertCanApplyToTournament } from "@/server/participant/application-gate";
 import { getParticipantProfile } from "@/server/participant/profile/service";
+import { getApplyGateAction } from "@/lib/participant/profile-presentation";
 import { isRegistrationBackendConfigured } from "@/server/env";
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
@@ -101,7 +102,9 @@ export default async function TournamentApplyPage({
           <p className="mt-2 text-body-sm text-text-muted">Code: {code}</p>
         ) : null}
         <div className="mt-6 flex flex-wrap gap-3">
-          <Button href="/profile">Go to profile</Button>
+          <Button href={getApplyGateAction(code).href}>
+            {getApplyGateAction(code).buttonLabel}
+          </Button>
           <Button href="/dashboard" variant="secondary">
             Dashboard
           </Button>
