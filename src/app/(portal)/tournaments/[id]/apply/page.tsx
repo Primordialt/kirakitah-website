@@ -3,15 +3,11 @@ import { Button } from "@/components/ui";
 import { resolveTournamentId } from "@/lib/tournament/resolve-id";
 import { COMPETITION_NAME } from "@/config/competition";
 import {
-  ApplicationGateError,
-  getProfileApplicationBlock,
   getParticipantSessionFromCookies,
   requireParticipantSession,
   ParticipantAuthenticationError,
 } from "@/server/participant";
-import { assertCanApplyToTournament } from "@/server/participant/application-gate";
-import { getParticipantProfile } from "@/server/participant/profile/service";
-import { getApplyGateAction } from "@/lib/participant/profile-presentation";
+import { getApplicationPreflight } from "@/server/participant/application-preflight";
 import { isRegistrationBackendConfigured } from "@/server/env";
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
@@ -56,51 +52,12 @@ export default async function TournamentApplyPage({
     );
   }
 
-  try {
-    await assertCanApplyToTournament(session.user.id, tournamentId);
-  } catch (error) {
-    let message = "You cannot apply to this tournament yet.";
-    let code: string | null = null;
+  const preflight = await getApplicationPreflight(
+    session.user.id,
+    tournamentId,
+  );
 
-    if (error instanceof ApplicationGateError) {
-      message = error.message;
-      code = error.code;
-    } else {
-      try {
-        const profile = await getParticipantProfile(session.user.id);
-        const block = getProfileApplicationBlock(
-          profile.status,
-          profile.correctionReason,
-        );
-        if (block) {
-          message = block.message;
-          code = block.code;
-        }
-      } catch {
-        // keep default message
-      }
-    }
-
-    return (
-      <div className="mx-auto max-w-2xl space-y-4">
-        <h1 className="text-h2 text-text-primary">APPLY — {COMPETITION_NAME}</h1>
-        <p className="text-body text-text-secondary" role="alert">
-          {message}
-        </p>
-        {code ? (
-          <p className="text-body-sm text-text-muted">Code: {code}</p>
-        ) : null}
-        <div className="flex flex-wrap gap-3">
-          <Button href={getApplyGateAction(code).href}>
-            {getApplyGateAction(code).buttonLabel}
-          </Button>
-          <Button href="/dashboard" variant="secondary">
-            Dashboard
-          </Button>
-        </div>
-      </div>
-    );
-  }
-
-  return <TournamentApplyForm tournamentId={tournamentId} />;
+  return (
+    <TournamentApplyForm tournamentId={tournamentId} preflight={preflight} />
+  );
 }
