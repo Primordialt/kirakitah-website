@@ -1,14 +1,12 @@
 "use client";
 
 import { Button } from "@/components/ui";
+import { ProfileStatusCard } from "@/components/features/participant/ProfileStatusCard";
+import { ParticipantNav } from "@/components/features/participant/ParticipantNav";
 import { TOURNAMENT_EVENT_ID } from "@/config/competition";
 import { apiErrorMessage, participantFetch } from "@/lib/participant/api";
-import {
-  getDashboardProfileCta,
-  getProfileStatusLabel,
-  type ParticipantProfileStatus,
-} from "@/lib/participant/dashboard-status";
-import { ParticipantNav } from "@/components/features/participant/ParticipantNav";
+import type { ParticipantProfileStatus } from "@/lib/participant/dashboard-status";
+import { getTournamentApplyPresentation } from "@/lib/participant/profile-presentation";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
@@ -99,9 +97,12 @@ export function DashboardClient() {
   }
 
   const { account, profile } = data;
-  const cta = getDashboardProfileCta(profile.status);
-  const statusLabel = getProfileStatusLabel(profile.status);
   const kg926 = tournaments.find((t) => t.tournamentId === TOURNAMENT_EVENT_ID);
+  const applyPresentation = getTournamentApplyPresentation(
+    profile.status,
+    profile.completionPercent,
+    Boolean(kg926?.hasApplication),
+  );
 
   return (
     <div className="mx-auto w-full max-w-2xl space-y-8">
@@ -116,35 +117,11 @@ export function DashboardClient() {
         </p>
       </header>
 
-      <section
-        aria-labelledby="profile-status-heading"
-        className="rounded-xl border border-border bg-surface p-5"
-      >
-        <h2 id="profile-status-heading" className="text-h4 text-text-primary">
-          PROFILE
-        </h2>
-        <p className="mt-2 text-body-sm text-text-secondary">
-          {profile.completionPercent}% complete · {statusLabel}
-        </p>
-        {profile.status === "verified" ? (
-          <p className="mt-2 text-body-sm font-medium text-success">
-            PROFILE VERIFIED ✓
-          </p>
-        ) : null}
-        {profile.status === "needs_correction" && profile.correctionReason ? (
-          <p className="mt-2 text-body-sm text-error" role="status">
-            {profile.correctionReason}
-          </p>
-        ) : null}
-        {profile.status === "submitted_for_review" ? (
-          <p className="mt-2 text-body-sm text-text-secondary">
-            Your profile is under review.
-          </p>
-        ) : null}
-        <div className="mt-4">
-          <Button href={cta.href}>{cta.buttonLabel}</Button>
-        </div>
-      </section>
+      <ProfileStatusCard
+        status={profile.status}
+        completionPercent={profile.completionPercent}
+        correctionReason={profile.correctionReason}
+      />
 
       <section
         aria-labelledby="tournaments-heading"
@@ -179,21 +156,14 @@ export function DashboardClient() {
                   VIEW APPLICATION
                 </Button>
               </>
-            ) : profile.status === "verified" ? (
-              <>
-                <p className="text-body-sm text-text-secondary">
-                  Your profile is verified. You can apply when ready.
-                </p>
-                <Button href={`/tournaments/${TOURNAMENT_EVENT_ID}/apply`}>
-                  APPLY FOR TOURNAMENT
-                </Button>
-              </>
             ) : (
               <>
                 <p className="text-body-sm text-text-secondary">
-                  Complete and verify your profile to apply.
+                  {applyPresentation.description}
                 </p>
-                <Button href="/profile">COMPLETE PROFILE</Button>
+                <Button href={applyPresentation.href}>
+                  {applyPresentation.buttonLabel}
+                </Button>
               </>
             )}
           </article>
@@ -210,7 +180,7 @@ export function DashboardClient() {
           </h2>
           <Link
             href="/notifications"
-            className="text-body-sm font-medium text-accent underline-offset-2 hover:underline"
+            className="text-body-sm font-medium text-accent underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus"
           >
             View all
           </Link>
@@ -222,7 +192,10 @@ export function DashboardClient() {
         ) : (
           <ul className="mt-4 space-y-3">
             {notifications.map((item) => (
-              <li key={item.id} className="border-t border-border pt-3 first:border-0 first:pt-0">
+              <li
+                key={item.id}
+                className="border-t border-border pt-3 first:border-0 first:pt-0"
+              >
                 <p className="text-body-sm font-medium text-text-primary">
                   {item.title}
                 </p>

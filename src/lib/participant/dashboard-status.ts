@@ -1,5 +1,3 @@
-import { TOURNAMENT_EVENT_ID } from "@/config/competition";
-
 export type ParticipantProfileStatus =
   | "incomplete"
   | "submitted_for_review"
@@ -27,32 +25,44 @@ export type DashboardCta = {
   href: string;
 };
 
+/**
+ * Dashboard CTA mapping. Kept free of imports from profile-presentation
+ * to avoid circular client bundles.
+ */
 export function getDashboardProfileCta(
   status: ParticipantProfileStatus,
+  completionPercent = 0,
 ): DashboardCta {
   switch (status) {
+    case "verified":
+      return {
+        headline: "VERIFIED",
+        buttonLabel: "EXPLORE TOURNAMENTS",
+        href: "/tournaments",
+      };
     case "submitted_for_review":
       return {
-        headline: "PROFILE VERIFICATION PENDING",
+        headline: "UNDER REVIEW",
         buttonLabel: "VIEW PROFILE",
         href: "/profile",
       };
     case "needs_correction":
       return {
-        headline: "PROFILE UPDATE REQUIRED",
+        headline: "NEEDS CORRECTION",
         buttonLabel: "UPDATE PROFILE",
         href: "/profile",
       };
-    case "verified":
-      return {
-        headline: "YOU'RE READY TO APPLY",
-        buttonLabel: "APPLY FOR TOURNAMENT",
-        href: `/tournaments/${TOURNAMENT_EVENT_ID}/apply`,
-      };
     case "incomplete":
     default:
+      if (completionPercent >= 100) {
+        return {
+          headline: "READY TO SUBMIT",
+          buttonLabel: "SUBMIT PROFILE",
+          href: "/profile",
+        };
+      }
       return {
-        headline: "COMPLETE YOUR PROFILE",
+        headline: "INCOMPLETE",
         buttonLabel: "COMPLETE PROFILE",
         href: "/profile",
       };

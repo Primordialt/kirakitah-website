@@ -102,13 +102,77 @@ test.describe("Participant tournament experience", () => {
     await expect(
       page.getByRole("heading", { level: 1, name: /WELCOME, TESTPLAYER/i }),
     ).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: /PROFILE STATUS/i }),
+    ).toBeVisible();
     await expect(page.getByText(/PROFILE VERIFIED/i)).toBeVisible();
+    await expect(page.getByText(/VERIFIED/i).first()).toBeVisible();
     await expect(
       page.getByRole("heading", { name: /MY TOURNAMENTS/i }),
     ).toBeVisible();
     await expect(page.getByText(/APPLICATION RECEIVED/i)).toBeVisible();
     await expect(
       page.getByRole("link", { name: /MY MATCHES/i }),
+    ).toBeVisible();
+  });
+
+  test("dashboard shows incomplete profile next action with mocked APIs", async ({
+    page,
+    context,
+  }) => {
+    await seedParticipantCookie(context);
+    await page.route("**/api/participant/me", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          success: true,
+          account: { username: "draftplayer", email: "draft@example.com" },
+          profile: {
+            status: "incomplete",
+            completionPercent: 40,
+            correctionReason: null,
+          },
+        }),
+      });
+    });
+    await page.route("**/api/participant/tournaments", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          success: true,
+          tournaments: [
+            {
+              tournamentId: "event-kg926",
+              name: "KIRAKITAH GAMING 926",
+              game: "eFootball Mobile",
+              status: "registration_open",
+              hasApplication: false,
+              applicationStatusLabel: null,
+              selected: false,
+              publicCode: null,
+              participantStatus: null,
+            },
+          ],
+        }),
+      });
+    });
+    await page.route("**/api/participant/notifications", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ success: true, notifications: [] }),
+      });
+    });
+
+    await page.goto("/dashboard");
+    await expect(page.getByText(/INCOMPLETE/i).first()).toBeVisible();
+    await expect(
+      page.getByRole("link", { name: /COMPLETE PROFILE/i }).first(),
+    ).toBeVisible();
+    await expect(
+      page.getByText(/Complete your profile before you can apply/i),
     ).toBeVisible();
   });
 

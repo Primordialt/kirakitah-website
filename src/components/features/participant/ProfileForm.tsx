@@ -1,6 +1,7 @@
 "use client";
 
 import { Button, Checkbox, FileInput, Input, Select } from "@/components/ui";
+import { ParticipantNav } from "@/components/features/participant/ParticipantNav";
 import { registrationCountries } from "@/config/esports";
 import { requiresGuardian } from "@/domain/registration";
 import {
@@ -21,7 +22,19 @@ import {
   getProfileStatusLabel,
   type ParticipantProfileStatus,
 } from "@/lib/participant/dashboard-status";
+import {
+  formatMissingFieldLabel,
+  getProfilePresentation,
+  getProfileTimeline,
+} from "@/lib/participant/profile-presentation";
 import { useEffect, useMemo, useState } from "react";
+
+type CompletionSection = {
+  id: string;
+  label: string;
+  complete: boolean;
+  missingFields: string[];
+};
 
 type ProfilePayload = {
   id: string;
@@ -44,6 +57,9 @@ type ProfilePayload = {
   } | null;
   completionPercent: number;
   missingFields: string[];
+  completionSections?: CompletionSection[];
+  submittedAt: string | null;
+  verifiedAt: string | null;
   correctionReason: string | null;
 };
 
@@ -87,20 +103,7 @@ export function ProfileForm() {
     [dateOfBirth],
   );
 
-  const loadProfile = async () => {
-    setLoading(true);
-    setError(null);
-    const { response, payload } = await participantFetch<{
-      profile?: ProfilePayload;
-    }>("/api/participant/profile");
-    setLoading(false);
-
-    if (!response.ok || !payload.profile) {
-      setError(apiErrorMessage(payload, "Unable to load profile."));
-      return;
-    }
-
-    const next = payload.profile;
+  const applyProfile = (next: ProfilePayload) => {
     setProfile(next);
     setFirstName(next.firstName ?? "");
     setLastName(next.lastName ?? "");
@@ -123,6 +126,22 @@ export function ProfileForm() {
           }
         : emptyGuardian,
     );
+  };
+
+  const loadProfile = async () => {
+    setLoading(true);
+    setError(null);
+    const { response, payload } = await participantFetch<{
+      profile?: ProfilePayload;
+    }>("/api/participant/profile");
+    setLoading(false);
+
+    if (!response.ok || !payload.profile) {
+      setError(apiErrorMessage(payload, "Unable to load profile."));
+      return;
+    }
+
+    applyProfile(payload.profile);
   };
 
   useEffect(() => {
@@ -187,13 +206,16 @@ export function ProfileForm() {
       return;
     }
 
-    setProfile(payload.profile);
-    setMessage("Profile saved.");
-    setPlayerPhoto(null);
-    setIdentificationNumber("");
+    applyProfile(payload.profile);
+    setMessage(
+      "Profile saved. Saving does not submit your profile for verification.",
+    );
   };
 
   const onSubmitForReview = async () => {
+    if (!profile) return;
+
+    const missingAtSubmit = profile.missingFields;
     setSubmitting(true);
     setError(null);
     setMessage(null);
@@ -205,12 +227,22 @@ export function ProfileForm() {
     setSubmitting(false);
 
     if (!response.ok || !payload.profile) {
-      setError(apiErrorMessage(payload, "Unable to submit profile for review."));
+      if (missingAtSubmit.length > 0) {
+        setError(
+          `Complete the highlighted sections before submitting your profile: ${missingAtSubmit
+            .map(formatMissingFieldLabel)
+            .join(", ")}.`,
+        );
+      } else {
+        setError(
+          apiErrorMessage(payload, "Unable to submit profile for review."),
+        );
+      }
       return;
     }
 
-    setProfile(payload.profile);
-    setMessage("Profile submitted for review.");
+    applyProfile(payload.profile);
+    setMessage("Profile submitted for administrator verification.");
   };
 
   if (loading) {
@@ -229,45 +261,170 @@ export function ProfileForm() {
     );
   }
 
+  const presentation = getProfilePresentation(
+    profile.status,
+    profile.completionPercent,
+  );
   const canSubmitForReview =
     profile.completionPercent === 100 &&
     (profile.status === "incomplete" || profile.status === "needs_correction");
-
+  const sections = profile.completionSections ?? [];
+  const timeline = getProfileTimeline({
+    status: profile.status,
+    submittedAt: profile.submittedAt,
+    verifiedAt: profile.verifiedAt,
+    correctionReason: profile.correctionReason,
+  });
+  const clamped = Math.max(0, Math.min(100, profile.completionPercent));
   const idLabel = identificationType
     ? getIdentificationNumberLabel(identificationType)
     : "Identification number";
 
   return (
-    <div className="mx-auto w-full max-w-2xl">
-      <h1 className="text-h2 text-text-primary">YOUR PROFILE</h1>
-      <p className="mt-2 text-body text-text-secondary">
-        PROFILE {profile.completionPercent}% COMPLETE ·{" "}
-        {getProfileStatusLabel(profile.status)}
-      </p>
+    <div className="mx-auto w-full max-w-2xl space-y-8">
+      <ParticipantNav />
 
-      {profile.status === "needs_correction" && profile.correctionReason ? (
-        <p className="mt-4 text-body-sm text-error" role="status">
-          Update required: {profile.correctionReason}
+      <header>
+        <h1 className="text-h2 text-text-primary">YOUR PROFILE</h1>
+        <p className="mt-2 text-body text-text-secondary">
+          Profile information is reviewed by administrators. It is separate from
+          your account login and from tournament applications.
         </p>
+      </header>
+
+      <section
+        aria-labelledby="profile-overview-heading"
+        className="rounded-xl border border-border bg-surface p-5"
+      >
+        <h2 id="profile-overview-heading" className="text-h4 text-text-primary">
+          PROFILE OVERVIEW
+        </h2>
+        <div className="mt-4 flex items-center justify-between gap-3">
+          <p className="text-body-sm font-medium text-text-primary">
+            Completion
+          </p>
+          <p className="text-body-sm text-text-secondary">{clamped}%</p>
+        </div>
+        <div
+          className="mt-2 h-2 overflow-hidden rounded-full bg-surface-muted"
+          role="progressbar"
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={clamped}
+          aria-label="Profile completion"
+        >
+          <div
+            className="h-full rounded-full bg-brand-primary"
+            style={{ width: `${clamped}%` }}
+          />
+        </div>
+        <dl className="mt-4 space-y-2">
+          <div>
+            <dt className="text-caption uppercase tracking-wide text-text-muted">
+              Verification
+            </dt>
+            <dd className="text-body font-semibold text-text-primary">
+              {presentation.verificationLabel} ·{" "}
+              {getProfileStatusLabel(profile.status)}
+            </dd>
+          </div>
+        </dl>
+        <p className="mt-3 text-body-sm text-text-secondary">
+          {presentation.description}
+        </p>
+        {profile.status === "needs_correction" && profile.correctionReason ? (
+          <p className="mt-3 text-body-sm text-error" role="status">
+            Update required: {profile.correctionReason}
+          </p>
+        ) : null}
+        {profile.status === "verified" ? (
+          <p className="mt-3 text-body-sm font-medium text-success" role="status">
+            PROFILE VERIFIED ✓
+          </p>
+        ) : null}
+      </section>
+
+      {sections.length > 0 ? (
+        <section
+          aria-labelledby="completion-breakdown-heading"
+          className="rounded-xl border border-border bg-surface p-5"
+        >
+          <h2
+            id="completion-breakdown-heading"
+            className="text-h4 text-text-primary"
+          >
+            PROFILE COMPLETION
+          </h2>
+          <ul className="mt-4 space-y-3">
+            {sections.map((section) => (
+              <li
+                key={section.id}
+                className="flex items-start justify-between gap-3 border-t border-border pt-3 first:border-0 first:pt-0"
+              >
+                <div>
+                  <p className="text-body-sm font-medium text-text-primary">
+                    {section.label}
+                  </p>
+                  {!section.complete && section.missingFields.length > 0 ? (
+                    <p className="mt-1 text-caption text-text-muted">
+                      Missing:{" "}
+                      {section.missingFields
+                        .map(formatMissingFieldLabel)
+                        .join(", ")}
+                    </p>
+                  ) : null}
+                </div>
+                <p
+                  className={`text-body-sm font-semibold ${
+                    section.complete ? "text-success" : "text-text-muted"
+                  }`}
+                >
+                  {section.complete ? "Complete" : "Incomplete"}
+                  <span aria-hidden="true"> {section.complete ? "✓" : "○"}</span>
+                </p>
+              </li>
+            ))}
+          </ul>
+        </section>
       ) : null}
-      {profile.status === "submitted_for_review" ? (
-        <p className="mt-4 text-body-sm text-text-secondary" role="status">
-          Your profile is under review and cannot be edited right now.
-        </p>
-      ) : null}
-      {profile.status === "verified" ? (
-        <p className="mt-4 text-body-sm text-text-secondary" role="status">
-          Your profile is verified. Contact support if you need changes.
-        </p>
+
+      {timeline.length > 1 ? (
+        <section
+          aria-labelledby="profile-timeline-heading"
+          className="rounded-xl border border-border bg-surface p-5"
+        >
+          <h2 id="profile-timeline-heading" className="text-h4 text-text-primary">
+            STATUS
+          </h2>
+          <ol className="mt-4 space-y-3">
+            {timeline.map((step) => (
+              <li key={step.id} className="text-body-sm">
+                <p
+                  className={
+                    step.current
+                      ? "font-semibold text-text-primary"
+                      : "text-text-secondary"
+                  }
+                >
+                  {step.label}
+                  {step.current ? " (current)" : ""}
+                </p>
+                {step.detail ? (
+                  <p className="mt-1 text-caption text-text-muted">{step.detail}</p>
+                ) : null}
+              </li>
+            ))}
+          </ol>
+        </section>
       ) : null}
 
       <form
-        className="mt-8 space-y-5"
+        className="space-y-8"
         onSubmit={(event) => void onSave(event)}
         noValidate
       >
         <fieldset className="space-y-5" disabled={readOnly}>
-          <legend className="sr-only">Profile details</legend>
+          <legend className="text-h4 text-text-primary">Personal information</legend>
           <div className="grid gap-5 sm:grid-cols-2">
             <Input
               label="First name"
@@ -303,6 +460,10 @@ export function ProfileForm() {
             value={city}
             onChange={(event) => setCity(event.target.value)}
           />
+        </fieldset>
+
+        <fieldset className="space-y-5" disabled={readOnly}>
+          <legend className="text-h4 text-text-primary">Contact information</legend>
           <Input
             label="Phone"
             type="tel"
@@ -311,6 +472,25 @@ export function ProfileForm() {
             value={phone}
             onChange={(event) => setPhone(event.target.value)}
           />
+        </fieldset>
+
+        <fieldset className="space-y-5" disabled={readOnly}>
+          <legend className="text-h4 text-text-primary">Gaming information</legend>
+          <Input
+            label="Your eFootball username"
+            required
+            value={gamerTag}
+            onChange={(event) => setGamerTag(event.target.value)}
+            description="This is your eFootball Gamer Tag, not your account username."
+          />
+        </fieldset>
+
+        <fieldset className="space-y-5" disabled={readOnly}>
+          <legend className="text-h4 text-text-primary">Identity information</legend>
+          <p className="text-body-sm text-text-secondary">
+            Identification numbers are stored securely. After submission they are
+            shown as on file rather than re-displayed in full.
+          </p>
           <Select
             label="Identification type"
             required
@@ -321,36 +501,48 @@ export function ProfileForm() {
               setIdentificationType(event.target.value as IdentificationType | "")
             }
           />
-          <Input
-            label={idLabel}
-            required={!profile.hasIdentificationNumber}
-            disabled={!identificationType}
-            placeholder={
-              identificationType
-                ? getIdentificationNumberPlaceholder(identificationType)
-                : "Select an identification type first"
-            }
-            description={
-              profile.hasIdentificationNumber
-                ? "Leave blank to keep your existing identification number on file."
-                : undefined
-            }
-            value={identificationNumber}
-            onChange={(event) => setIdentificationNumber(event.target.value)}
-            autoComplete="off"
-          />
-          <Input
-            label="Your eFootball username"
-            required
-            value={gamerTag}
-            onChange={(event) => setGamerTag(event.target.value)}
-            description="This is your eFootball Gamer Tag, not your account username."
-          />
+          {readOnly || profile.hasIdentificationNumber ? (
+            <p className="rounded-lg border border-border bg-surface-muted px-3 py-3 text-body-sm text-text-secondary">
+              Identification number:{" "}
+              <span className="font-medium text-text-primary">
+                {profile.hasIdentificationNumber
+                  ? "On file"
+                  : "Not provided"}
+              </span>
+              {!readOnly && profile.hasIdentificationNumber
+                ? " — enter a new value below only if you need to replace it."
+                : null}
+            </p>
+          ) : null}
+          {!readOnly ? (
+            <Input
+              label={idLabel}
+              required={!profile.hasIdentificationNumber}
+              disabled={!identificationType}
+              placeholder={
+                identificationType
+                  ? getIdentificationNumberPlaceholder(identificationType)
+                  : "Select an identification type first"
+              }
+              description={
+                profile.hasIdentificationNumber
+                  ? "Leave blank to keep your existing identification number on file."
+                  : undefined
+              }
+              value={identificationNumber}
+              onChange={(event) => setIdentificationNumber(event.target.value)}
+              autoComplete="off"
+            />
+          ) : null}
+        </fieldset>
+
+        <fieldset className="space-y-5" disabled={readOnly}>
+          <legend className="text-h4 text-text-primary">Required documents</legend>
           <FileInput
             label="Player photo"
             required={!profile.hasPlayerPhoto}
             accept={PLAYER_PHOTO_ACCEPTED_TYPES.join(",")}
-            description={`Accepted: ${formatAcceptedTypes(PLAYER_PHOTO_ACCEPTED_TYPES)}. Max ${formatFileSize(MAX_IDENTITY_FILE_SIZE_BYTES)}.${profile.hasPlayerPhoto ? " Leave empty to keep your current photo." : ""}`}
+            description={`Accepted: ${formatAcceptedTypes(PLAYER_PHOTO_ACCEPTED_TYPES)}. Max ${formatFileSize(MAX_IDENTITY_FILE_SIZE_BYTES)}.${profile.hasPlayerPhoto ? " Current photo is on file — leave empty to keep it." : ""}`}
             selectedFile={playerPhoto}
             error={photoError}
             onChange={(event) => {
@@ -378,7 +570,10 @@ export function ProfileForm() {
         </fieldset>
 
         {showGuardian ? (
-          <fieldset className="space-y-5 rounded-xl border border-border p-5" disabled={readOnly}>
+          <fieldset
+            className="space-y-5 rounded-xl border border-border p-5"
+            disabled={readOnly}
+          >
             <legend className="text-h4 text-text-primary">
               Parent / guardian
             </legend>
@@ -445,25 +640,42 @@ export function ProfileForm() {
         ) : null}
 
         {!readOnly ? (
-          <Button type="submit" loading={saving}>
-            SAVE PROFILE
-          </Button>
+          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+            <Button type="submit" loading={saving} variant="secondary">
+              SAVE PROFILE
+            </Button>
+            {canSubmitForReview ? (
+              <Button
+                type="button"
+                loading={submitting}
+                onClick={() => void onSubmitForReview()}
+              >
+                SUBMIT FOR VERIFICATION
+              </Button>
+            ) : (
+              <p className="self-center text-body-sm text-text-muted">
+                Complete all required sections before submitting for
+                verification.
+              </p>
+            )}
+          </div>
+        ) : null}
+
+        {!readOnly ? (
+          <p className="text-caption text-text-muted">
+            Save keeps your progress. Submit for verification sends a complete
+            profile to administrators for review.
+          </p>
         ) : null}
       </form>
 
-      {canSubmitForReview ? (
-        <div className="mt-6">
-          <Button
-            type="button"
-            loading={submitting}
-            onClick={() => void onSubmitForReview()}
-          >
-            SUBMIT PROFILE FOR REVIEW
-          </Button>
+      {profile.status === "verified" ? (
+        <div>
+          <Button href="/tournaments">EXPLORE TOURNAMENTS</Button>
         </div>
       ) : null}
 
-      <p className="mt-8">
+      <p>
         <Button href="/dashboard" variant="ghost">
           Back to dashboard
         </Button>

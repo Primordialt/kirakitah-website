@@ -38,13 +38,22 @@ describe("dashboard status labels", () => {
     expect(getProfileStatusLabel("submitted_for_review")).toMatch(/Submitted/i);
     expect(getProfileStatusLabel("needs_correction")).toMatch(/correction/i);
     expect(getProfileStatusLabel("verified")).toMatch(/Verified/i);
-    expect(getDashboardProfileCta("incomplete").headline).toMatch(/COMPLETE/i);
-    expect(getDashboardProfileCta("submitted_for_review").headline).toMatch(
-      /PENDING/i,
+    expect(getDashboardProfileCta("incomplete", 40).headline).toBe("INCOMPLETE");
+    expect(getDashboardProfileCta("incomplete", 100).headline).toBe(
+      "READY TO SUBMIT",
     );
-    expect(getDashboardProfileCta("needs_correction").headline).toMatch(
-      /UPDATE REQUIRED/i,
+    expect(getDashboardProfileCta("incomplete", 100).buttonLabel).toBe(
+      "SUBMIT PROFILE",
     );
-    expect(getDashboardProfileCta("verified").headline).toMatch(/READY TO APPLY/i);
+    expect(getDashboardProfileCta("submitted_for_review").headline).toBe(
+      "UNDER REVIEW",
+    );
+    expect(getDashboardProfileCta("needs_correction").headline).toBe(
+      "NEEDS CORRECTION",
+    );
+    expect(getDashboardProfileCta("verified").headline).toBe("VERIFIED");
+    expect(getDashboardProfileCta("verified").buttonLabel).toBe(
+      "EXPLORE TOURNAMENTS",
+    );
   });
 });

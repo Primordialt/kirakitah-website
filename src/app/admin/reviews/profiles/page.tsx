@@ -38,8 +38,9 @@ export default async function AdminProfileReviewsPage({
     <AdminShell session={session}>
       <h1 className="text-h2">Profile reviews</h1>
       <p className="mt-2 text-body text-text-secondary">
-        Participant profiles submitted for verification. Approve or return with a
-        public-safe correction reason.
+        Participant profiles submitted for verification. Account login is
+        separate from profile verification. Approving a profile does not select
+        or qualify a participant for a tournament.
       </p>
 
       {unavailable ? (
@@ -70,15 +71,39 @@ export default async function AdminProfileReviewsPage({
                   @{item.username} · {item.email}
                   {item.gamerTag ? ` · eFootball: ${item.gamerTag}` : ""}
                 </p>
-                <p className="text-body-sm text-text-muted">
-                  Submitted{" "}
-                  {item.submittedAt
-                    ? new Date(item.submittedAt).toLocaleString()
-                    : "—"}{" "}
-                  · {item.completionPercent}% complete
-                </p>
+                <dl className="mt-3 grid gap-2 text-body-sm sm:grid-cols-2">
+                  <div>
+                    <dt className="text-caption uppercase tracking-wide text-text-muted">
+                      Profile completion
+                    </dt>
+                    <dd className="font-medium text-text-primary">
+                      {item.completionPercent}%
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-caption uppercase tracking-wide text-text-muted">
+                      Verification status
+                    </dt>
+                    <dd className="font-medium text-text-primary">
+                      Submitted for review
+                    </dd>
+                  </div>
+                  <div className="sm:col-span-2">
+                    <dt className="text-caption uppercase tracking-wide text-text-muted">
+                      Submitted
+                    </dt>
+                    <dd className="text-text-secondary">
+                      {item.submittedAt
+                        ? new Date(item.submittedAt).toLocaleString()
+                        : "—"}
+                    </dd>
+                  </div>
+                </dl>
               </div>
-              <ProfileReviewActions profileId={item.id} />
+              <ProfileReviewActions
+                profileId={item.id}
+                completionPercent={item.completionPercent}
+              />
             </li>
           ))}
         </ul>
