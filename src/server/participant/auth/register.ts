@@ -30,8 +30,7 @@ export class ParticipantRegisterError extends Error {
   }
 }
 
-const ACCOUNT_EXISTS_MESSAGE =
-  "An account already exists for this email. Please log in.";
+const ACCOUNT_EXISTS_MESSAGE = `This email is already registered for KIRAKITAH GAMING 926. Please log in to continue.`;
 
 export async function createParticipantAccount(input: {
   email: string;

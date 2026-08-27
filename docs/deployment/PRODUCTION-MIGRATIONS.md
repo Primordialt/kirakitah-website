@@ -32,6 +32,8 @@ Never paste real `DATABASE_URL` values into documentation, tickets, chat, or com
 
 Latest required for participant password reset + participant accounts + pre-registration email verification + prior stacks: **0018**.
 
+Next sequential (not yet applied to Production): **0019** (`0019_gamer_tag_tournament_uniqueness`) — unique active `(event_id, lower(btrim(gamer_tag)))` for eFootball tournament uniqueness. Validate for existing duplicate gamer tags before applying; do not silently mutate applicants.
+
 No duplicate migration numbers in the repository. Order is deterministic by numeric filename prefix.
 
 ### Migration 0018 notes

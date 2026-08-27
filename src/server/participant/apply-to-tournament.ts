@@ -14,6 +14,11 @@ import {
   PhotoValidationError,
   RateLimitError,
 } from "@/server/registration/create-application";
+import {
+  EFOOTBALL_ACCOUNT_ALREADY_REGISTERED_MESSAGE,
+  normalizeGamerTagForStorage,
+  normalizeGamerTagForUniqueness,
+} from "@/server/registration/gamer-tag";
 import { hashClientIp } from "@/server/registration/pii";
 import { generateReferenceId } from "@/server/registration/reference-id";
 import {
@@ -53,7 +58,7 @@ function duplicateFromUniqueViolation(error: unknown): DuplicateRegistrationErro
   }
   if (message.includes("registration_event_email_active_idx")) {
     return new DuplicateRegistrationError(
-      `This email address is already registered for ${COMPETITION_NAME}.`,
+      `This email is already registered for ${COMPETITION_NAME}. Please log in to continue.`,
       "DUPLICATE_EMAIL",
     );
   }
@@ -61,6 +66,12 @@ function duplicateFromUniqueViolation(error: unknown): DuplicateRegistrationErro
     return new DuplicateRegistrationError(
       "An active application already exists for this identification number.",
       "DUPLICATE_IDENTITY",
+    );
+  }
+  if (message.includes("registration_event_gamer_tag_active_idx")) {
+    return new DuplicateRegistrationError(
+      EFOOTBALL_ACCOUNT_ALREADY_REGISTERED_MESSAGE,
+      "EFOOTBALL_ACCOUNT_ALREADY_REGISTERED",
     );
   }
   return new DuplicateRegistrationError(
@@ -216,6 +227,27 @@ export async function applyParticipantToTournament(input: {
     );
   }
 
+  const gamerTagStored = normalizeGamerTagForStorage(profile.gamerTag);
+  const gamerTagNormalized = normalizeGamerTagForUniqueness(gamerTagStored);
+  const [gamerTagHit] = await db
+    .select({ id: registrationApplications.id })
+    .from(registrationApplications)
+    .where(
+      and(
+        eq(registrationApplications.eventId, input.tournamentId),
+        inArray(registrationApplications.status, [...ACTIVE_STATUSES]),
+        sql`lower(btrim(${registrationApplications.gamerTag})) = ${gamerTagNormalized}`,
+      ),
+    )
+    .limit(1);
+
+  if (gamerTagHit) {
+    throw new DuplicateRegistrationError(
+      EFOOTBALL_ACCOUNT_ALREADY_REGISTERED_MESSAGE,
+      "EFOOTBALL_ACCOUNT_ALREADY_REGISTERED",
+    );
+  }
+
   const applicationId = randomUUID();
   let referenceId = generateReferenceId();
   for (let attempt = 0; attempt < 5; attempt += 1) {
@@ -247,7 +279,7 @@ export async function applyParticipantToTournament(input: {
       identificationType: profile.identificationType,
       identificationNumberHash: profile.identificationNumberHash,
       identificationNumberEncrypted: profile.identificationNumberEncrypted,
-      gamerTag: profile.gamerTag,
+      gamerTag: gamerTagStored,
       game: input.body.game.trim(),
       platform: input.body.platform.trim(),
       gamingProfile: input.body.gamingProfile?.trim() || null,

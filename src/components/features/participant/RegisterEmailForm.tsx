@@ -8,7 +8,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-type Step = "email" | "otp";
+type Step = "email" | "otp" | "already_registered";
 
 export function RegisterEmailForm() {
   const router = useRouter();
@@ -17,14 +17,12 @@ export function RegisterEmailForm() {
   const [challengeId, setChallengeId] = useState<string | null>(null);
   const [code, setCode] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [accountExists, setAccountExists] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const onChallenge = async (event: React.FormEvent) => {
     event.preventDefault();
     setLoading(true);
     setError(null);
-    setAccountExists(false);
 
     const { response, payload } = await participantFetch<{
       challengeId?: string;
@@ -40,8 +38,7 @@ export function RegisterEmailForm() {
       payload.error?.code === "DUPLICATE_EMAIL" ||
       response.status === 409
     ) {
-      setAccountExists(true);
-      setError(PARTICIPANT_ACCOUNT_EXISTS_MESSAGE);
+      setStep("already_registered");
       return;
     }
 
@@ -60,7 +57,6 @@ export function RegisterEmailForm() {
 
     setLoading(true);
     setError(null);
-    setAccountExists(false);
 
     const { response, payload } = await participantFetch<{
       emailVerificationToken?: string;
@@ -80,8 +76,7 @@ export function RegisterEmailForm() {
       payload.error?.code === "DUPLICATE_EMAIL" ||
       response.status === 409
     ) {
-      setAccountExists(true);
-      setError(PARTICIPANT_ACCOUNT_EXISTS_MESSAGE);
+      setStep("already_registered");
       return;
     }
 
@@ -98,11 +93,44 @@ export function RegisterEmailForm() {
     router.push("/register/username");
   };
 
+  if (step === "already_registered") {
+    return (
+      <div className="mx-auto w-full max-w-md">
+        <h1 className="text-h2 text-text-primary">EMAIL ALREADY REGISTERED</h1>
+        <p className="mt-3 text-body text-text-secondary" role="status">
+          {PARTICIPANT_ACCOUNT_EXISTS_MESSAGE}
+        </p>
+        <div className="mt-8 flex flex-col gap-3">
+          <Button href="/login" className="w-full">
+            LOGIN
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            className="w-full"
+            onClick={() => {
+              setStep("email");
+              setCode("");
+              setChallengeId(null);
+              setError(null);
+            }}
+          >
+            Use a different email
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="mx-auto w-full max-w-md">
-      <h1 className="text-h2 text-text-primary">JOIN KIRAKITAH</h1>
+      <h1 className="text-h2 text-text-primary">
+        {step === "otp" ? "EMAIL VERIFICATION" : "JOIN KIRAKITAH"}
+      </h1>
       <p className="mt-3 text-body text-text-secondary">
-        Create your KIRAKITAH participant account.
+        {step === "otp"
+          ? "Enter the 6-digit code we sent to your email."
+          : "Create your KIRAKITAH participant account."}
       </p>
 
       {step === "email" ? (
@@ -123,17 +151,6 @@ export function RegisterEmailForm() {
           {error ? (
             <p role="alert" className="text-body-sm text-error">
               {error}
-              {accountExists ? (
-                <>
-                  {" "}
-                  <Link
-                    href="/login"
-                    className="font-medium text-accent underline-offset-2 hover:underline"
-                  >
-                    LOGIN
-                  </Link>
-                </>
-              ) : null}
             </p>
           ) : null}
           <Button type="submit" loading={loading} className="w-full">
@@ -147,7 +164,7 @@ export function RegisterEmailForm() {
           noValidate
         >
           <p className="text-body-sm text-text-secondary">
-            Enter the verification code sent to{" "}
+            Code sent to{" "}
             <span className="font-medium text-text-primary">{email}</span>.
           </p>
           <Input
@@ -162,17 +179,6 @@ export function RegisterEmailForm() {
           {error ? (
             <p role="alert" className="text-body-sm text-error">
               {error}
-              {accountExists ? (
-                <>
-                  {" "}
-                  <Link
-                    href="/login"
-                    className="font-medium text-accent underline-offset-2 hover:underline"
-                  >
-                    LOGIN
-                  </Link>
-                </>
-              ) : null}
             </p>
           ) : null}
           <Button type="submit" loading={loading} className="w-full">

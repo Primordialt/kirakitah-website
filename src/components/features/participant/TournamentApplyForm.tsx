@@ -318,20 +318,36 @@ export function TournamentApplyForm({ tournamentId }: { tournamentId: string }) 
         </fieldset>
 
         {error ? (
-          <div className="space-y-2" role="alert">
-            <p className="text-body-sm text-error">{error}</p>
-            {gateCode === "PROFILE_INCOMPLETE" ||
-            gateCode === "PROFILE_REQUIRES_CORRECTION" ||
-            gateCode === "PROFILE_NOT_VERIFIED" ? (
-              <Button href="/profile" variant="secondary">
-                Go to profile
-              </Button>
-            ) : null}
-            {gateCode === "DUPLICATE_APPLICATION" ? (
-              <Button href="/dashboard" variant="secondary">
-                Back to dashboard
-              </Button>
-            ) : null}
+          <div className="space-y-3" role="alert">
+            {gateCode === "EFOOTBALL_ACCOUNT_ALREADY_REGISTERED" ? (
+              <>
+                <h2 className="text-h4 text-text-primary">
+                  EFOOTBALL ACCOUNT ALREADY REGISTERED
+                </h2>
+                <p className="text-body-sm text-text-secondary">
+                  This eFootball account is already registered for this tournament.
+                </p>
+                <Button href={`/tournaments/${tournamentId}`} variant="secondary">
+                  Back to tournament
+                </Button>
+              </>
+            ) : (
+              <>
+                <p className="text-body-sm text-error">{error}</p>
+                {gateCode === "PROFILE_INCOMPLETE" ||
+                gateCode === "PROFILE_REQUIRES_CORRECTION" ||
+                gateCode === "PROFILE_NOT_VERIFIED" ? (
+                  <Button href="/profile" variant="secondary">
+                    Go to profile
+                  </Button>
+                ) : null}
+                {gateCode === "DUPLICATE_APPLICATION" ? (
+                  <Button href="/dashboard" variant="secondary">
+                    Back to dashboard
+                  </Button>
+                ) : null}
+              </>
+            )}
           </div>
         ) : null}
 

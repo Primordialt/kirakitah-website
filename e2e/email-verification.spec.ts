@@ -50,7 +50,7 @@ test.describe("Participant registration email verification", () => {
             error: {
               code: "ACCOUNT_EXISTS",
               message:
-                "An account already exists for this email. Please log in.",
+                "This email is already registered for KIRAKITAH GAMING 926. Please log in to continue.",
             },
           }),
         });
@@ -61,8 +61,12 @@ test.describe("Participant registration email verification", () => {
     await page.getByLabel("Email").fill("taken@example.com");
     await page.getByRole("button", { name: /CONTINUE/i }).click();
     await expect(
-      page.getByText(/An account already exists for this email/i),
+      page.getByRole("heading", { name: /EMAIL ALREADY REGISTERED/i }),
+    ).toBeVisible();
+    await expect(
+      page.getByText(/This email is already registered for KIRAKITAH GAMING 926/i),
     ).toBeVisible();
     await expect(page.getByRole("link", { name: /^LOGIN$/i }).first()).toBeVisible();
+    await expect(page.getByLabel("Verification code")).toHaveCount(0);
   });
 });

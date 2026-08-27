@@ -134,6 +134,13 @@
       "when": 1721347200000,
       "tag": "0018_participant_password_reset",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1721433600000,
+      "tag": "0019_gamer_tag_tournament_uniqueness",
+      "breakpoints": true
     }
   ]
 }

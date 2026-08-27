@@ -14,7 +14,7 @@ describe("pre-registration email helpers", () => {
 
   it("uses the approved duplicate email message", () => {
     expect(DUPLICATE_EMAIL_MESSAGE).toBe(
-      "This email address is already registered for KIRAKITAH GAMING 926.",
+      "This email is already registered for KIRAKITAH GAMING 926. Please log in to continue.",
     );
   });
 

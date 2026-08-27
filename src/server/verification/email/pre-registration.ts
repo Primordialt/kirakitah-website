@@ -1,13 +1,15 @@
 import { randomBytes, randomInt } from "crypto";
 import { and, desc, eq, gte, inArray, isNull, sql } from "drizzle-orm";
-import { COMPETITION_NAME } from "@/config/competition";
+import { COMPETITION_NAME, TOURNAMENT_EVENT_ID } from "@/config/competition";
 import { getDb } from "@/server/db";
 import {
+  participantAccounts,
   preRegistrationEmailChallenges,
   registrationApplications,
 } from "@/server/db/schema";
 import { serverEnv } from "@/server/env";
 import type { ApiErrorCode } from "@/server/errors";
+import { PARTICIPANT_ACCOUNT_EMAIL_CHALLENGE_EVENT_ID } from "@/server/participant/auth/constants";
 import { hashSensitiveValue } from "@/server/registration/pii";
 import {
   VERIFICATION_ATTEMPT_MAX_PER_HOUR,
@@ -27,7 +29,8 @@ const ACTIVE_APPLICATION_STATUSES = [
   "verified",
 ] as const;
 
-const DUPLICATE_EMAIL_MESSAGE = `This email address is already registered for ${COMPETITION_NAME}.`;
+/** Controlled public copy — no account IDs, usernames, or application details. */
+const DUPLICATE_EMAIL_MESSAGE = `This email is already registered for ${COMPETITION_NAME}. Please log in to continue.`;
 
 export class PreRegistrationEmailError extends Error {
   readonly code: ApiErrorCode;
@@ -60,17 +63,41 @@ function requirePepper(): string {
   return key;
 }
 
+/**
+ * Authoritative duplicate gate before OTP creation.
+ * Blocks when email belongs to a participant account OR an active tournament
+ * application (KG926 when signup uses the synthetic account-challenge event id).
+ * Does not create challenges, send email, or leak account details.
+ */
 async function assertNotAlreadyRegistered(
   emailNormalized: string,
   eventId: string,
 ): Promise<void> {
   const db = getDb();
+
+  const [accountHit] = await db
+    .select({ id: participantAccounts.id })
+    .from(participantAccounts)
+    .where(eq(participantAccounts.emailNormalized, emailNormalized))
+    .limit(1);
+
+  if (accountHit) {
+    throw new PreRegistrationEmailError("ACCOUNT_EXISTS", DUPLICATE_EMAIL_MESSAGE);
+  }
+
+  // Participant account signup uses a synthetic event id so challenges are not
+  // tied to an application row — still block against the live KG926 applications.
+  const applicationEventId =
+    eventId === PARTICIPANT_ACCOUNT_EMAIL_CHALLENGE_EVENT_ID
+      ? TOURNAMENT_EVENT_ID
+      : eventId;
+
   const [hit] = await db
     .select({ id: registrationApplications.id })
     .from(registrationApplications)
     .where(
       and(
-        eq(registrationApplications.eventId, eventId),
+        eq(registrationApplications.eventId, applicationEventId),
         inArray(registrationApplications.status, [...ACTIVE_APPLICATION_STATUSES]),
         sql`lower(${registrationApplications.email}) = ${emailNormalized}`,
       ),
@@ -125,6 +152,7 @@ async function assertChallengeRateLimits(emailHash: string): Promise<void> {
 
 /**
  * Create + deliver a pre-registration email OTP challenge.
+ * Runs duplicate email checks first (participant account + active applications).
  * Does not create an application. Does not permanently reserve the email.
  */
 export async function initiatePreRegistrationEmailChallenge(input: {
