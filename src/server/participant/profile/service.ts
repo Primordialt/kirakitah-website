@@ -1,5 +1,5 @@
 import { put } from "@vercel/blob";
-import { desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 import type { IdentificationType } from "@/lib/identification";
 import {
   normalizeIdentificationNumber,
@@ -45,6 +45,12 @@ import {
   isValidNormalizedPhone,
   normalizePhoneForUniqueness,
 } from "@/server/registration/phone-normalize";
+import {
+  APPROVED_EFOOTBALL_ACCOUNT_LOCKED_CODE,
+  APPROVED_EFOOTBALL_ACCOUNT_LOCKED_MESSAGE,
+  isGamerTagIdentityChange,
+  normalizeGamerTagForStorage,
+} from "@/server/registration/gamer-tag";
 
 export class ParticipantProfileError extends Error {
   readonly code: ApiErrorCode;
@@ -273,11 +279,26 @@ export async function updateParticipantProfile(
     );
   }
 
-  if (existing.status === "verified") {
+  // Profile verification is the authoritative eFootball approval gate for KG926.
+  // Other permitted fields may still be updated; gamerTag becomes immutable.
+  if (
+    existing.status === "verified" &&
+    input.gamerTag !== undefined &&
+    isGamerTagIdentityChange(existing.gamerTag, input.gamerTag)
+  ) {
+    await recordParticipantAuditEvent({
+      eventType: "PARTICIPANT_APPROVED_EFOOTBALL_CHANGE_DENIED",
+      accountId,
+      actor: accountId,
+      metadata: {
+        profileId: existing.id,
+        reason: "approved_efootball_locked",
+      },
+    });
     throw new ParticipantProfileError(
-      "FORBIDDEN",
-      "Verified profiles cannot be edited.",
-      403,
+      APPROVED_EFOOTBALL_ACCOUNT_LOCKED_CODE,
+      APPROVED_EFOOTBALL_ACCOUNT_LOCKED_MESSAGE,
+      409,
     );
   }
 
@@ -319,8 +340,8 @@ export async function updateParticipantProfile(
     updates.phone = phone;
     updates.phoneNormalized = phoneNormalized;
   }
-  if (input.gamerTag !== undefined) {
-    updates.gamerTag = input.gamerTag.trim();
+  if (input.gamerTag !== undefined && existing.status !== "verified") {
+    updates.gamerTag = normalizeGamerTagForStorage(input.gamerTag);
   }
   if (input.identificationType !== undefined) {
     updates.identificationType = input.identificationType;
@@ -397,6 +418,7 @@ export async function updateParticipantProfile(
   updates.completionPercent = calculateCompletionPercent(mergedForCompletion);
 
   // Editing after correction resets status to incomplete until re-submit.
+  // Verified profiles keep verified status (eFootball remains locked).
   if (existing.status === "needs_correction") {
     updates.status = "incomplete";
     updates.correctionReason = null;
@@ -405,8 +427,21 @@ export async function updateParticipantProfile(
   const [updated] = await db
     .update(participantProfiles)
     .set(updates)
-    .where(eq(participantProfiles.id, existing.id))
+    .where(
+      and(
+        eq(participantProfiles.id, existing.id),
+        eq(participantProfiles.status, existing.status),
+      ),
+    )
     .returning();
+
+  if (!updated) {
+    throw new ParticipantProfileError(
+      "CONFLICT",
+      "Your profile was updated by another request. Refresh and try again.",
+      409,
+    );
+  }
 
   await recordParticipantAuditEvent({
     eventType: "PARTICIPANT_PROFILE_UPDATED",
@@ -414,6 +449,7 @@ export async function updateParticipantProfile(
     actor: accountId,
     metadata: {
       completionPercent: updates.completionPercent ?? existing.completionPercent,
+      efootballLocked: existing.status === "verified",
     },
   });
 

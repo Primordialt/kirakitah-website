@@ -25,3 +25,23 @@ export const EFOOTBALL_ACCOUNT_ALREADY_REGISTERED_MESSAGE = `This eFootball acco
 
 export const EFOOTBALL_ACCOUNT_ALREADY_REGISTERED_CODE =
   "EFOOTBALL_ACCOUNT_ALREADY_REGISTERED" as const;
+
+/** Profile verification locks the approved eFootball username for KG926. */
+export const APPROVED_EFOOTBALL_ACCOUNT_LOCKED_CODE =
+  "APPROVED_EFOOTBALL_ACCOUNT_LOCKED" as const;
+
+export const APPROVED_EFOOTBALL_ACCOUNT_LOCKED_MESSAGE = `Your approved eFootball account is locked for ${COMPETITION_NAME} and cannot be changed.`;
+
+/**
+ * True when a proposed gamer tag would change the approved identity
+ * under existing uniqueness normalization (trim + lowercase).
+ */
+export function isGamerTagIdentityChange(
+  current: string | null | undefined,
+  proposed: string,
+): boolean {
+  const currentNormalized = normalizeGamerTagForUniqueness(current ?? "");
+  const proposedNormalized = normalizeGamerTagForUniqueness(proposed);
+  if (!currentNormalized) return false;
+  return currentNormalized !== proposedNormalized;
+}

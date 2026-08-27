@@ -2,6 +2,7 @@
 
 import { Button, Checkbox, FileInput, Input, Select } from "@/components/ui";
 import { VerifiedBadge } from "@/components/ui/VerifiedBadge";
+import { COMPETITION_NAME } from "@/config/competition";
 import { registrationCountries } from "@/config/esports";
 import { requiresGuardian } from "@/domain/registration";
 import {
@@ -94,9 +95,8 @@ export function ProfileForm() {
   const [photoError, setPhotoError] = useState<string | undefined>();
   const [guardian, setGuardian] = useState(emptyGuardian);
 
-  const readOnly =
-    profile?.status === "submitted_for_review" ||
-    profile?.status === "verified";
+  const readOnly = profile?.status === "submitted_for_review";
+  const efootballLocked = profile?.status === "verified";
 
   const showGuardian = useMemo(
     () => Boolean(dateOfBirth && requiresGuardian(dateOfBirth)),
@@ -169,7 +169,13 @@ export function ProfileForm() {
     if (identificationNumber.trim()) {
       formData.set("identificationNumber", identificationNumber.trim());
     }
-    formData.set("gamerTag", gamerTag.trim());
+    // Approved eFootball account is immutable — always send the locked value.
+    formData.set(
+      "gamerTag",
+      efootballLocked
+        ? (profile.gamerTag?.trim() ?? "")
+        : gamerTag.trim(),
+    );
     if (playerPhoto) {
       formData.set("playerPhoto", playerPhoto);
     }
@@ -477,13 +483,38 @@ export function ProfileForm() {
 
         <fieldset className="space-y-5" disabled={readOnly}>
           <legend className="text-h4 text-text-primary">Gaming information</legend>
-          <Input
-            label="Your eFootball username"
-            required
-            value={gamerTag}
-            onChange={(event) => setGamerTag(event.target.value)}
-            description="This is your eFootball Gamer Tag, not your account username."
-          />
+          {efootballLocked ? (
+            <div className="space-y-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <p className="text-caption font-semibold uppercase tracking-wide text-text-muted">
+                  EFootball account
+                </p>
+                <VerifiedBadge verified size="sm" />
+                <span className="text-body-sm font-medium text-text-primary">
+                  Verified
+                </span>
+              </div>
+              <Input
+                label="Your eFootball username"
+                value={profile.gamerTag ?? ""}
+                readOnly
+                aria-readonly="true"
+                description={`Your approved eFootball account is locked for ${COMPETITION_NAME}.`}
+              />
+              <p className="text-body-sm text-text-secondary" role="status">
+                Your approved eFootball account is locked for {COMPETITION_NAME}{" "}
+                and cannot be changed.
+              </p>
+            </div>
+          ) : (
+            <Input
+              label="Your eFootball username"
+              required
+              value={gamerTag}
+              onChange={(event) => setGamerTag(event.target.value)}
+              description="This is your eFootball Gamer Tag, not your account username."
+            />
+          )}
         </fieldset>
 
         <fieldset className="space-y-5" disabled={readOnly}>
