@@ -33,7 +33,7 @@ export function ParticipantNav() {
             <li key={item.href}>
               <Link
                 href={item.href}
-                className={`inline-flex min-h-10 items-center rounded-lg px-3 py-2 text-body-sm font-medium transition-colors ${
+                className={`inline-flex min-h-10 items-center rounded-lg px-3 py-2 text-body-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
                   active
                     ? "bg-brand-primary text-white"
                     : "text-text-secondary hover:bg-surface-muted hover:text-text-primary"

@@ -133,7 +133,7 @@ export const homepageCommunity = {
   supportingCopy:
     "KIRAKITAH is built around people who want to play, create, compete, explore and grow together.",
   roles: ["Players", "Creators", "Participants", "Collaborators", "Community"],
-  primaryCta: { label: "JOIN KIRAKITAH", href: "/community" } satisfies HomepageCta,
+  primaryCta: { label: "JOIN THE COMMUNITY", href: "/community" } satisfies HomepageCta,
 } as const;
 
 export const homepageStories = {
