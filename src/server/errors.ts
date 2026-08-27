@@ -39,7 +39,8 @@ export type ApiErrorCode =
   | "PROFILE_NOT_VERIFIED"
   | "PROFILE_REQUIRES_CORRECTION"
   | "PROFILE_ALREADY_SUBMITTED"
-  | "PROFILE_NOT_SUBMITTED";
+  | "PROFILE_NOT_SUBMITTED"
+  | "APPROVED_EFOOTBALL_ACCOUNT_LOCKED";
 
 export interface ApiErrorDetail {
   path: string;
