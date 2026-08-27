@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AdminShell, loadAdminSession } from "@/components/admin/AdminShell";
 import {
@@ -7,10 +8,20 @@ import {
 } from "@/components/admin/ApplicationReviewActions";
 import { SocialFollowReviewActions } from "@/components/admin/SocialFollowReviewActions";
 import { TournamentEligibilityPanel } from "@/components/admin/TournamentEligibilityPanel";
-import { getAdminApplicationDetail } from "@/server/admin/registration/service";
+import {
+  formatApplicationStatusLabel,
+  formatAuditEventLabel,
+  formatIdentityStatusLabel,
+  formatSocialStatusLabel,
+} from "@/lib/admin/application-labels";
+import {
+  getAdminApplicationDetail,
+  listAdminAuditEvents,
+} from "@/server/admin/registration/service";
 import { roleHasPermission } from "@/server/admin/authorization/permissions";
 import { isRegistrationBackendConfigured } from "@/server/env";
 import { getParticipantForApplicationReference } from "@/server/tournament/participant-lookup";
+import { COMPETITION_NAME } from "@/config/competition";
 
 export default async function AdminApplicationDetailPage({
   params,
@@ -45,26 +56,152 @@ export default async function AdminApplicationDetailPage({
   const canReview = roleHasPermission(session.user.role, "identity:review");
   const canSocialReview = roleHasPermission(session.user.role, "social:review");
   const canStatus = roleHasPermission(session.user.role, "applications:status");
-  const canEvaluate = roleHasPermission(session.user.role, "tournament:eligibility");
-  const canSelect = roleHasPermission(session.user.role, "tournament:participant_select");
+  const canEvaluate = roleHasPermission(
+    session.user.role,
+    "tournament:eligibility",
+  );
+  const canSelect = roleHasPermission(
+    session.user.role,
+    "tournament:participant_select",
+  );
+  const canAudit = roleHasPermission(session.user.role, "audit:view");
 
-  const participant = await getParticipantForApplicationReference(detail.referenceId);
+  const participant = await getParticipantForApplicationReference(
+    detail.referenceId,
+  );
+
+  const audit = canAudit
+    ? await listAdminAuditEvents({
+        referenceId: detail.referenceId,
+        pageSize: 25,
+      })
+    : { items: [] };
+
+  const verifiedSocialCount = detail.socialFollow.platforms.filter(
+    (platform) => platform.verificationStatus === "verified",
+  ).length;
+  const socialTotal = detail.socialFollow.platforms.length || 3;
 
   return (
     <AdminShell session={session}>
-      <h1 className="text-h2">{detail.referenceId}</h1>
-      <p className="mt-1 text-body text-text-secondary">
-        {detail.player.fullName} · {detail.status} · identity{" "}
-        {detail.identity.status} · social {detail.socialFollow.status}
-      </p>
+      <div className="mb-4">
+        <Link
+          href="/admin/applications"
+          className="text-body-sm text-accent underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus"
+        >
+          Back to applications
+        </Link>
+      </div>
 
-      <div className="mt-8 grid gap-6 lg:grid-cols-2">
+      <header className="space-y-2">
+        <p className="text-caption font-semibold uppercase tracking-wide text-text-muted">
+          {COMPETITION_NAME}
+        </p>
+        <h1 className="text-h2 text-text-primary">{detail.referenceId}</h1>
+        <p className="text-body text-text-secondary">
+          {detail.player.fullName} · eFootball {detail.gaming.gamerTag}
+        </p>
+      </header>
+
+      <section
+        aria-label="Application stage summary"
+        className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4"
+      >
+        {[
+          {
+            title: "Application",
+            value: formatApplicationStatusLabel(detail.status),
+          },
+          {
+            title: "Identity",
+            value: formatIdentityStatusLabel(detail.identity.status),
+          },
+          {
+            title: "Social",
+            value: `${verifiedSocialCount} / ${socialTotal} verified · ${formatSocialStatusLabel(detail.socialFollow.status)}`,
+          },
+          {
+            title: "Selection",
+            value: participant?.status
+              ? participant.status.replace(/_/g, " ")
+              : "Not selected",
+          },
+        ].map((item) => (
+          <div
+            key={item.title}
+            className="rounded-xl border border-border bg-surface p-4"
+          >
+            <p className="text-caption uppercase tracking-wide text-text-muted">
+              {item.title}
+            </p>
+            <p className="mt-1 text-body font-semibold text-text-primary">
+              {item.value}
+            </p>
+          </div>
+        ))}
+      </section>
+
+      <section className="mt-8 space-y-4" aria-labelledby="actions-heading">
+        <h2 id="actions-heading" className="text-h3 text-text-primary">
+          Review actions
+        </h2>
+        <p className="text-body-sm text-text-secondary">
+          Only actions your role is authorized to perform are shown. Server-side
+          permission checks remain authoritative.
+        </p>
+        <div className="grid gap-6 lg:grid-cols-2">
+          <ApplicationStatusActions
+            referenceId={detail.referenceId}
+            currentStatus={detail.status}
+            canChange={canStatus}
+          />
+          {detail.identity.status === "pending_review" ? (
+            <IdentityReviewActions
+              referenceId={detail.referenceId}
+              canReview={canReview}
+            />
+          ) : (
+            <div className="rounded-xl border border-border bg-surface p-4">
+              <h3 className="text-h3">Identity review</h3>
+              <p className="mt-2 text-body-sm text-text-muted">
+                Identity review is complete (
+                {formatIdentityStatusLabel(detail.identity.status)}).
+              </p>
+            </div>
+          )}
+          <SocialFollowReviewActions
+            referenceId={detail.referenceId}
+            socialFollowStatus={detail.socialFollow.status}
+            attestation={detail.socialFollow.attestation}
+            platforms={detail.socialFollow.platforms}
+            canReview={canSocialReview}
+          />
+          <TournamentEligibilityPanel
+            referenceId={detail.referenceId}
+            canEvaluate={canEvaluate}
+            canSelect={canSelect}
+            initialParticipantId={participant?.participantId}
+            initialParticipantStatus={participant?.status}
+            initialSocialFollowStatus={detail.socialFollow.status}
+          />
+        </div>
+      </section>
+
+      <div className="mt-10 grid gap-6 lg:grid-cols-2">
         <section className="rounded-xl border border-border bg-surface-elevated p-4">
-          <h2 className="text-h3">Player</h2>
+          <h2 className="text-h3">Applicant</h2>
           <dl className="mt-3 space-y-2 text-body-sm">
             <div>
               <dt className="text-text-muted">Name</dt>
               <dd>{detail.player.fullName}</dd>
+            </div>
+            <div>
+              <dt className="text-text-muted">Email</dt>
+              <dd>{detail.player.email}</dd>
+            </div>
+            <div>
+              <dt className="text-text-muted">Phone</dt>
+              <dd>{detail.player.phone}</dd>
             </div>
             <div>
               <dt className="text-text-muted">Date of birth</dt>
@@ -76,59 +213,31 @@ export default async function AdminApplicationDetailPage({
                 {detail.player.city}, {detail.player.country}
               </dd>
             </div>
-            <div>
-              <dt className="text-text-muted">Email</dt>
-              <dd>{detail.player.email}</dd>
-            </div>
-            <div>
-              <dt className="text-text-muted">Phone</dt>
-              <dd>{detail.player.phone}</dd>
-            </div>
           </dl>
         </section>
 
         <section className="rounded-xl border border-border bg-surface-elevated p-4">
-          <h2 className="text-h3">Gaming</h2>
+          <h2 className="text-h3">Application</h2>
           <dl className="mt-3 space-y-2 text-body-sm">
             <div>
-              <dt className="text-text-muted">Gamer tag</dt>
-              <dd>{detail.gaming.gamerTag}</dd>
+              <dt className="text-text-muted">Reference</dt>
+              <dd>{detail.referenceId}</dd>
             </div>
             <div>
-              <dt className="text-text-muted">Game</dt>
-              <dd>{detail.gaming.game}</dd>
+              <dt className="text-text-muted">Submitted</dt>
+              <dd>{new Date(detail.createdAt).toLocaleString()}</dd>
+            </div>
+            <div>
+              <dt className="text-text-muted">Status</dt>
+              <dd>{formatApplicationStatusLabel(detail.status)}</dd>
+            </div>
+            <div>
+              <dt className="text-text-muted">eFootball</dt>
+              <dd>{detail.gaming.gamerTag}</dd>
             </div>
             <div>
               <dt className="text-text-muted">Platform</dt>
               <dd>{detail.gaming.platform}</dd>
-            </div>
-            <div>
-              <dt className="text-text-muted">Profile</dt>
-              <dd>{detail.gaming.gamingProfile || "—"}</dd>
-            </div>
-          </dl>
-        </section>
-
-        <section className="rounded-xl border border-border bg-surface-elevated p-4">
-          <h2 className="text-h3">Contact verification</h2>
-          <dl className="mt-3 space-y-2 text-body-sm">
-            <div>
-              <dt className="text-text-muted">Email</dt>
-              <dd>
-                {detail.contactVerification.emailStatus}
-                {detail.contactVerification.emailVerifiedAt
-                  ? ` · ${new Date(detail.contactVerification.emailVerifiedAt).toLocaleString()}`
-                  : ""}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-text-muted">Phone</dt>
-              <dd>
-                {detail.contactVerification.phoneStatus}
-                {detail.contactVerification.phoneVerifiedAt
-                  ? ` · ${new Date(detail.contactVerification.phoneVerifiedAt).toLocaleString()}`
-                  : ""}
-              </dd>
             </div>
           </dl>
         </section>
@@ -151,15 +260,19 @@ export default async function AdminApplicationDetailPage({
             </div>
             <div>
               <dt className="text-text-muted">Status</dt>
-              <dd>{detail.identity.status}</dd>
+              <dd>{formatIdentityStatusLabel(detail.identity.status)}</dd>
             </div>
             <div>
-              <dt className="text-text-muted">Notes</dt>
+              <dt className="text-text-muted">Reviewer notes</dt>
               <dd className="whitespace-pre-wrap">
                 {detail.identity.notes || "—"}
               </dd>
             </div>
           </dl>
+          <p className="mt-3 text-body-sm text-text-muted">
+            Identity verification is manual. Notes here are for admin use and
+            are not shown on participant status cards.
+          </p>
         </section>
 
         {detail.guardian !== undefined ? (
@@ -182,10 +295,6 @@ export default async function AdminApplicationDetailPage({
                 <div>
                   <dt className="text-text-muted">Phone</dt>
                   <dd>{detail.guardian.phone}</dd>
-                </div>
-                <div>
-                  <dt className="text-text-muted">Consent at</dt>
-                  <dd>{new Date(detail.guardian.consentAt).toLocaleString()}</dd>
                 </div>
               </dl>
             ) : (
@@ -227,38 +336,35 @@ export default async function AdminApplicationDetailPage({
         </section>
       </div>
 
-      <div className="mt-8 grid gap-6 lg:grid-cols-2">
-        {detail.identity.status === "pending_review" ? (
-          <IdentityReviewActions
-            referenceId={detail.referenceId}
-            canReview={canReview}
-          />
-        ) : (
-          <p className="text-body-sm text-text-muted">
-            Identity review is complete ({detail.identity.status}).
-          </p>
-        )}
-        <SocialFollowReviewActions
-          referenceId={detail.referenceId}
-          socialFollowStatus={detail.socialFollow.status}
-          attestation={detail.socialFollow.attestation}
-          platforms={detail.socialFollow.platforms}
-          canReview={canSocialReview}
-        />
-        <ApplicationStatusActions
-          referenceId={detail.referenceId}
-          currentStatus={detail.status}
-          canChange={canStatus}
-        />
-        <TournamentEligibilityPanel
-          referenceId={detail.referenceId}
-          canEvaluate={canEvaluate}
-          canSelect={canSelect}
-          initialParticipantId={participant?.participantId}
-          initialParticipantStatus={participant?.status}
-          initialSocialFollowStatus={detail.socialFollow.status}
-        />
-      </div>
+      {canAudit ? (
+        <section className="mt-10" aria-labelledby="history-heading">
+          <h2 id="history-heading" className="text-h3 text-text-primary">
+            Application history
+          </h2>
+          {audit.items.length === 0 ? (
+            <p className="mt-3 text-body-sm text-text-muted">
+              No audit events recorded for this application yet.
+            </p>
+          ) : (
+            <ol className="mt-4 space-y-3">
+              {audit.items.map((event) => (
+                <li
+                  key={event.id}
+                  className="border-t border-border pt-3 first:border-0 first:pt-0"
+                >
+                  <p className="text-body-sm font-medium text-text-primary">
+                    {formatAuditEventLabel(event.eventType)}
+                  </p>
+                  <p className="text-body-sm text-text-muted">
+                    {new Date(event.createdAt).toLocaleString()}
+                    {event.actorRole ? ` · ${event.actorRole}` : ""}
+                  </p>
+                </li>
+              ))}
+            </ol>
+          )}
+        </section>
+      ) : null}
     </AdminShell>
   );
 }

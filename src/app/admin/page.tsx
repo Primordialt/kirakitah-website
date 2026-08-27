@@ -3,6 +3,7 @@ import { AdminShell, loadAdminSession } from "@/components/admin/AdminShell";
 import { roleHasPermission } from "@/server/admin/authorization/permissions";
 import { getAdminDashboardStats } from "@/server/admin/registration/service";
 import { isRegistrationBackendConfigured } from "@/server/env";
+import { COMPETITION_NAME, TOURNAMENT_EVENT_ID } from "@/config/competition";
 
 export default async function AdminDashboardPage() {
   const session = await loadAdminSession("dashboard:view");
@@ -12,9 +13,18 @@ export default async function AdminDashboardPage() {
     "identity:review",
   );
   const canReviewSocial = roleHasPermission(session.user.role, "social:review");
+  const canListApplications = roleHasPermission(
+    session.user.role,
+    "applications:list",
+  );
+  const canReviewProfiles = roleHasPermission(
+    session.user.role,
+    "identity:review",
+  );
 
   let stats = {
     totalApplications: 0,
+    received: 0,
     pendingIdentityReviews: 0,
     pendingSocialReviews: 0,
     pendingContactVerification: 0,
@@ -34,16 +44,48 @@ export default async function AdminDashboardPage() {
     unavailable = true;
   }
 
+  const attentionItems = [
+    canListApplications
+      ? {
+          label: "Applications under review",
+          value: stats.underReview + stats.received,
+          href: `/admin/tournaments/${TOURNAMENT_EVENT_ID}/applications?status=under_review`,
+        }
+      : null,
+    canReviewIdentity
+      ? {
+          label: "Identity reviews pending",
+          value: stats.pendingIdentityReviews,
+          href: "/admin/reviews/identity",
+        }
+      : null,
+    canReviewSocial
+      ? {
+          label: "Social reviews pending",
+          value: stats.pendingSocialReviews,
+          href: "/admin/reviews/social",
+        }
+      : null,
+    canReviewProfiles
+      ? {
+          label: "Profile reviews",
+          value: null as number | null,
+          href: "/admin/reviews/profiles",
+        }
+      : null,
+  ].filter(Boolean) as Array<{
+    label: string;
+    value: number | null;
+    href: string;
+  }>;
+
   const cards = [
     { label: "Total applications", value: stats.totalApplications },
+    { label: "Received", value: stats.received },
     { label: "Pending identity reviews", value: stats.pendingIdentityReviews },
     { label: "Pending social reviews", value: stats.pendingSocialReviews },
-    {
-      label: "Pending contact verification",
-      value: stats.pendingContactVerification,
-    },
     { label: "Under review", value: stats.underReview },
-    { label: "Approved applications", value: stats.approved },
+    { label: "Verified applications", value: stats.approved },
     { label: "Rejected applications", value: stats.rejected },
   ];
 
@@ -51,8 +93,44 @@ export default async function AdminDashboardPage() {
     <AdminShell session={session}>
       <h1 className="text-h2">Registration operations</h1>
       <p className="mt-2 text-body text-text-secondary">
-        Internal review workspace for KIRAKITAH GAMING 926 applications.
+        Internal review workspace for {COMPETITION_NAME} applications.
       </p>
+
+      {!unavailable && attentionItems.length > 0 ? (
+        <section
+          aria-labelledby="attention-heading"
+          className="mt-6 rounded-xl border border-border bg-surface p-5"
+        >
+          <h2 id="attention-heading" className="text-h3 text-text-primary">
+            Needs your attention
+          </h2>
+          <ul className="mt-4 space-y-3">
+            {attentionItems.map((item) => (
+              <li key={item.href}>
+                <Link
+                  href={item.href}
+                  className="flex min-h-11 flex-wrap items-center justify-between gap-2 text-body-sm text-text-primary underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus"
+                >
+                  <span>{item.label}</span>
+                  {item.value !== null ? (
+                    <span className="font-semibold">{item.value}</span>
+                  ) : (
+                    <span className="text-accent">Open</span>
+                  )}
+                </Link>
+              </li>
+            ))}
+          </ul>
+          {canListApplications ? (
+            <Link
+              href={`/admin/tournaments/${TOURNAMENT_EVENT_ID}/applications`}
+              className="mt-4 inline-flex min-h-11 items-center rounded-lg bg-brand-primary px-4 text-button text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus"
+            >
+              View applications
+            </Link>
+          ) : null}
+        </section>
+      ) : null}
 
       {unavailable ? (
         <p className="mt-6 rounded-lg border border-border bg-surface p-4 text-body-sm text-text-muted">
@@ -77,7 +155,7 @@ export default async function AdminDashboardPage() {
         {canReviewIdentity ? (
           <Link
             href="/admin/reviews/identity"
-            className="rounded-lg bg-brand-primary px-4 py-2 text-button text-white"
+            className="rounded-lg bg-brand-primary px-4 py-2 text-button text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus"
           >
             Open identity reviews
           </Link>
@@ -85,21 +163,21 @@ export default async function AdminDashboardPage() {
         {canReviewSocial ? (
           <Link
             href="/admin/reviews/social"
-            className="rounded-lg border border-border-interactive px-4 py-2 text-button"
+            className="rounded-lg border border-border-interactive px-4 py-2 text-button focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus"
           >
             Open social reviews
           </Link>
         ) : null}
         <Link
           href="/admin/applications"
-          className="rounded-lg border border-border-interactive px-4 py-2 text-button"
+          className="rounded-lg border border-border-interactive px-4 py-2 text-button focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus"
         >
           Browse applications
         </Link>
         {canManageAdmins ? (
           <Link
             href="/admin/users"
-            className="rounded-lg border border-border-interactive px-4 py-2 text-button"
+            className="rounded-lg border border-border-interactive px-4 py-2 text-button focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus"
           >
             Administrators
           </Link>

@@ -112,16 +112,13 @@ export function ApplicationStatusActions({
   canChange: boolean;
 }) {
   const router = useRouter();
-  const [status, setStatus] = useState(currentStatus);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   if (!canChange) return null;
 
-  const submit = async () => {
-    const confirmed = window.confirm(
-      `Change application status to "${status}"?`,
-    );
+  const submit = async (nextStatus: string, confirmMessage: string) => {
+    const confirmed = window.confirm(confirmMessage);
     if (!confirmed) return;
 
     setLoading(true);
@@ -131,7 +128,7 @@ export function ApplicationStatusActions({
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status }),
+        body: JSON.stringify({ status: nextStatus }),
       },
     );
     const payload = (await response.json()) as {
@@ -150,34 +147,93 @@ export function ApplicationStatusActions({
 
   return (
     <div className="space-y-3 rounded-xl border border-border bg-surface p-4">
-      <h3 className="text-h3">Application status</h3>
-      <label className="block text-body-sm">
-        New status
-        <select
-          value={status}
-          onChange={(event) => setStatus(event.target.value)}
-          className="mt-1 h-10 w-full rounded-lg border border-border bg-surface-elevated px-3"
-        >
-          <option value="received">received</option>
-          <option value="under_review">under_review</option>
-          <option value="verified">verified</option>
-          <option value="rejected">rejected</option>
-          <option value="withdrawn">withdrawn</option>
-        </select>
-      </label>
+      <h3 className="text-h3">Application review</h3>
+      <p className="text-body-sm text-text-secondary">
+        Current status:{" "}
+        <span className="font-medium text-text-primary">{currentStatus}</span>
+      </p>
+      <p className="text-body-sm text-text-muted">
+        Approving an application does not select the applicant. Selection is a
+        separate operation.
+      </p>
       {error ? (
         <p role="alert" className="text-body-sm text-error">
           {error}
         </p>
       ) : null}
-      <button
-        type="button"
-        disabled={loading}
-        onClick={() => void submit()}
-        className="h-10 rounded-lg bg-brand-primary px-4 text-button text-white disabled:opacity-50"
-      >
-        Update status
-      </button>
+      <div className="flex flex-wrap gap-3">
+        {currentStatus === "received" ? (
+          <button
+            type="button"
+            disabled={loading}
+            onClick={() =>
+              void submit(
+                "under_review",
+                "Move this application to under review?",
+              )
+            }
+            className="min-h-11 rounded-lg bg-brand-primary px-4 text-button text-white disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus"
+          >
+            Start review
+          </button>
+        ) : null}
+        {currentStatus === "under_review" ? (
+          <>
+            <button
+              type="button"
+              disabled={loading}
+              onClick={() =>
+                void submit(
+                  "verified",
+                  "Approve this application? This does not select the participant.",
+                )
+              }
+              className="min-h-11 rounded-lg bg-success/20 px-4 text-button text-success disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus"
+            >
+              Approve application
+            </button>
+            <button
+              type="button"
+              disabled={loading}
+              onClick={() =>
+                void submit(
+                  "rejected",
+                  "Reject this application? This action cannot be undone.",
+                )
+              }
+              className="min-h-11 rounded-lg bg-error/20 px-4 text-button text-error disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus"
+            >
+              Reject application
+            </button>
+          </>
+        ) : null}
+        {currentStatus === "received" || currentStatus === "under_review" ? (
+          <button
+            type="button"
+            disabled={loading}
+            onClick={() =>
+              void submit(
+                "withdrawn",
+                "Withdraw this application? This action cannot be undone.",
+              )
+            }
+            className="min-h-11 rounded-lg border border-border px-4 text-button text-text-secondary disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus"
+          >
+            Withdraw application
+          </button>
+        ) : null}
+        {currentStatus === "verified" ||
+        currentStatus === "rejected" ||
+        currentStatus === "withdrawn" ? (
+          <p className="text-body-sm text-text-muted">
+            This application status is final.
+          </p>
+        ) : null}
+      </div>
+      <p className="text-body-sm text-text-muted">
+        Profile corrections are handled in Profile reviews. Application status
+        has no separate needs-correction state.
+      </p>
     </div>
   );
 }

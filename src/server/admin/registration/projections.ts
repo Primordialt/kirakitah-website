@@ -5,6 +5,7 @@
 export interface AdminApplicationListItem {
   referenceId: string;
   fullName: string;
+  gamerTag: string;
   createdAt: string;
   eventId: string;
   status: string;
@@ -16,6 +17,7 @@ export interface AdminApplicationListItem {
 
 export interface AdminDashboardStats {
   totalApplications: number;
+  received: number;
   pendingIdentityReviews: number;
   pendingSocialReviews: number;
   pendingContactVerification: number;
