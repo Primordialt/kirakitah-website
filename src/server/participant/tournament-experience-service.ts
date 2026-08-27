@@ -5,6 +5,7 @@ import {
   matchNotificationEvents,
   matchResults,
   matches,
+  participantAuditEvents,
   qualificationPodMembers,
   qualificationPods,
   registrationApplications,
@@ -40,6 +41,7 @@ import {
   getSelectionPresentation,
   getSocialAggregatePresentation,
   getSocialPlatformPresentation,
+  PARTICIPANT_VISIBLE_AUDIT_EVENT_TYPES,
   PLATFORM_LABELS,
 } from "@/lib/participant/tournament-status";
 
@@ -113,8 +115,9 @@ export type ParticipantNotificationView = {
   eventType: string;
   title: string;
   description: string;
-  tournamentId: string;
-  matchId: string;
+  href: string | null;
+  tournamentId: string | null;
+  matchId: string | null;
   createdAt: string;
 };
 
@@ -519,54 +522,130 @@ export async function listParticipantNotifications(
   tournamentId?: string,
 ): Promise<ParticipantNotificationView[]> {
   const db = getDb();
+  const items: ParticipantNotificationView[] = [];
 
-  const applicationQuery = db
+  const auditRows = await db
+    .select({
+      id: participantAuditEvents.id,
+      eventType: participantAuditEvents.eventType,
+      metadata: participantAuditEvents.metadata,
+      createdAt: participantAuditEvents.createdAt,
+    })
+    .from(participantAuditEvents)
+    .where(
+      and(
+        eq(participantAuditEvents.accountId, accountId),
+        inArray(participantAuditEvents.eventType, [
+          ...PARTICIPANT_VISIBLE_AUDIT_EVENT_TYPES,
+        ]),
+      ),
+    )
+    .orderBy(desc(participantAuditEvents.createdAt))
+    .limit(50);
+
+  for (const row of auditRows) {
+    const metaTournamentId =
+      typeof row.metadata?.tournamentId === "string"
+        ? row.metadata.tournamentId
+        : null;
+    if (tournamentId && metaTournamentId && metaTournamentId !== tournamentId) {
+      continue;
+    }
+
+    const presentation = getNotificationPresentation(row.eventType);
+    let description = presentation.description;
+    let href = presentation.href;
+
+    if (
+      row.eventType === "PARTICIPANT_QUALIFICATION_ASSIGNED" &&
+      typeof row.metadata?.podNumber === "number"
+    ) {
+      description = `You have been assigned to Qualification Pod ${row.metadata.podNumber}.`;
+    }
+
+    if (
+      row.eventType === "PARTICIPANT_APPLICATION_SUBMITTED" &&
+      metaTournamentId
+    ) {
+      href = `/tournaments/${metaTournamentId}`;
+    } else if (
+      (row.eventType === "PARTICIPANT_SELECTED" ||
+        row.eventType === "PARTICIPANT_QUALIFICATION_ASSIGNED") &&
+      metaTournamentId
+    ) {
+      href = `/tournaments/${metaTournamentId}`;
+    }
+
+    const view: ParticipantNotificationView = {
+      id: row.id,
+      eventType: row.eventType,
+      title: presentation.title,
+      description,
+      href,
+      tournamentId: metaTournamentId,
+      matchId: null,
+      createdAt: row.createdAt,
+    };
+    assertNoSensitivePublicFields({ ...view });
+    items.push(view);
+  }
+
+  const applications = await db
     .select({ id: registrationApplications.id })
     .from(registrationApplications)
     .where(eq(registrationApplications.participantAccountId, accountId));
 
-  const applications = await applicationQuery;
-  if (applications.length === 0) return [];
+  if (applications.length > 0) {
+    const appIds = applications.map((row) => row.id);
+    const participants = await db
+      .select({ id: tournamentParticipants.id })
+      .from(tournamentParticipants)
+      .where(inArray(tournamentParticipants.applicationId, appIds));
 
-  const appIds = applications.map((row) => row.id);
-  const participants = await db
-    .select({ id: tournamentParticipants.id })
-    .from(tournamentParticipants)
-    .where(inArray(tournamentParticipants.applicationId, appIds));
+    const participantIds = participants.map((row) => row.id);
+    if (participantIds.length > 0) {
+      const conditions = [
+        inArray(matchNotificationEvents.recipientParticipantId, participantIds),
+      ];
+      if (tournamentId) {
+        conditions.push(eq(matchNotificationEvents.tournamentId, tournamentId));
+      }
 
-  const participantIds = participants.map((row) => row.id);
-  if (participantIds.length === 0) return [];
+      const matchRows = await db
+        .select({
+          id: matchNotificationEvents.id,
+          eventType: matchNotificationEvents.eventType,
+          tournamentId: matchNotificationEvents.tournamentId,
+          matchId: matchNotificationEvents.matchId,
+          createdAt: matchNotificationEvents.createdAt,
+        })
+        .from(matchNotificationEvents)
+        .where(and(...conditions))
+        .orderBy(desc(matchNotificationEvents.createdAt))
+        .limit(50);
 
-  const conditions = [
-    inArray(matchNotificationEvents.recipientParticipantId, participantIds),
-  ];
-  if (tournamentId) {
-    conditions.push(eq(matchNotificationEvents.tournamentId, tournamentId));
+      for (const row of matchRows) {
+        const presentation = getNotificationPresentation(row.eventType);
+        const view: ParticipantNotificationView = {
+          id: row.id,
+          eventType: row.eventType,
+          title: presentation.title,
+          description: presentation.description,
+          href: presentation.href,
+          tournamentId: row.tournamentId,
+          matchId: row.matchId,
+          createdAt: row.createdAt,
+        };
+        assertNoSensitivePublicFields({ ...view });
+        items.push(view);
+      }
+    }
   }
 
-  const rows = await db
-    .select({
-      id: matchNotificationEvents.id,
-      eventType: matchNotificationEvents.eventType,
-      tournamentId: matchNotificationEvents.tournamentId,
-      matchId: matchNotificationEvents.matchId,
-      createdAt: matchNotificationEvents.createdAt,
-    })
-    .from(matchNotificationEvents)
-    .where(and(...conditions))
-    .orderBy(desc(matchNotificationEvents.createdAt))
-    .limit(50);
-
-  return rows.map((row) => {
-    const presentation = getNotificationPresentation(row.eventType);
-    return {
-      id: row.id,
-      eventType: row.eventType,
-      title: presentation.title,
-      description: presentation.description,
-      tournamentId: row.tournamentId,
-      matchId: row.matchId,
-      createdAt: row.createdAt,
-    };
-  });
+  return items
+    .sort(
+      (a, b) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+    )
+    .slice(0, 50);
 }

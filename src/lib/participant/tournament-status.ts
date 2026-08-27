@@ -104,13 +104,13 @@ export function getEligibilityPresentation(state: "ELIGIBLE" | "NOT_ELIGIBLE"): 
     return {
       label: "ELIGIBLE",
       description:
-        "You meet the current eligibility requirements. Selection is a separate step.",
+        "This application meets the current tournament eligibility requirements. Selection is a separate step.",
     };
   }
   return {
     label: "ELIGIBILITY PENDING",
     description:
-      "Some eligibility requirements are not yet met. This does not mean you have been selected.",
+      "Your eligibility is still being reviewed or some requirements are not yet met. This does not mean you have been selected.",
   };
 }
 
@@ -147,35 +147,84 @@ export function getSelectionPresentation(status: string): {
 export function getNotificationPresentation(eventType: string): {
   title: string;
   description: string;
+  href: string | null;
 } {
   switch (eventType) {
     case "MATCH_SCHEDULED":
       return {
         title: "Match scheduled",
-        description: "A match has been scheduled for you.",
+        description: "A match has been scheduled for you. Open Matches for details.",
+        href: "/matches",
       };
     case "MATCH_RESCHEDULED":
       return {
         title: "Match rescheduled",
         description: "One of your matches has a new schedule.",
+        href: "/matches",
       };
     case "MATCH_REMINDER":
       return {
         title: "Upcoming match",
         description: "You have an upcoming match.",
+        href: "/matches",
       };
     case "MATCH_CANCELLED":
       return {
         title: "Match cancelled",
         description: "A scheduled match was cancelled.",
+        href: "/matches",
+      };
+    case "PARTICIPANT_PROFILE_APPROVED":
+      return {
+        title: "Profile verified",
+        description:
+          "Your participant profile has been verified. You can continue to tournament applications.",
+        href: "/tournaments",
+      };
+    case "PARTICIPANT_PROFILE_REJECTED":
+      return {
+        title: "Action required — update your profile",
+        description:
+          "Your profile needs an update before it can be approved. Review your profile and resubmit.",
+        href: "/profile",
+      };
+    case "PARTICIPANT_APPLICATION_SUBMITTED":
+      return {
+        title: "Application received",
+        description:
+          "Your KIRAKITAH GAMING 926 application has been received. Review and eligibility are next.",
+        href: "/tournaments/event-kg926",
+      };
+    case "PARTICIPANT_SELECTED":
+      return {
+        title: "You have been selected",
+        description:
+          "You have been selected to participate. Qualification is the next stage.",
+        href: "/tournaments/event-kg926",
+      };
+    case "PARTICIPANT_QUALIFICATION_ASSIGNED":
+      return {
+        title: "Qualification assigned",
+        description: "You have been assigned to a qualification pod.",
+        href: "/tournaments/event-kg926",
       };
     default:
       return {
         title: eventType.replace(/_/g, " "),
         description: "Tournament update.",
+        href: "/notifications",
       };
   }
 }
+
+/** Participant-visible lifecycle audit events (excludes login noise). */
+export const PARTICIPANT_VISIBLE_AUDIT_EVENT_TYPES = [
+  "PARTICIPANT_PROFILE_APPROVED",
+  "PARTICIPANT_PROFILE_REJECTED",
+  "PARTICIPANT_APPLICATION_SUBMITTED",
+  "PARTICIPANT_SELECTED",
+  "PARTICIPANT_QUALIFICATION_ASSIGNED",
+] as const;
 
 export const PLATFORM_LABELS: Record<string, string> = {
   x: "X",

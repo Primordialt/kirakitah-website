@@ -28,6 +28,28 @@ export function ProfileStatusCard({
       aria-labelledby="profile-status-heading"
       className="rounded-xl border border-border bg-surface p-5"
     >
+      {status === "needs_correction" ? (
+        <div
+          className="mb-5 rounded-lg border border-error/40 bg-error/10 p-4"
+          role="alert"
+        >
+          <p className="text-caption font-semibold uppercase tracking-wide text-error">
+            Action required
+          </p>
+          <p className="mt-1 text-body-sm text-text-primary">
+            Your profile needs correction before you can apply.
+          </p>
+          {correctionReason ? (
+            <p className="mt-2 text-body-sm text-text-secondary">
+              {correctionReason}
+            </p>
+          ) : null}
+          <Button href="/profile" className="mt-4">
+            Review and update
+          </Button>
+        </div>
+      ) : null}
+
       <h2 id="profile-status-heading" className="text-h4 text-text-primary">
         PROFILE STATUS
       </h2>
@@ -83,21 +105,17 @@ export function ProfileStatusCard({
         </div>
       </dl>
 
-      {status === "needs_correction" && correctionReason ? (
-        <p className="mt-4 text-body-sm text-error" role="status">
-          Update required: {correctionReason}
-        </p>
-      ) : null}
-
       {status === "verified" && showExploreDistinction ? (
         <p className="mt-4 text-body-sm font-medium text-success" role="status">
           PROFILE VERIFIED ✓
         </p>
       ) : null}
 
-      <div className="mt-5">
-        <Button href={cta.href}>{cta.buttonLabel}</Button>
-      </div>
+      {status !== "needs_correction" ? (
+        <div className="mt-5">
+          <Button href={cta.href}>{cta.buttonLabel}</Button>
+        </div>
+      ) : null}
     </section>
   );
 }

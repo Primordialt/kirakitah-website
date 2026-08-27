@@ -52,6 +52,11 @@ export {
   ApplicationGateError,
   getProfileApplicationBlock,
 } from "@/server/participant/application-gate";
+export {
+  getApplicationPreflight,
+  type ApplicationPreflight,
+  type PreflightCheck,
+} from "@/server/participant/application-preflight";
 export { applyParticipantToTournament } from "@/server/participant/apply-to-tournament";
 export {
   resolveParticipantTournamentContext,
@@ -69,3 +74,8 @@ export {
   type ParticipantMatchView,
   type ParticipantNotificationView,
 } from "@/server/participant/tournament-experience-service";
+export {
+  deleteOwnParticipantAccount,
+  deleteParticipantAccount,
+  ParticipantAccountDeletionError,
+} from "@/server/participant/account-deletion";

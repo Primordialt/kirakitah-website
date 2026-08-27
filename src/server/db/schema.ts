@@ -184,6 +184,10 @@ export const registrationApplications = pgTable(
     uniqueIndex("registration_event_id_hash_active_idx")
       .on(table.eventId, table.identificationType, table.identificationNumberHash)
       .where(sql`${table.status} NOT IN ('rejected', 'withdrawn')`),
+    /** One eFootball username (trim + lower) per tournament for active applications. */
+    uniqueIndex("registration_event_gamer_tag_active_idx")
+      .on(table.eventId, sql`lower(btrim(${table.gamerTag}))`)
+      .where(sql`${table.status} NOT IN ('rejected', 'withdrawn')`),
     index("registration_applications_social_follow_status_idx").on(
       table.socialFollowStatus,
     ),
@@ -326,6 +330,7 @@ export const adminAuditEventTypeEnum = pgEnum("admin_audit_event_type", [
   "ADMIN_ROLE_CHANGED",
   "ADMIN_ACTIVATED",
   "ADMIN_DEACTIVATED",
+  "ADMIN_DELETED",
   "IDENTITY_REVIEW_APPROVED",
   "IDENTITY_REVIEW_REJECTED",
   "APPLICATION_STATUS_CHANGED",

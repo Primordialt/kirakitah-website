@@ -7,7 +7,8 @@
 
 ```text
 REGISTER NOW
-  → EMAIL VERIFICATION ONLY (reuse pre-registration OTP / Resend)
+  → EMAIL DUPLICATE CHECK (participant account OR active KG926 application)
+  → EMAIL VERIFICATION ONLY (reuse pre-registration OTP / Resend; skipped if email already registered → LOGIN)
   → CHOOSE USERNAME
   → CREATE PASSWORD
   → PARTICIPANT DASHBOARD

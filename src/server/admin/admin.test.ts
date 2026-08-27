@@ -38,9 +38,21 @@ describe("admin permissions", () => {
     );
   });
 
-  it("gives super admin full permissions", () => {
-    expect(roleHasPermission("SUPER_ADMIN", "admin:manage")).toBe(true);
-    expect(roleHasPermission("SUPER_ADMIN", "photo:view")).toBe(true);
+  it("gives super admin and tournament admin selection without granting it to reviewer/support", () => {
+    expect(roleHasPermission("SUPER_ADMIN", "tournament:participant_select")).toBe(
+      true,
+    );
+    expect(
+      roleHasPermission("TOURNAMENT_ADMIN", "tournament:participant_select"),
+    ).toBe(true);
+    expect(roleHasPermission("REVIEWER", "tournament:participant_select")).toBe(
+      false,
+    );
+    expect(roleHasPermission("SUPPORT", "tournament:participant_select")).toBe(
+      false,
+    );
+    expect(roleHasPermission("SUPPORT", "applications:status")).toBe(false);
+    expect(roleHasPermission("SUPPORT", "social:review")).toBe(false);
   });
 });
 

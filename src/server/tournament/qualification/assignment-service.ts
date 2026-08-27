@@ -2,10 +2,12 @@ import { and, count, eq } from "drizzle-orm";
 import { getDb } from "@/server/db";
 import {
   qualificationPodMembers,
+  registrationApplications,
   tournamentParticipants,
 } from "@/server/db/schema";
 import type { AdminRole } from "@/server/admin/authorization/permissions";
 import { recordAdminAuditEvent } from "@/server/admin/audit/record";
+import { recordParticipantAuditEvent } from "@/server/participant/audit";
 import { CompetitionOperationsError } from "@/server/tournament/competition/errors";
 import {
   getPodById,
@@ -179,6 +181,34 @@ export async function assignParticipantToPod(input: {
         positionNumber: input.positionNumber,
       },
     });
+
+    const [participantRow] = await db
+      .select({
+        applicationId: tournamentParticipants.applicationId,
+      })
+      .from(tournamentParticipants)
+      .where(eq(tournamentParticipants.id, input.participantId))
+      .limit(1);
+    if (participantRow?.applicationId) {
+      const [application] = await db
+        .select({
+          participantAccountId: registrationApplications.participantAccountId,
+        })
+        .from(registrationApplications)
+        .where(eq(registrationApplications.id, participantRow.applicationId))
+        .limit(1);
+      if (application?.participantAccountId) {
+        await recordParticipantAuditEvent({
+          eventType: "PARTICIPANT_QUALIFICATION_ASSIGNED",
+          accountId: application.participantAccountId,
+          actor: input.actorId,
+          metadata: {
+            tournamentId: input.tournamentId,
+            podNumber: pod.podNumber,
+          },
+        });
+      }
+    }
 
     await updatePodStatusFromMembers(pod.id);
     return { assigned: true, alreadyAssigned: false, podId: pod.id };

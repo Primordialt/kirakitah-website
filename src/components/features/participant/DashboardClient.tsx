@@ -1,8 +1,8 @@
 "use client";
 
 import { Button } from "@/components/ui";
+import { VerifiedBadge } from "@/components/ui/VerifiedBadge";
 import { ProfileStatusCard } from "@/components/features/participant/ProfileStatusCard";
-import { ParticipantNav } from "@/components/features/participant/ParticipantNav";
 import { TOURNAMENT_EVENT_ID } from "@/config/competition";
 import { apiErrorMessage, participantFetch } from "@/lib/participant/api";
 import type { ParticipantProfileStatus } from "@/lib/participant/dashboard-status";
@@ -69,7 +69,7 @@ export function DashboardClient() {
       setData(me.payload);
       setTournaments(tournamentsRes.payload.tournaments ?? []);
       setNotifications(
-        (notificationsRes.payload.notifications ?? []).slice(0, 3),
+        (notificationsRes.payload.notifications ?? []).slice(0, 2),
       );
     })();
     return () => {
@@ -97,6 +97,7 @@ export function DashboardClient() {
   }
 
   const { account, profile } = data;
+  const verified = profile.status === "verified";
   const kg926 = tournaments.find((t) => t.tournamentId === TOURNAMENT_EVENT_ID);
   const applyPresentation = getTournamentApplyPresentation(
     profile.status,
@@ -105,16 +106,15 @@ export function DashboardClient() {
   );
 
   return (
-    <div className="mx-auto w-full max-w-2xl space-y-8">
-      <ParticipantNav />
-
-      <header>
-        <h1 className="text-h2 text-text-primary">
-          WELCOME, {account.username.toUpperCase()}
-        </h1>
-        <p className="mt-2 text-body text-text-secondary">
-          Your participant home for KIRAKITAH tournaments.
+    <div className="mx-auto w-full max-w-2xl space-y-6">
+      <header className="space-y-2">
+        <p className="text-caption font-semibold uppercase tracking-wide text-text-muted">
+          Your participant account
         </p>
+        <h1 className="flex flex-wrap items-center gap-2 text-h2 text-text-primary">
+          <span>Welcome, {account.username}</span>
+          <VerifiedBadge verified={verified} size="md" />
+        </h1>
       </header>
 
       <ProfileStatusCard
@@ -125,11 +125,19 @@ export function DashboardClient() {
 
       <section
         aria-labelledby="tournaments-heading"
-        className="rounded-xl border border-border bg-surface p-5"
+        className="border-t border-border pt-6"
       >
-        <h2 id="tournaments-heading" className="text-h4 text-text-primary">
-          MY TOURNAMENTS
-        </h2>
+        <div className="flex items-center justify-between gap-3">
+          <h2 id="tournaments-heading" className="text-h4 text-text-primary">
+            My tournaments
+          </h2>
+          <Link
+            href="/tournaments"
+            className="text-body-sm font-medium text-accent underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus"
+          >
+            View all
+          </Link>
+        </div>
         {!kg926 ? (
           <p className="mt-3 text-body-sm text-text-secondary">
             You haven&apos;t applied for a tournament yet.
@@ -142,18 +150,13 @@ export function DashboardClient() {
             {kg926.hasApplication ? (
               <>
                 <p className="text-body-sm text-text-secondary">
-                  {kg926.applicationStatusLabel ?? "Application on file"}
+                  Application: {kg926.applicationStatusLabel ?? "On file"}
                 </p>
-                {kg926.selected && kg926.publicCode ? (
-                  <p className="text-body-sm font-medium text-success">
-                    {kg926.participantStatus} · {kg926.publicCode}
-                  </p>
-                ) : null}
                 <Button
                   href={`/tournaments/${TOURNAMENT_EVENT_ID}`}
                   variant="secondary"
                 >
-                  VIEW APPLICATION
+                  View tournament
                 </Button>
               </>
             ) : (
@@ -172,11 +175,11 @@ export function DashboardClient() {
 
       <section
         aria-labelledby="notifications-heading"
-        className="rounded-xl border border-border bg-surface p-5"
+        className="border-t border-border pt-6"
       >
         <div className="flex items-center justify-between gap-3">
           <h2 id="notifications-heading" className="text-h4 text-text-primary">
-            NOTIFICATIONS
+            Recent activity
           </h2>
           <Link
             href="/notifications"
@@ -192,10 +195,7 @@ export function DashboardClient() {
         ) : (
           <ul className="mt-4 space-y-3">
             {notifications.map((item) => (
-              <li
-                key={item.id}
-                className="border-t border-border pt-3 first:border-0 first:pt-0"
-              >
+              <li key={item.id} className="border-t border-border pt-3 first:border-0 first:pt-0">
                 <p className="text-body-sm font-medium text-text-primary">
                   {item.title}
                 </p>

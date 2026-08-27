@@ -182,4 +182,53 @@ describe("admin user service last SUPER_ADMIN protection", () => {
       message: expect.stringMatching(/last active SUPER_ADMIN/i),
     });
   });
+
+  it("blocks deleting the last active SUPER_ADMIN", async () => {
+    const { getDb } = await import("@/server/db");
+    const mockDb = {
+      select: vi.fn(),
+      update: vi.fn(),
+    };
+
+    mockDb.select
+      .mockReturnValueOnce({
+        from: () => ({
+          where: () => ({
+            limit: async () => [
+              {
+                id: "sa-1",
+                email: "super@example.com",
+                displayName: "Super",
+                role: "SUPER_ADMIN",
+                active: true,
+                createdAt: "2026-01-01T00:00:00.000Z",
+                updatedAt: "2026-01-01T00:00:00.000Z",
+                lastLoginAt: null,
+              },
+            ],
+          }),
+        }),
+      })
+      .mockReturnValueOnce({
+        from: () => ({
+          where: async () => [{ value: 0 }],
+        }),
+      });
+
+    vi.mocked(getDb).mockReturnValue(mockDb as never);
+
+    const { deleteAdminUser } = await import("@/server/admin/users/service");
+
+    await expect(
+      deleteAdminUser({
+        actorId: "actor",
+        actorRole: "SUPER_ADMIN",
+        targetId: "sa-1",
+        confirmation: "DELETE",
+      }),
+    ).rejects.toMatchObject({
+      code: "CONFLICT",
+      message: expect.stringMatching(/last active SUPER_ADMIN/i),
+    });
+  });
 });

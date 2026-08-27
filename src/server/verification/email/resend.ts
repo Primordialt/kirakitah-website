@@ -5,6 +5,7 @@ import type {
   IEmailDeliveryProvider,
   EmailDeliveryRequest,
   PasswordResetEmailRequest,
+  LifecycleEmailRequest,
 } from "./types";
 import type { DeliveryResult } from "@/server/verification/types";
 
@@ -49,6 +50,17 @@ export class ResendEmailDeliveryProvider implements IEmailDeliveryProvider {
       subject: template.subject,
       text: template.text,
       html: template.html,
+    });
+  }
+
+  async sendLifecycleEmail(
+    request: LifecycleEmailRequest,
+  ): Promise<DeliveryResult> {
+    return this.send({
+      to: request.email,
+      subject: request.subject,
+      text: request.text,
+      html: request.html,
     });
   }
 

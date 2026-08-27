@@ -27,13 +27,19 @@ import {
   consumePreRegistrationEmailVerification,
 } from "@/server/verification/email/pre-registration";
 import { PreRegistrationEmailError } from "@/server/verification/email/pre-registration";
+import {
+  EFOOTBALL_ACCOUNT_ALREADY_REGISTERED_MESSAGE,
+  normalizeGamerTagForStorage,
+  normalizeGamerTagForUniqueness,
+} from "@/server/registration/gamer-tag";
 
 export { PreRegistrationEmailError };
 
 export type DuplicateConflictCode =
   | "DUPLICATE_EMAIL"
   | "DUPLICATE_PHONE"
-  | "DUPLICATE_IDENTITY";
+  | "DUPLICATE_IDENTITY"
+  | "EFOOTBALL_ACCOUNT_ALREADY_REGISTERED";
 
 export class DuplicateRegistrationError extends Error {
   readonly code: DuplicateConflictCode;
@@ -89,7 +95,7 @@ function duplicateFromUniqueViolation(error: unknown): DuplicateRegistrationErro
   }
   if (message.includes("registration_event_email_active_idx")) {
     return new DuplicateRegistrationError(
-      `This email address is already registered for ${COMPETITION_NAME}.`,
+      `This email is already registered for ${COMPETITION_NAME}. Please log in to continue.`,
       "DUPLICATE_EMAIL",
     );
   }
@@ -97,6 +103,12 @@ function duplicateFromUniqueViolation(error: unknown): DuplicateRegistrationErro
     return new DuplicateRegistrationError(
       "An active application already exists for this identification number.",
       "DUPLICATE_IDENTITY",
+    );
+  }
+  if (message.includes("registration_event_gamer_tag_active_idx")) {
+    return new DuplicateRegistrationError(
+      EFOOTBALL_ACCOUNT_ALREADY_REGISTERED_MESSAGE,
+      "EFOOTBALL_ACCOUNT_ALREADY_REGISTERED",
     );
   }
   return new DuplicateRegistrationError(
@@ -158,6 +170,7 @@ async function assertNoActiveDuplicate(
   phoneNormalized: string,
   identificationType: ParsedRegistrationRequest["identificationType"],
   identificationNumberHash: string,
+  gamerTag: string,
 ): Promise<void> {
   const db = getDb();
 
@@ -175,7 +188,7 @@ async function assertNoActiveDuplicate(
 
   if (emailHit) {
     throw new DuplicateRegistrationError(
-      `This email address is already registered for ${COMPETITION_NAME}.`,
+      `This email is already registered for ${COMPETITION_NAME}. Please log in to continue.`,
       "DUPLICATE_EMAIL",
     );
   }
@@ -220,6 +233,28 @@ async function assertNoActiveDuplicate(
       "An active application already exists for this identification number.",
       "DUPLICATE_IDENTITY",
     );
+  }
+
+  const gamerTagNormalized = normalizeGamerTagForUniqueness(gamerTag);
+  if (gamerTagNormalized) {
+    const [gamerTagHit] = await db
+      .select({ id: registrationApplications.id })
+      .from(registrationApplications)
+      .where(
+        and(
+          eq(registrationApplications.eventId, eventId),
+          inArray(registrationApplications.status, [...ACTIVE_STATUSES]),
+          sql`lower(btrim(${registrationApplications.gamerTag})) = ${gamerTagNormalized}`,
+        ),
+      )
+      .limit(1);
+
+    if (gamerTagHit) {
+      throw new DuplicateRegistrationError(
+        EFOOTBALL_ACCOUNT_ALREADY_REGISTERED_MESSAGE,
+        "EFOOTBALL_ACCOUNT_ALREADY_REGISTERED",
+      );
+    }
   }
 }
 
@@ -268,6 +303,7 @@ export async function createRegistrationApplication(
     phoneNormalized,
     input.identificationType,
     identificationNumberHash,
+    input.gamerTag,
   );
 
   const emailProof = await assertPreRegistrationEmailVerified({
@@ -321,7 +357,7 @@ export async function createRegistrationApplication(
         input.identificationNumber,
         encryptionKey,
       ),
-      gamerTag: input.gamerTag,
+      gamerTag: normalizeGamerTagForStorage(input.gamerTag),
       game: input.game,
       platform: input.platform,
       gamingProfile: input.gamingProfile,

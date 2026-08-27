@@ -35,7 +35,12 @@ describe("verifyApplicantIdentity", () => {
         }),
       },
       passport: { providerId: "manual-review", assess: vi.fn() },
-      email: { providerId: "none", sendVerificationEmail: vi.fn() },
+      email: {
+        providerId: "none",
+        sendVerificationEmail: vi.fn(),
+        sendPasswordResetEmail: vi.fn(),
+        sendLifecycleEmail: vi.fn(),
+      },
       phone: { providerId: "none", sendVerificationSms: vi.fn() },
     });
 
@@ -59,7 +64,12 @@ describe("verifyApplicantIdentity", () => {
         }),
       },
       passport: { providerId: "manual-review", assess: vi.fn() },
-      email: { providerId: "none", sendVerificationEmail: vi.fn() },
+      email: {
+        providerId: "none",
+        sendVerificationEmail: vi.fn(),
+        sendPasswordResetEmail: vi.fn(),
+        sendLifecycleEmail: vi.fn(),
+      },
       phone: { providerId: "none", sendVerificationSms: vi.fn() },
     });
 
@@ -84,7 +94,12 @@ describe("verifyApplicantIdentity", () => {
           message: "Manual review required",
         }),
       },
-      email: { providerId: "none", sendVerificationEmail: vi.fn() },
+      email: {
+        providerId: "none",
+        sendVerificationEmail: vi.fn(),
+        sendPasswordResetEmail: vi.fn(),
+        sendLifecycleEmail: vi.fn(),
+      },
       phone: { providerId: "none", sendVerificationSms: vi.fn() },
     });
 

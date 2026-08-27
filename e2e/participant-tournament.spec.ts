@@ -112,7 +112,13 @@ test.describe("Participant tournament experience", () => {
     ).toBeVisible();
     await expect(page.getByText(/APPLICATION RECEIVED/i)).toBeVisible();
     await expect(
-      page.getByRole("link", { name: /MY MATCHES/i }),
+      page.getByRole("link", { name: /View tournament/i }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("navigation", { name: "Participant portal sidebar" }).getByRole(
+        "link",
+        { name: "MATCHES", exact: true },
+      ),
     ).toBeVisible();
   });
 
@@ -227,8 +233,14 @@ test.describe("Participant tournament experience", () => {
     await expect(
       page.getByRole("heading", { level: 1, name: /KIRAKITAH GAMING 926/i }),
     ).toBeVisible();
+    await expect(page.getByRole("heading", { name: /^Application$/i })).toBeVisible();
     await expect(page.getByText(/APPLICATION RECEIVED/i)).toBeVisible();
+    await expect(page.getByRole("heading", { name: /^Eligibility$/i })).toBeVisible();
     await expect(page.getByText(/ELIGIBILITY PENDING/i)).toBeVisible();
+    await expect(page.getByRole("heading", { name: /^Selection$/i })).toBeVisible();
+    await expect(page.getByText(/NOT YET SELECTED/i)).toBeVisible();
+    await expect(page.getByRole("heading", { name: /^Qualification$/i })).toBeVisible();
+    await expect(page.getByText(/NOT STARTED/i).first()).toBeVisible();
     await expect(page.getByText(/KG926-TEST/i)).toBeVisible();
     await expect(page.getByText(/X:/i)).toBeVisible();
   });
@@ -256,10 +268,9 @@ test.describe("Participant tournament experience", () => {
     ).toBeVisible();
     await expect(page.getByText(/No matches scheduled yet/i)).toBeVisible();
     await expect(
-      page.getByRole("navigation", { name: /Participant portal/i }).getByRole(
-        "link",
-        { name: "DASHBOARD", exact: true },
-      ),
+      page
+        .getByRole("navigation", { name: "Participant portal sidebar" })
+        .getByRole("link", { name: "DASHBOARD", exact: true }),
     ).toBeVisible();
   });
 });

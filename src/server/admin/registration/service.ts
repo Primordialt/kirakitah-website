@@ -40,6 +40,7 @@ export interface ListApplicationsQuery {
   pageSize?: number;
   status?: ApplicationStatus;
   identityStatus?: string;
+  socialFollowStatus?: string;
   emailVerificationStatus?: string;
   phoneVerificationStatus?: string;
   eventId?: string;
@@ -57,6 +58,7 @@ export async function getAdminDashboardStats(): Promise<AdminDashboardStats> {
   const [totals] = await db
     .select({
       totalApplications: count(),
+      received: sql<number>`count(*) filter (where ${registrationApplications.status} = 'received')`,
       pendingIdentityReviews: sql<number>`count(*) filter (where ${registrationApplications.identityVerificationStatus} = 'pending_review')`,
       pendingSocialReviews: sql<number>`count(*) filter (where ${registrationApplications.socialFollowStatus} = 'pending_review')`,
       pendingContactVerification: sql<number>`count(*) filter (where ${registrationApplications.emailVerificationStatus} = 'pending' or ${registrationApplications.phoneVerificationStatus} = 'pending')`,
@@ -68,6 +70,7 @@ export async function getAdminDashboardStats(): Promise<AdminDashboardStats> {
 
   return {
     totalApplications: Number(totals?.totalApplications ?? 0),
+    received: Number(totals?.received ?? 0),
     pendingIdentityReviews: Number(totals?.pendingIdentityReviews ?? 0),
     pendingSocialReviews: Number(totals?.pendingSocialReviews ?? 0),
     pendingContactVerification: Number(totals?.pendingContactVerification ?? 0),
@@ -97,6 +100,11 @@ export async function listAdminApplications(query: ListApplicationsQuery): Promi
   if (query.identityStatus) {
     conditions.push(
       sql`${registrationApplications.identityVerificationStatus}::text = ${query.identityStatus}`,
+    );
+  }
+  if (query.socialFollowStatus) {
+    conditions.push(
+      sql`${registrationApplications.socialFollowStatus}::text = ${query.socialFollowStatus}`,
     );
   }
   if (query.emailVerificationStatus) {
@@ -131,11 +139,16 @@ export async function listAdminApplications(query: ListApplicationsQuery): Promi
         ilike(registrationApplications.email, term),
         ilike(registrationApplications.phone, term),
         ilike(registrationApplications.referenceId, term),
+        ilike(registrationApplications.gamerTag, term),
       ),
     );
   } else if (query.search) {
+    const term = `%${query.search.trim()}%`;
     conditions.push(
-      ilike(registrationApplications.referenceId, `${query.search.trim()}%`),
+      or(
+        ilike(registrationApplications.referenceId, term),
+        ilike(registrationApplications.gamerTag, term),
+      ),
     );
   }
 
@@ -150,6 +163,7 @@ export async function listAdminApplications(query: ListApplicationsQuery): Promi
     .select({
       referenceId: registrationApplications.referenceId,
       fullName: registrationApplications.fullName,
+      gamerTag: registrationApplications.gamerTag,
       createdAt: registrationApplications.createdAt,
       eventId: registrationApplications.eventId,
       status: registrationApplications.status,
@@ -537,6 +551,7 @@ export async function listPendingSocialReviews(options?: {
     .select({
       referenceId: registrationApplications.referenceId,
       fullName: registrationApplications.fullName,
+      gamerTag: registrationApplications.gamerTag,
       createdAt: registrationApplications.createdAt,
       eventId: registrationApplications.eventId,
       status: registrationApplications.status,

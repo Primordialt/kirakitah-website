@@ -415,3 +415,88 @@ export async function setAdminUserActive(input: {
 
   return toRecord(row);
 }
+
+/**
+ * Soft-delete an administrator: deactivate + anonymize identity.
+ * Preserves the admin row for audit/history references.
+ * Never deletes the last active SUPER_ADMIN.
+ */
+export async function deleteAdminUser(input: {
+  actorId: string;
+  actorRole: AdminRole;
+  targetId: string;
+  confirmation: string;
+  requestId?: string;
+}): Promise<AdminUserRecord> {
+  if (input.confirmation.trim().toUpperCase() !== "DELETE") {
+    throw new AdminUserManagementError(
+      "Type DELETE to confirm administrator deletion.",
+    );
+  }
+
+  const existing = await getAdminUserById(input.targetId);
+  if (!existing) {
+    throw new AdminUserManagementError(
+      "Administrator not found.",
+      "NOT_FOUND",
+      404,
+    );
+  }
+
+  if (!existing.active && existing.email.startsWith("deleted+")) {
+    return existing;
+  }
+
+  if (existing.role === "SUPER_ADMIN" && existing.active) {
+    const remaining = await countActiveSuperAdmins(existing.id);
+    if (remaining < 1) {
+      throw new AdminUserManagementError(
+        "Cannot delete the last active SUPER_ADMIN.",
+        "CONFLICT",
+        409,
+      );
+    }
+  }
+
+  const now = new Date().toISOString();
+  const suffix = existing.id.replace(/-/g, "").slice(0, 12);
+  const anonymizedEmail = `deleted+${suffix}@deleted.kirakitah.local`;
+
+  const db = getDb();
+  const [row] = await db
+    .update(adminUsers)
+    .set({
+      active: false,
+      email: anonymizedEmail,
+      displayName: "Deleted administrator",
+      passwordHash: "deleted",
+      failedLoginAttempts: 0,
+      lockedUntil: null,
+      updatedAt: now,
+    })
+    .where(eq(adminUsers.id, input.targetId))
+    .returning({
+      id: adminUsers.id,
+      email: adminUsers.email,
+      displayName: adminUsers.displayName,
+      role: adminUsers.role,
+      active: adminUsers.active,
+      createdAt: adminUsers.createdAt,
+      updatedAt: adminUsers.updatedAt,
+      lastLoginAt: adminUsers.lastLoginAt,
+    });
+
+  await recordAdminAuditEvent({
+    eventType: "ADMIN_DELETED",
+    actorId: input.actorId,
+    actorRole: input.actorRole,
+    requestId: input.requestId,
+    metadata: {
+      targetAdminId: row.id,
+      previousRole: existing.role,
+      mode: "anonymize_deactivate",
+    },
+  });
+
+  return toRecord(row);
+}

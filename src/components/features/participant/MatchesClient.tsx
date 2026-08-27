@@ -3,7 +3,6 @@
 import { Button } from "@/components/ui";
 import { TOURNAMENT_EVENT_ID } from "@/config/competition";
 import { apiErrorMessage, participantFetch } from "@/lib/participant/api";
-import { ParticipantNav } from "@/components/features/participant/ParticipantNav";
 import { useEffect, useState } from "react";
 
 type MatchItem = {
@@ -60,8 +59,6 @@ export function MatchesClient() {
 
   return (
     <div className="mx-auto w-full max-w-2xl space-y-8">
-      <ParticipantNav />
-
       <header>
         <h1 className="text-h2 text-text-primary">MY MATCHES</h1>
         <p className="mt-2 text-body text-text-secondary">

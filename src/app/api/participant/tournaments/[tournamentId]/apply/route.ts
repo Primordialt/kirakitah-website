@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { resolveTournamentId } from "@/lib/tournament/resolve-id";
 import { apiError } from "@/server/errors";
 import { isRegistrationBackendConfigured } from "@/server/env";
 import {
@@ -52,7 +53,15 @@ export async function POST(
   context: { params: Promise<{ tournamentId: string }> },
 ) {
   const requestId = getOrCreateRequestId(request);
-  const { tournamentId } = await context.params;
+  const { tournamentId: rawTournamentId } = await context.params;
+  const tournamentId = resolveTournamentId(rawTournamentId);
+
+  if (!tournamentId) {
+    return NextResponse.json(apiError("NOT_FOUND", "Tournament not found."), {
+      status: 404,
+      headers: { ...API_SECURITY_HEADERS, ...requestIdHeaders(requestId) },
+    });
+  }
 
   if (!isRegistrationBackendConfigured()) {
     return NextResponse.json(

@@ -15,6 +15,13 @@ export interface PasswordResetEmailRequest {
   expiresInHours: number;
 }
 
+export interface LifecycleEmailRequest {
+  email: string;
+  subject: string;
+  text: string;
+  html: string;
+}
+
 /**
  * Delivery-only email provider.
  * Challenge persistence is owned by the contact challenge lifecycle service.
@@ -26,6 +33,7 @@ export interface IEmailDeliveryProvider {
   sendPasswordResetEmail(
     request: PasswordResetEmailRequest,
   ): Promise<DeliveryResult>;
+  sendLifecycleEmail(request: LifecycleEmailRequest): Promise<DeliveryResult>;
 }
 
 /** @deprecated Use IEmailDeliveryProvider */

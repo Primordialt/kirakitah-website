@@ -75,7 +75,7 @@ export async function POST(request: Request) {
   } catch (error) {
     if (error instanceof PreRegistrationEmailError) {
       const status =
-        error.code === "DUPLICATE_EMAIL"
+        error.code === "DUPLICATE_EMAIL" || error.code === "ACCOUNT_EXISTS"
           ? 409
           : error.code === "VERIFICATION_COOLDOWN" ||
               error.code === "VERIFICATION_RATE_LIMITED"
