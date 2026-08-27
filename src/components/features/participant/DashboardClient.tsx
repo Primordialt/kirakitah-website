@@ -1,14 +1,14 @@
 "use client";
 
-import { LogoutButton } from "@/components/features/participant/LogoutButton";
 import { Button } from "@/components/ui";
-import { COMPETITION_NAME, TOURNAMENT_EVENT_ID } from "@/config/competition";
+import { TOURNAMENT_EVENT_ID } from "@/config/competition";
 import { apiErrorMessage, participantFetch } from "@/lib/participant/api";
 import {
   getDashboardProfileCta,
   getProfileStatusLabel,
   type ParticipantProfileStatus,
 } from "@/lib/participant/dashboard-status";
+import { ParticipantNav } from "@/components/features/participant/ParticipantNav";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
@@ -21,24 +21,58 @@ type MeResponse = {
   };
 };
 
+type TournamentSummary = {
+  tournamentId: string;
+  name: string;
+  hasApplication: boolean;
+  applicationStatusLabel: string | null;
+  selected: boolean;
+  publicCode: string | null;
+  participantStatus: string | null;
+};
+
+type NotificationItem = {
+  id: string;
+  title: string;
+  description: string;
+  createdAt: string;
+};
+
 export function DashboardClient() {
   const [data, setData] = useState<MeResponse | null>(null);
+  const [tournaments, setTournaments] = useState<TournamentSummary[]>([]);
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
     void (async () => {
-      const { response, payload } = await participantFetch<MeResponse>(
-        "/api/participant/me",
-      );
+      const [me, tournamentsRes, notificationsRes] = await Promise.all([
+        participantFetch<MeResponse & { success?: boolean }>(
+          "/api/participant/me",
+        ),
+        participantFetch<{ tournaments?: TournamentSummary[] }>(
+          "/api/participant/tournaments",
+        ),
+        participantFetch<{ notifications?: NotificationItem[] }>(
+          "/api/participant/notifications",
+        ),
+      ]);
+
       if (cancelled) return;
       setLoading(false);
-      if (!response.ok || !payload.account || !payload.profile) {
-        setError(apiErrorMessage(payload, "Unable to load your dashboard."));
+
+      if (!me.response.ok || !me.payload.account || !me.payload.profile) {
+        setError(apiErrorMessage(me.payload, "Unable to load your dashboard."));
         return;
       }
-      setData(payload);
+
+      setData(me.payload);
+      setTournaments(tournamentsRes.payload.tournaments ?? []);
+      setNotifications(
+        (notificationsRes.payload.notifications ?? []).slice(0, 3),
+      );
     })();
     return () => {
       cancelled = true;
@@ -67,65 +101,138 @@ export function DashboardClient() {
   const { account, profile } = data;
   const cta = getDashboardProfileCta(profile.status);
   const statusLabel = getProfileStatusLabel(profile.status);
+  const kg926 = tournaments.find((t) => t.tournamentId === TOURNAMENT_EVENT_ID);
 
   return (
-    <div className="mx-auto w-full max-w-2xl space-y-10">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="text-h2 text-text-primary">
-            WELCOME, {account.username.toUpperCase()}
-          </h1>
-          <p className="mt-2 text-body text-text-secondary">
-            PROFILE {profile.completionPercent}% COMPLETE · {statusLabel}
-          </p>
-        </div>
-        <LogoutButton />
-      </div>
+    <div className="mx-auto w-full max-w-2xl space-y-8">
+      <ParticipantNav />
 
-      <section aria-labelledby="profile-status-heading" className="space-y-4">
+      <header>
+        <h1 className="text-h2 text-text-primary">
+          WELCOME, {account.username.toUpperCase()}
+        </h1>
+        <p className="mt-2 text-body text-text-secondary">
+          Your participant home for KIRAKITAH tournaments.
+        </p>
+      </header>
+
+      <section
+        aria-labelledby="profile-status-heading"
+        className="rounded-xl border border-border bg-surface p-5"
+      >
         <h2 id="profile-status-heading" className="text-h4 text-text-primary">
-          {cta.headline}
+          PROFILE
         </h2>
+        <p className="mt-2 text-body-sm text-text-secondary">
+          {profile.completionPercent}% complete · {statusLabel}
+        </p>
+        {profile.status === "verified" ? (
+          <p className="mt-2 text-body-sm font-medium text-success">
+            PROFILE VERIFIED ✓
+          </p>
+        ) : null}
         {profile.status === "needs_correction" && profile.correctionReason ? (
-          <p className="text-body-sm text-error" role="status">
+          <p className="mt-2 text-body-sm text-error" role="status">
             {profile.correctionReason}
           </p>
         ) : null}
         {profile.status === "submitted_for_review" ? (
-          <p className="text-body-sm text-text-secondary">
-            Your profile is being reviewed. You can view it while waiting.
+          <p className="mt-2 text-body-sm text-text-secondary">
+            Your profile is under review.
           </p>
         ) : null}
-        <Button href={cta.href}>{cta.buttonLabel}</Button>
+        <div className="mt-4">
+          <Button href={cta.href}>{cta.buttonLabel}</Button>
+        </div>
       </section>
 
       <section
-        aria-labelledby="tournament-heading"
-        className="border-t border-border pt-8"
+        aria-labelledby="tournaments-heading"
+        className="rounded-xl border border-border bg-surface p-5"
       >
-        <h2 id="tournament-heading" className="text-h4 text-text-primary">
-          {COMPETITION_NAME}
+        <h2 id="tournaments-heading" className="text-h4 text-text-primary">
+          MY TOURNAMENTS
         </h2>
-        <p className="mt-2 text-body-sm text-text-secondary">
-          The inaugural KIRAKITAH Gaming championship.
-        </p>
-        <div className="mt-4 flex flex-wrap gap-3">
-          {profile.status === "verified" ? (
-            <Button href={`/tournaments/${TOURNAMENT_EVENT_ID}/apply`}>
-              APPLY FOR TOURNAMENT
-            </Button>
-          ) : (
-            <Button href="/tournaments" variant="secondary">
-              VIEW TOURNAMENTS
-            </Button>
-          )}
+        {!kg926 ? (
+          <p className="mt-3 text-body-sm text-text-secondary">
+            You haven&apos;t applied for a tournament yet.
+          </p>
+        ) : (
+          <article className="mt-4 space-y-3">
+            <h3 className="text-body font-semibold text-text-primary">
+              {kg926.name}
+            </h3>
+            {kg926.hasApplication ? (
+              <>
+                <p className="text-body-sm text-text-secondary">
+                  {kg926.applicationStatusLabel ?? "Application on file"}
+                </p>
+                {kg926.selected && kg926.publicCode ? (
+                  <p className="text-body-sm font-medium text-success">
+                    {kg926.participantStatus} · {kg926.publicCode}
+                  </p>
+                ) : null}
+                <Button
+                  href={`/tournaments/${TOURNAMENT_EVENT_ID}`}
+                  variant="secondary"
+                >
+                  VIEW APPLICATION
+                </Button>
+              </>
+            ) : profile.status === "verified" ? (
+              <>
+                <p className="text-body-sm text-text-secondary">
+                  Your profile is verified. You can apply when ready.
+                </p>
+                <Button href={`/tournaments/${TOURNAMENT_EVENT_ID}/apply`}>
+                  APPLY FOR TOURNAMENT
+                </Button>
+              </>
+            ) : (
+              <>
+                <p className="text-body-sm text-text-secondary">
+                  Complete and verify your profile to apply.
+                </p>
+                <Button href="/profile">COMPLETE PROFILE</Button>
+              </>
+            )}
+          </article>
+        )}
+      </section>
+
+      <section
+        aria-labelledby="notifications-heading"
+        className="rounded-xl border border-border bg-surface p-5"
+      >
+        <div className="flex items-center justify-between gap-3">
+          <h2 id="notifications-heading" className="text-h4 text-text-primary">
+            NOTIFICATIONS
+          </h2>
           <Link
-            href="/profile"
-            className="inline-flex h-10 items-center text-body-sm font-medium text-accent underline-offset-2 hover:underline"
+            href="/notifications"
+            className="text-body-sm font-medium text-accent underline-offset-2 hover:underline"
           >
-            View profile
+            View all
           </Link>
         </div>
+        {notifications.length === 0 ? (
+          <p className="mt-3 text-body-sm text-text-secondary">
+            You&apos;re all caught up.
+          </p>
+        ) : (
+          <ul className="mt-4 space-y-3">
+            {notifications.map((item) => (
+              <li key={item.id} className="border-t border-border pt-3 first:border-0 first:pt-0">
+                <p className="text-body-sm font-medium text-text-primary">
+                  {item.title}
+                </p>
+                <p className="text-body-sm text-text-secondary">
+                  {item.description}
+                </p>
+              </li>
+            ))}
+          </ul>
+        )}
       </section>
     </div>
   );

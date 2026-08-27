@@ -46,6 +46,9 @@ test.describe("Homepage", () => {
     await expect(
       page.getByRole("heading", { name: "KIRAKITAH GAMING 926", exact: true }).first(),
     ).toBeVisible();
+    await expect(
+      page.getByRole("link", { name: "JOIN THE COMMUNITY" }),
+    ).toBeVisible();
 
     const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
     const clientWidth = await page.evaluate(() => document.documentElement.clientWidth);

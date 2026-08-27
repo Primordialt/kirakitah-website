@@ -30,18 +30,17 @@ export function BrandIntro() {
                 {paragraph}
               </p>
             ))}
-            <div className="flex flex-wrap gap-2" aria-hidden="true">
+            <ul className="flex flex-wrap gap-2" aria-label="Focus areas">
               {["Technology", "Culture", "Competition", "Creativity", "Community"].map(
                 (tag) => (
-                  <span
-                    key={tag}
-                    className="rounded-md border border-border px-3 py-1 text-caption text-text-muted"
-                  >
-                    {tag}
-                  </span>
+                  <li key={tag}>
+                    <span className="inline-block rounded-md border border-border px-3 py-1 text-caption text-text-secondary">
+                      {tag}
+                    </span>
+                  </li>
                 ),
               )}
-            </div>
+            </ul>
           </div>
         </div>
       </Reveal>

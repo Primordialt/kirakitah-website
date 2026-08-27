@@ -4,9 +4,11 @@ import { Analytics } from "@vercel/analytics/next";
 import "@/styles/globals.css";
 import { siteConfig } from "@/config/site";
 import { withSocialMetadata } from "@/lib/social-metadata";
+import { OrganizationJsonLd } from "@/components/seo/OrganizationJsonLd";
 
 const montserrat = Montserrat({
   subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
   variable: "--font-montserrat",
   display: "swap",
 });
@@ -30,6 +32,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${montserrat.variable} font-sans antialiased`}>
+        <OrganizationJsonLd />
         {children}
         <Analytics />
       </body>

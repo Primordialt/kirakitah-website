@@ -18,7 +18,8 @@
   /* Text */
   --text-primary: #f5f5f7;
   --text-secondary: #a1a1aa;
-  --text-muted: #71717a;
+  /* WCAG AA on #080810 / #0f0f1a — was #71717a (~4.2:1) */
+  --text-muted: #9494a3;
 
   /* Borders */
   --border: rgb(255 255 255 / 0.08);
@@ -27,7 +28,8 @@
   --border-focus: #40217c;
 
   /* Accents */
-  --accent: #8b5cf6;
+  /* WCAG AA for accent text on dark surfaces — was #8b5cf6 (~4.6:1) */
+  --accent: #a78bfa;
   --accent-secondary: #22d3ee;
 
   /* Semantic */

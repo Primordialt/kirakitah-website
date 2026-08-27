@@ -1,16 +1,16 @@
-import { TournamentsClient } from "@/components/features/participant/TournamentsClient";
+import { MatchesClient } from "@/components/features/participant/MatchesClient";
 import { SectionShell } from "@/components/sections/esports/SectionShell";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "My Tournaments — KIRAKITAH",
+  title: "My Matches — KIRAKITAH",
   robots: { index: false, follow: false },
 };
 
-export default function TournamentsPage() {
+export default function MatchesPage() {
   return (
     <SectionShell className="py-12 md:py-16" containerClassName="max-w-3xl">
-      <TournamentsClient />
+      <MatchesClient />
     </SectionShell>
   );
 }
