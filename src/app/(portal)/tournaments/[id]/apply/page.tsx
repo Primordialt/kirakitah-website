@@ -1,10 +1,7 @@
 import { TournamentApplyForm } from "@/components/features/participant/TournamentApplyForm";
 import { Button } from "@/components/ui";
-import { SectionShell } from "@/components/sections/esports/SectionShell";
 import { resolveTournamentId } from "@/lib/tournament/resolve-id";
-import {
-  COMPETITION_NAME,
-} from "@/config/competition";
+import { COMPETITION_NAME } from "@/config/competition";
 import {
   ApplicationGateError,
   getProfileApplicationBlock,
@@ -24,17 +21,13 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-function resolveTournamentIdParam(id: string): string | null {
-  return resolveTournamentId(id);
-}
-
 export default async function TournamentApplyPage({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const tournamentId = resolveTournamentIdParam(id);
+  const tournamentId = resolveTournamentId(id);
   if (!tournamentId) {
     notFound();
   }
@@ -53,15 +46,13 @@ export default async function TournamentApplyPage({
 
   if (!isRegistrationBackendConfigured()) {
     return (
-      <SectionShell className="py-12 md:py-16" containerClassName="max-w-2xl">
+      <div className="mx-auto max-w-2xl space-y-4">
         <h1 className="text-h2">Application unavailable</h1>
-        <p className="mt-3 text-body text-text-secondary">
+        <p className="text-body text-text-secondary">
           Tournament applications are not configured for this environment.
         </p>
-        <div className="mt-6">
-          <Button href="/dashboard">Back to dashboard</Button>
-        </div>
-      </SectionShell>
+        <Button href="/dashboard">Back to dashboard</Button>
+      </div>
     );
   }
 
@@ -91,17 +82,15 @@ export default async function TournamentApplyPage({
     }
 
     return (
-      <SectionShell className="py-12 md:py-16" containerClassName="max-w-2xl">
-        <h1 className="text-h2 text-text-primary">
-          APPLY — {COMPETITION_NAME}
-        </h1>
-        <p className="mt-4 text-body text-text-secondary" role="alert">
+      <div className="mx-auto max-w-2xl space-y-4">
+        <h1 className="text-h2 text-text-primary">APPLY — {COMPETITION_NAME}</h1>
+        <p className="text-body text-text-secondary" role="alert">
           {message}
         </p>
         {code ? (
-          <p className="mt-2 text-body-sm text-text-muted">Code: {code}</p>
+          <p className="text-body-sm text-text-muted">Code: {code}</p>
         ) : null}
-        <div className="mt-6 flex flex-wrap gap-3">
+        <div className="flex flex-wrap gap-3">
           <Button href={getApplyGateAction(code).href}>
             {getApplyGateAction(code).buttonLabel}
           </Button>
@@ -109,13 +98,9 @@ export default async function TournamentApplyPage({
             Dashboard
           </Button>
         </div>
-      </SectionShell>
+      </div>
     );
   }
 
-  return (
-    <SectionShell className="py-12 md:py-16" containerClassName="max-w-3xl">
-      <TournamentApplyForm tournamentId={tournamentId} />
-    </SectionShell>
-  );
+  return <TournamentApplyForm tournamentId={tournamentId} />;
 }

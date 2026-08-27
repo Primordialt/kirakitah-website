@@ -2,7 +2,6 @@
 
 import { Button } from "@/components/ui";
 import { apiErrorMessage, participantFetch } from "@/lib/participant/api";
-import { ParticipantNav } from "@/components/features/participant/ParticipantNav";
 import { useEffect, useState } from "react";
 
 type NotificationItem = {
@@ -50,8 +49,6 @@ export function NotificationsClient() {
 
   return (
     <div className="mx-auto w-full max-w-2xl space-y-8">
-      <ParticipantNav />
-
       <header>
         <h1 className="text-h2 text-text-primary">NOTIFICATIONS</h1>
         <p className="mt-2 text-body text-text-secondary">

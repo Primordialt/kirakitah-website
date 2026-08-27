@@ -4,7 +4,6 @@ import { Button } from "@/components/ui";
 import { getApplyGateAction } from "@/lib/participant/profile-presentation";
 import { TOURNAMENT_EVENT_ID } from "@/config/competition";
 import { apiErrorMessage, participantFetch } from "@/lib/participant/api";
-import { ParticipantNav } from "@/components/features/participant/ParticipantNav";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
@@ -91,7 +90,6 @@ export function TournamentExperienceClient({
   if (error || !experience) {
     return (
       <div className="space-y-4">
-        <ParticipantNav />
         <p role="alert" className="text-body-sm text-error">
           {error ?? "Unable to load tournament."}
         </p>
@@ -104,8 +102,6 @@ export function TournamentExperienceClient({
 
   return (
     <div className="mx-auto w-full max-w-2xl space-y-8">
-      <ParticipantNav />
-
       <header>
         <h1 className="text-h2 text-text-primary">
           {experience.tournament.name.toUpperCase()}

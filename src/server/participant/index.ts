@@ -69,3 +69,8 @@ export {
   type ParticipantMatchView,
   type ParticipantNotificationView,
 } from "@/server/participant/tournament-experience-service";
+export {
+  deleteOwnParticipantAccount,
+  deleteParticipantAccount,
+  ParticipantAccountDeletionError,
+} from "@/server/participant/account-deletion";

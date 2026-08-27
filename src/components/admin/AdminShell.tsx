@@ -34,6 +34,10 @@ export function AdminShell({
   children: React.ReactNode;
 }) {
   const canManageAdmins = roleHasPermission(session.user.role, "admin:manage");
+  const canDeleteParticipants = roleHasPermission(
+    session.user.role,
+    "participant:delete",
+  );
   const canReviewIdentity = roleHasPermission(
     session.user.role,
     "identity:review",
@@ -130,6 +134,14 @@ export function AdminShell({
                 href="/admin/users"
               >
                 Administrators
+              </Link>
+            ) : null}
+            {canDeleteParticipants ? (
+              <Link
+                className="hover:text-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-border-focus"
+                href="/admin/participants"
+              >
+                Participant accounts
               </Link>
             ) : null}
             <AdminLogoutButton />

@@ -1,4 +1,4 @@
-import { ParticipantNav } from "./ParticipantNav";
+import { ParticipantNavLinks } from "./ParticipantNav";
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
@@ -21,13 +21,13 @@ vi.mock("next/navigation", () => ({
   usePathname: () => "/dashboard",
 }));
 
-vi.mock("@/components/features/participant/LogoutButton", () => ({
-  LogoutButton: () => <button type="button">Log out</button>,
-}));
-
-describe("ParticipantNav", () => {
+describe("ParticipantNavLinks", () => {
   it("renders semantic navigation with keyboard-reachable links", () => {
-    render(<ParticipantNav />);
+    render(
+      <nav aria-label="Participant portal">
+        <ParticipantNavLinks />
+      </nav>,
+    );
 
     const nav = screen.getByRole("navigation", { name: "Participant portal" });
     expect(nav).toBeInTheDocument();

@@ -112,7 +112,13 @@ test.describe("Participant tournament experience", () => {
     ).toBeVisible();
     await expect(page.getByText(/APPLICATION RECEIVED/i)).toBeVisible();
     await expect(
-      page.getByRole("link", { name: /MY MATCHES/i }),
+      page.getByRole("link", { name: /View tournament/i }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("navigation", { name: "Participant portal sidebar" }).getByRole(
+        "link",
+        { name: "MATCHES", exact: true },
+      ),
     ).toBeVisible();
   });
 
@@ -256,10 +262,9 @@ test.describe("Participant tournament experience", () => {
     ).toBeVisible();
     await expect(page.getByText(/No matches scheduled yet/i)).toBeVisible();
     await expect(
-      page.getByRole("navigation", { name: /Participant portal/i }).getByRole(
-        "link",
-        { name: "DASHBOARD", exact: true },
-      ),
+      page
+        .getByRole("navigation", { name: "Participant portal sidebar" })
+        .getByRole("link", { name: "DASHBOARD", exact: true }),
     ).toBeVisible();
   });
 });

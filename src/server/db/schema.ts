@@ -330,6 +330,7 @@ export const adminAuditEventTypeEnum = pgEnum("admin_audit_event_type", [
   "ADMIN_ROLE_CHANGED",
   "ADMIN_ACTIVATED",
   "ADMIN_DEACTIVATED",
+  "ADMIN_DELETED",
   "IDENTITY_REVIEW_APPROVED",
   "IDENTITY_REVIEW_REJECTED",
   "APPLICATION_STATUS_CHANGED",

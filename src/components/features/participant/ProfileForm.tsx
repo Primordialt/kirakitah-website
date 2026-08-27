@@ -1,7 +1,7 @@
 "use client";
 
 import { Button, Checkbox, FileInput, Input, Select } from "@/components/ui";
-import { ParticipantNav } from "@/components/features/participant/ParticipantNav";
+import { VerifiedBadge } from "@/components/ui/VerifiedBadge";
 import { registrationCountries } from "@/config/esports";
 import { requiresGuardian } from "@/domain/registration";
 import {
@@ -282,10 +282,11 @@ export function ProfileForm() {
 
   return (
     <div className="mx-auto w-full max-w-2xl space-y-8">
-      <ParticipantNav />
-
       <header>
-        <h1 className="text-h2 text-text-primary">YOUR PROFILE</h1>
+        <h1 className="flex flex-wrap items-center gap-2 text-h2 text-text-primary">
+          Profile
+          <VerifiedBadge verified={profile.status === "verified"} size="md" />
+        </h1>
         <p className="mt-2 text-body text-text-secondary">
           Profile information is reviewed by administrators. It is separate from
           your account login and from tournament applications.
@@ -294,10 +295,10 @@ export function ProfileForm() {
 
       <section
         aria-labelledby="profile-overview-heading"
-        className="rounded-xl border border-border bg-surface p-5"
+        className="space-y-4 border-t border-border pt-6"
       >
         <h2 id="profile-overview-heading" className="text-h4 text-text-primary">
-          PROFILE OVERVIEW
+          Profile overview
         </h2>
         <div className="mt-4 flex items-center justify-between gap-3">
           <p className="text-body-sm font-medium text-text-primary">
