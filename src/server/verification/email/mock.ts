@@ -7,6 +7,7 @@ import type {
   IEmailDeliveryProvider,
   EmailDeliveryRequest,
   PasswordResetEmailRequest,
+  LifecycleEmailRequest,
 } from "./types";
 import type { DeliveryResult } from "@/server/verification/types";
 
@@ -65,6 +66,26 @@ export class MockEmailDeliveryProvider implements IEmailDeliveryProvider {
     if (serverEnv.nodeEnv === "development") {
       console.info(
         `[mock-email-password-reset] subject=${template.subject} expiresInHours=${request.expiresInHours}`,
+      );
+    }
+
+    return { status: "sent", provider: this.providerId };
+  }
+
+  async sendLifecycleEmail(
+    request: LifecycleEmailRequest,
+  ): Promise<DeliveryResult> {
+    if (!serverEnv.allowMockContactProviders) {
+      return {
+        status: "unavailable",
+        provider: this.providerId,
+        message: "Mock email provider cannot operate in production.",
+      };
+    }
+
+    if (serverEnv.nodeEnv === "development") {
+      console.info(
+        `[mock-email-lifecycle] subject=${request.subject}`,
       );
     }
 

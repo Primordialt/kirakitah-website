@@ -5,6 +5,7 @@ import type {
   IEmailDeliveryProvider,
   EmailDeliveryRequest,
   PasswordResetEmailRequest,
+  LifecycleEmailRequest,
 } from "./types";
 import type { DeliveryResult } from "@/server/verification/types";
 
@@ -47,6 +48,17 @@ export class HttpEmailDeliveryProvider implements IEmailDeliveryProvider {
       subject: template.subject,
       text: template.text,
       html: template.html,
+    });
+  }
+
+  async sendLifecycleEmail(
+    request: LifecycleEmailRequest,
+  ): Promise<DeliveryResult> {
+    return this.send({
+      to: request.email,
+      subject: request.subject,
+      text: request.text,
+      html: request.html,
     });
   }
 
@@ -120,6 +132,14 @@ export class UnavailableEmailDeliveryProvider implements IEmailDeliveryProvider 
       message: "Email verification provider is not configured.",
     };
   }
+
+  async sendLifecycleEmail(): Promise<DeliveryResult> {
+    return {
+      status: "unavailable",
+      provider: this.providerId,
+      message: "Email verification provider is not configured.",
+    };
+  }
 }
 
 export class SkippedEmailDeliveryProvider implements IEmailDeliveryProvider {
@@ -130,6 +150,10 @@ export class SkippedEmailDeliveryProvider implements IEmailDeliveryProvider {
   }
 
   async sendPasswordResetEmail(): Promise<DeliveryResult> {
+    return { status: "skipped", provider: this.providerId };
+  }
+
+  async sendLifecycleEmail(): Promise<DeliveryResult> {
     return { status: "skipped", provider: this.providerId };
   }
 }

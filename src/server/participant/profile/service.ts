@@ -21,6 +21,10 @@ import { serverEnv } from "@/server/env";
 import type { ApiErrorCode } from "@/server/errors";
 import { recordParticipantAuditEvent } from "@/server/participant/audit";
 import {
+  notifyProfileCorrectionRequired,
+  notifyProfileVerified,
+} from "@/server/participant/communications";
+import {
   calculateCompletionPercent,
   getCompletionSections,
   getMissingRequiredFields,
@@ -542,6 +546,15 @@ export async function adminApproveProfile(input: {
     metadata: { profileId: existing.id },
   });
 
+  const [account] = await db
+    .select({ email: participantAccounts.email })
+    .from(participantAccounts)
+    .where(eq(participantAccounts.id, existing.accountId))
+    .limit(1);
+  if (account?.email) {
+    await notifyProfileVerified({ email: account.email });
+  }
+
   return toView(updated);
 }
 
@@ -600,6 +613,18 @@ export async function adminRequireCorrection(input: {
     actor: input.actorId,
     metadata: { profileId: existing.id },
   });
+
+  const [account] = await db
+    .select({ email: participantAccounts.email })
+    .from(participantAccounts)
+    .where(eq(participantAccounts.id, existing.accountId))
+    .limit(1);
+  if (account?.email) {
+    await notifyProfileCorrectionRequired({
+      email: account.email,
+      reason,
+    });
+  }
 
   return toView(updated);
 }

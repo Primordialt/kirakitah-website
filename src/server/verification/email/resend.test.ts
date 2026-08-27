@@ -108,4 +108,32 @@ describe("ResendEmailDeliveryProvider", () => {
     expect(result.status).toBe("unavailable");
     expect(JSON.stringify(result)).not.toContain("999888");
   });
+
+  it("sends lifecycle email without logging content", async () => {
+    vi.stubEnv("RESEND_API_KEY", "re_test_key");
+    vi.stubEnv("EMAIL_FROM", "KIRAKITAH <no-reply@kirakitah.com>");
+    vi.stubEnv("NODE_ENV", "test");
+
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ id: "email_lifecycle" }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await new ResendEmailDeliveryProvider().sendLifecycleEmail({
+      email: "player@example.com",
+      subject: "KIRAKITAH GAMING 926 — Application received",
+      text: "Your application has been received.",
+      html: "<p>Your application has been received.</p>",
+    });
+
+    expect(result.status).toBe("sent");
+    const body = JSON.parse(String(fetchMock.mock.calls[0][1].body)) as {
+      subject: string;
+      to: string[];
+    };
+    expect(body.to).toEqual(["player@example.com"]);
+    expect(body.subject).toContain("Application received");
+  });
 });

@@ -14,6 +14,8 @@ import {
 } from "@/server/tournament/eligibility/eligibility-service";
 import type { EligibilityEvaluationResult } from "@/server/tournament/eligibility/eligibility-types";
 import { ELIGIBILITY_REASON_LABELS } from "@/server/tournament/eligibility/eligibility-reasons";
+import { recordParticipantAuditEvent } from "@/server/participant/audit";
+import { notifyParticipantSelected } from "@/server/participant/communications";
 
 export class ParticipantSelectionError extends Error {
   readonly status: number;
@@ -302,6 +304,26 @@ export async function selectParticipant(input: {
         eligible: true,
         rulesVersion: evaluation.rulesVersion,
       },
+    });
+
+    if (loaded.application.participantAccountId) {
+      await recordParticipantAuditEvent({
+        eventType: "PARTICIPANT_SELECTED",
+        accountId: loaded.application.participantAccountId,
+        actor: input.actorId,
+        metadata: {
+          tournamentId: input.tournamentId,
+          participantId: participant.id,
+          publicCode,
+        },
+      });
+    }
+
+    // Best-effort email — selection remains authoritative if delivery fails.
+    await notifyParticipantSelected({
+      email: loaded.application.email,
+      publicCode,
+      tournamentId: input.tournamentId,
     });
 
     return {

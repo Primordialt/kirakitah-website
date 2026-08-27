@@ -30,6 +30,8 @@ import {
   ApplicationGateError,
   assertCanApplyToTournament,
 } from "@/server/participant/application-gate";
+import { recordParticipantAuditEvent } from "@/server/participant/audit";
+import { notifyApplicationReceived } from "@/server/participant/communications";
 
 const ACTIVE_STATUSES = ["received", "under_review", "verified"] as const;
 
@@ -341,6 +343,23 @@ export async function applyParticipantToTournament(input: {
     phone: profile.phone,
     recipientFirstName: profile.firstName,
     emailAlreadyVerified: true,
+  });
+
+  await recordParticipantAuditEvent({
+    eventType: "PARTICIPANT_APPLICATION_SUBMITTED",
+    accountId: input.accountId,
+    actor: input.accountId,
+    metadata: {
+      referenceId,
+      tournamentId: input.tournamentId,
+    },
+  });
+
+  // Best-effort email — never roll back the received application.
+  await notifyApplicationReceived({
+    email: gate.email,
+    referenceId,
+    tournamentId: input.tournamentId,
   });
 
   return {
