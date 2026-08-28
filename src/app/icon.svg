@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <style type="text/css">.st0{fill:#FFFFFF;}</style>
-  <g>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="KIRAKITAH">
+  <rect width="512" height="512" rx="96" fill="#FFFFFF"/>
+  <g transform="translate(56 56) scale(0.78125)">
+    <style type="text/css">.st0{fill:#40217C;}</style>
     <polygon class="st0" points="48.05,120.92 150.99,120.92 150.99,217.94 38.59,313.78"/>
     <polygon class="st0" points="35.04,337.44 283.51,118.55 433.77,118.55 59.89,434.46 145.08,395.42 14.93,507.82"/>
     <path class="st0" d="M187.67,357.56l87.56-74.54l221.85,221.85H334.39C334.39,504.86,186.88,358.35,187.67,357.56z"/>
