@@ -1,6 +1,7 @@
 import type { IdentificationType } from "@/lib/identification";
 import {
   normalizeIdentificationNumber,
+  validateGovernmentIdType,
   validateIdentificationNumber,
 } from "@/lib/identification";
 import type { IdentityDocumentMetadata } from "@/lib/identity-upload";
@@ -32,6 +33,7 @@ export interface RegistrationConsents {
 
 export interface IdentityVerificationSubmission {
   identificationType: IdentificationType;
+  governmentIdType?: string;
   identificationNumber: string;
   playerPhoto: IdentityDocumentMetadata;
 }
@@ -128,13 +130,25 @@ const playerPhotoFileSchema = z
 
 export const identityVerificationFormSchema = z
   .object({
-    identificationType: z.enum(["nin", "passport"], {
+    identificationType: z.enum(["nin", "passport", "other_government_id"], {
       errorMap: () => ({ message: "Identification type is required" }),
     }),
+    governmentIdType: z.string().optional(),
     identificationNumber: z.string().min(1, "Identification number is required"),
     playerPhoto: playerPhotoFileSchema,
   })
   .superRefine((data, ctx) => {
+    if (data.identificationType === "other_government_id") {
+      const typeMessage = validateGovernmentIdType(data.governmentIdType ?? "");
+      if (typeMessage) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: typeMessage,
+          path: ["governmentIdType"],
+        });
+      }
+    }
+
     const message = validateIdentificationNumber(
       data.identificationType,
       data.identificationNumber,

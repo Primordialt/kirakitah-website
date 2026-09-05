@@ -84,7 +84,9 @@ export async function PUT(request: Request) {
         "identificationType",
       );
       const identificationType =
-        identificationTypeRaw === "nin" || identificationTypeRaw === "passport"
+        identificationTypeRaw === "nin" ||
+        identificationTypeRaw === "passport" ||
+        identificationTypeRaw === "other_government_id"
           ? identificationTypeRaw
           : undefined;
 
@@ -135,6 +137,7 @@ export async function PUT(request: Request) {
           formData,
           "identificationNumber",
         ),
+        governmentIdType: parseOptionalString(formData, "governmentIdType"),
         gamerTag: parseOptionalString(formData, "gamerTag"),
         guardian,
         playerPhoto: photo instanceof File && photo.size > 0 ? photo : undefined,
@@ -160,8 +163,11 @@ export async function PUT(request: Request) {
         country: z.string().min(1).optional(),
         city: z.string().min(1).optional(),
         phone: z.string().min(1).optional(),
-        identificationType: z.enum(["nin", "passport"]).optional(),
+        identificationType: z
+          .enum(["nin", "passport", "other_government_id"])
+          .optional(),
         identificationNumber: z.string().min(1).optional(),
+        governmentIdType: z.string().min(1).optional(),
         gamerTag: z.string().min(1).optional(),
         guardian: guardianSchema.nullable().optional(),
       });

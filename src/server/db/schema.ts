@@ -22,6 +22,7 @@ export const registrationApplicationStatusEnum = pgEnum(
 export const identificationTypeEnum = pgEnum("identification_type", [
   "nin",
   "passport",
+  "other_government_id",
 ]);
 
 export const identityVerificationStatusEnum = pgEnum("identity_verification_status", [
@@ -111,6 +112,7 @@ export const registrationApplications = pgTable(
     /** Digits-only form of phone for duplicate protection. Original `phone` is preserved. */
     phoneNormalized: text("phone_normalized").notNull(),
     identificationType: identificationTypeEnum("identification_type").notNull(),
+    governmentIdType: text("government_id_type"),
     identificationNumberHash: text("identification_number_hash").notNull(),
     identificationNumberEncrypted: text("identification_number_encrypted").notNull(),
     gamerTag: text("gamer_tag").notNull(),
@@ -1372,6 +1374,7 @@ export const participantProfiles = pgTable(
     phone: text("phone"),
     phoneNormalized: text("phone_normalized"),
     identificationType: identificationTypeEnum("identification_type"),
+    governmentIdType: text("government_id_type"),
     identificationNumberHash: text("identification_number_hash"),
     identificationNumberEncrypted: text("identification_number_encrypted"),
     gamerTag: text("gamer_tag"),

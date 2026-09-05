@@ -2,6 +2,8 @@
  * Admin-facing DTO projections — never reuse public registration DTOs.
  */
 
+import type { IdentificationType } from "@/lib/identification";
+
 export interface AdminApplicationListItem {
   referenceId: string;
   fullName: string;
@@ -71,7 +73,7 @@ export interface AdminApplicationDetail {
     phoneVerifiedAt: string | null;
   };
   identity: {
-    identificationType: "nin" | "passport";
+    identificationType: IdentificationType;
     /** Masked by default */
     identificationNumberMasked: string;
     status: string;
@@ -106,7 +108,7 @@ export interface AdminApplicationDetail {
 }
 
 export interface AdminSensitiveIdentity {
-  identificationType: "nin" | "passport";
+  identificationType: IdentificationType;
   identificationNumber: string;
 }
 
@@ -122,7 +124,7 @@ export interface AdminAuditEvent {
 }
 
 export function maskIdentificationNumber(
-  type: "nin" | "passport",
+  type: IdentificationType,
   value: string,
 ): string {
   if (!value) return "********";

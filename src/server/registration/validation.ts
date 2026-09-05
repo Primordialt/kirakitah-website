@@ -8,7 +8,9 @@ import { TOURNAMENT_EVENT_ID } from "@/config/competition";
 import type { IdentificationType } from "@/lib/identification";
 import {
   normalizeIdentificationNumber,
-  validateIdentificationNumber,
+  normalizeGovernmentIdType,
+  validateGovernmentIdType,
+  validateIdentityFields,
 } from "@/lib/identification";
 import { validatePlayerPhotoFile, validatePlayerPhotoMagicBytes } from "@/server/registration/blob-storage";
 import {
@@ -25,6 +27,7 @@ export interface ParsedRegistrationRequest {
   email: string;
   phone: string;
   identificationType: IdentificationType;
+  governmentIdType?: string;
   identificationNumber: string;
   gamerTag: string;
   game: string;
@@ -104,6 +107,7 @@ export async function parseRegistrationFormData(
   let email = "";
   let phone = "";
   let identificationTypeRaw = "";
+  let governmentIdType = "";
   let identificationNumber = "";
   let gamerTag = "";
   let game = "";
@@ -136,6 +140,10 @@ export async function parseRegistrationFormData(
       "identificationNumber",
       "Identification number is required",
     );
+    const governmentIdTypeRaw = formData.get("governmentIdType");
+    if (typeof governmentIdTypeRaw === "string") {
+      governmentIdType = governmentIdTypeRaw.trim();
+    }
     gamerTag = requiredString(formData, "gamerTag", "Gamer tag is required");
     game = requiredString(formData, "game", "Game is required");
     platform = requiredString(formData, "platform", "Platform is required");
@@ -200,19 +208,29 @@ export async function parseRegistrationFormData(
     addIssue("email", "Email must be valid");
   }
 
-  if (identificationTypeRaw !== "nin" && identificationTypeRaw !== "passport") {
+  if (
+    identificationTypeRaw !== "nin" &&
+    identificationTypeRaw !== "passport" &&
+    identificationTypeRaw !== "other_government_id"
+  ) {
     addIssue("identificationType", "Identification type is required");
   }
 
   const identificationType = identificationTypeRaw as IdentificationType;
-  if (identificationType === "nin" || identificationType === "passport") {
-    const idMessage = validateIdentificationNumber(
-      identificationType,
-      identificationNumber,
-    );
-    if (idMessage) {
-      addIssue("identificationNumber", idMessage);
+  if (identificationType === "other_government_id") {
+    const typeMessage = validateGovernmentIdType(governmentIdType);
+    if (typeMessage) {
+      addIssue("governmentIdType", typeMessage);
     }
+  }
+
+  const identityMessage = validateIdentityFields({
+    identificationType,
+    identificationNumber,
+    governmentIdType,
+  });
+  if (identityMessage) {
+    addIssue("identificationNumber", identityMessage);
   }
 
   const age = dateOfBirth ? calculateAge(dateOfBirth) : -1;
@@ -306,6 +324,10 @@ export async function parseRegistrationFormData(
     identificationType,
     identificationNumber,
   );
+  const normalizedGovernmentIdType =
+    identificationType === "other_government_id"
+      ? normalizeGovernmentIdType(governmentIdType)
+      : undefined;
 
   return {
     fullName,
@@ -315,6 +337,7 @@ export async function parseRegistrationFormData(
     email,
     phone,
     identificationType,
+    governmentIdType: normalizedGovernmentIdType,
     identificationNumber: normalizedIdentificationNumber,
     gamerTag,
     game,

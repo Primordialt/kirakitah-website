@@ -1,3 +1,5 @@
+import { isProfileReopenedForReview } from "@/lib/participant/profile-verification";
+
 export type ParticipantProfileStatus =
   | "incomplete"
   | "submitted_for_review"
@@ -32,6 +34,7 @@ export type DashboardCta = {
 export function getDashboardProfileCta(
   status: ParticipantProfileStatus,
   completionPercent = 0,
+  correctionReason?: string | null,
 ): DashboardCta {
   switch (status) {
     case "verified":
@@ -47,6 +50,13 @@ export function getDashboardProfileCta(
         href: "/profile",
       };
     case "needs_correction":
+      if (isProfileReopenedForReview(correctionReason)) {
+        return {
+          headline: "PROFILE REQUIRES REVIEW",
+          buttonLabel: "REVIEW PROFILE",
+          href: "/profile",
+        };
+      }
       return {
         headline: "NEEDS CORRECTION",
         buttonLabel: "UPDATE PROFILE",

@@ -1,4 +1,5 @@
 import { and, desc, eq } from "drizzle-orm";
+import type { IdentificationType } from "@/lib/identification";
 import { getDb } from "@/server/db";
 import {
   registrationApplications,
@@ -56,7 +57,7 @@ export interface ApplicationGeneralProjection extends ApplicationSummary {
 
 export interface SensitiveIdentityProjection {
   applicationId: string;
-  identificationType: "nin" | "passport";
+  identificationType: IdentificationType;
   identificationNumber: string;
 }
 

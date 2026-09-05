@@ -45,6 +45,7 @@ export function IdentityVerification({
 
   useEffect(() => {
     setValue("identityVerification.identificationNumber", "");
+    setValue("identityVerification.governmentIdType", "");
   }, [identificationType, setValue]);
 
   const numberLabel = identificationType
@@ -73,6 +74,17 @@ export function IdentityVerification({
           />
         )}
       />
+
+      {identificationType === "other_government_id" ? (
+        <Input
+          label="Government ID type"
+          required
+          placeholder="e.g. Driver's Licence, Permanent Voter's Card"
+          autoComplete="off"
+          error={errors.identityVerification?.governmentIdType?.message}
+          {...register("identityVerification.governmentIdType")}
+        />
+      ) : null}
 
       <Input
         label={numberLabel}

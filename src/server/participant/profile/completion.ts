@@ -33,6 +33,8 @@ export interface ProfileCompletionInput {
   identificationType?: string | null;
   /** True when identification number hash/encrypted are present. */
   hasIdentificationNumber?: boolean;
+  /** Required when identificationType is other_government_id. */
+  governmentIdType?: string | null;
   gamerTag?: string | null;
   playerPhotoBlobKey?: string | null;
   playerPhotoMeta?: PlayerPhotoMeta | null;
@@ -77,6 +79,9 @@ export function getMissingRequiredFields(
   if (!hasText(input.phone)) missing.push("phone");
   if (!hasText(input.identificationType)) missing.push("identificationType");
   if (!input.hasIdentificationNumber) missing.push("identificationNumber");
+  if (input.identificationType === "other_government_id") {
+    if (!hasText(input.governmentIdType)) missing.push("governmentIdType");
+  }
   if (!hasText(input.gamerTag)) missing.push("gamerTag");
   if (!hasText(input.playerPhotoBlobKey) || !input.playerPhotoMeta) {
     missing.push("playerPhoto");
@@ -148,7 +153,7 @@ const SECTION_DEFS: Array<{
   {
     id: "identity",
     label: "Identity information",
-    fields: ["identificationType", "identificationNumber"],
+    fields: ["identificationType", "governmentIdType", "identificationNumber"],
   },
   {
     id: "documents",
@@ -179,12 +184,17 @@ export function getCompletionSections(
     if (section.conditional === "guardian") return guardianRequired;
     return true;
   }).map((section) => {
-    const missingFields = section.fields.filter((field) => missing.has(field));
+    const fields =
+      section.id === "identity" &&
+      input.identificationType !== "other_government_id"
+        ? section.fields.filter((field) => field !== "governmentIdType")
+        : section.fields;
+    const missingFields = fields.filter((field) => missing.has(field));
     return {
       id: section.id,
       label: section.label,
       complete: missingFields.length === 0,
-      fields: section.fields,
+      fields,
       missingFields,
     };
   });

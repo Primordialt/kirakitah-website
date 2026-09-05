@@ -188,6 +188,13 @@ export function getNotificationPresentation(eventType: string): {
           "Your profile needs an update before it can be approved. Review your profile and resubmit.",
         href: "/profile",
       };
+    case "PARTICIPANT_PROFILE_REOPENED":
+      return {
+        title: "Profile verification updated",
+        description:
+          "Your profile verification has been reopened for review. Please check your profile information.",
+        href: "/profile",
+      };
     case "PARTICIPANT_APPLICATION_SUBMITTED":
       return {
         title: "Application received",
@@ -221,6 +228,7 @@ export function getNotificationPresentation(eventType: string): {
 export const PARTICIPANT_VISIBLE_AUDIT_EVENT_TYPES = [
   "PARTICIPANT_PROFILE_APPROVED",
   "PARTICIPANT_PROFILE_REJECTED",
+  "PARTICIPANT_PROFILE_REOPENED",
   "PARTICIPANT_APPLICATION_SUBMITTED",
   "PARTICIPANT_SELECTED",
   "PARTICIPANT_QUALIFICATION_ASSIGNED",
