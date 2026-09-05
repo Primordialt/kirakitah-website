@@ -94,6 +94,12 @@ export function AdminShell({
                 >
                   Profile reviews
                 </Link>
+                <Link
+                  className="hover:text-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-border-focus"
+                  href="/admin/reviews/profiles/verified"
+                >
+                  Approved profiles
+                </Link>
               </>
             ) : null}
             {canReviewSocial ? (

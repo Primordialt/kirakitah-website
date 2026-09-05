@@ -302,7 +302,9 @@ export async function applyParticipantToTournament(input: {
         details:
           profile.identificationType === "nin"
             ? "NIN submitted for manual KIRAKITAH identity review. Automated provider lookup is not enabled."
-            : "International passport submitted for manual KIRAKITAH identity review. Automated verification is not available.",
+            : profile.identificationType === "passport"
+              ? "International passport submitted for manual KIRAKITAH identity review. Automated verification is not available."
+              : "Other government-issued ID submitted for manual KIRAKITAH identity review.",
       },
       emailVerificationStatus: "verified",
       emailVerifiedAt: acceptedAt,

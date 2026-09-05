@@ -47,6 +47,7 @@ type ProfilePayload = {
   city: string | null;
   phone: string | null;
   identificationType: IdentificationType | null;
+  governmentIdType: string | null;
   hasIdentificationNumber: boolean;
   gamerTag: string | null;
   hasPlayerPhoto: boolean;
@@ -90,6 +91,7 @@ export function ProfileForm() {
     IdentificationType | ""
   >("");
   const [identificationNumber, setIdentificationNumber] = useState("");
+  const [governmentIdType, setGovernmentIdType] = useState("");
   const [gamerTag, setGamerTag] = useState("");
   const [playerPhoto, setPlayerPhoto] = useState<File | null>(null);
   const [photoError, setPhotoError] = useState<string | undefined>();
@@ -112,6 +114,7 @@ export function ProfileForm() {
     setCity(next.city ?? "");
     setPhone(next.phone ?? "");
     setIdentificationType(next.identificationType ?? "");
+    setGovernmentIdType(next.governmentIdType ?? "");
     setIdentificationNumber("");
     setGamerTag(next.gamerTag ?? "");
     setPlayerPhoto(null);
@@ -165,6 +168,9 @@ export function ProfileForm() {
     formData.set("phone", phone.trim());
     if (identificationType) {
       formData.set("identificationType", identificationType);
+    }
+    if (identificationType === "other_government_id") {
+      formData.set("governmentIdType", governmentIdType.trim());
     }
     if (identificationNumber.trim()) {
       formData.set("identificationNumber", identificationNumber.trim());
@@ -270,6 +276,7 @@ export function ProfileForm() {
   const presentation = getProfilePresentation(
     profile.status,
     profile.completionPercent,
+    profile.correctionReason,
   );
   const canSubmitForReview =
     profile.completionPercent === 100 &&
@@ -523,16 +530,49 @@ export function ProfileForm() {
             Identification numbers are stored securely. After submission they are
             shown as on file rather than re-displayed in full.
           </p>
-          <Select
-            label="Identification type"
-            required
-            placeholder="Select identification type"
-            options={[...IDENTIFICATION_TYPE_OPTIONS]}
-            value={identificationType}
-            onChange={(event) =>
-              setIdentificationType(event.target.value as IdentificationType | "")
-            }
-          />
+          <div className="space-y-3">
+            <p id="identification-type-label" className="text-label text-text-primary">
+              Identification type <span className="text-error">*</span>
+            </p>
+            <div
+              role="radiogroup"
+              aria-labelledby="identification-type-label"
+              className="space-y-2"
+            >
+              {IDENTIFICATION_TYPE_OPTIONS.map((option) => (
+                <label
+                  key={option.value}
+                  className="flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border border-border px-3 py-2 text-body-sm"
+                >
+                  <input
+                    type="radio"
+                    name="identificationType"
+                    value={option.value}
+                    checked={identificationType === option.value}
+                    onChange={() => {
+                      setIdentificationType(option.value);
+                      setIdentificationNumber("");
+                      if (option.value !== "other_government_id") {
+                        setGovernmentIdType("");
+                      }
+                    }}
+                    className="size-4 shrink-0 accent-brand-primary"
+                  />
+                  <span>{option.label}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+          {identificationType === "other_government_id" ? (
+            <Input
+              label="Government ID type"
+              required
+              value={governmentIdType}
+              onChange={(event) => setGovernmentIdType(event.target.value)}
+              placeholder="e.g. Driver's Licence, Permanent Voter's Card"
+              autoComplete="off"
+            />
+          ) : null}
           {readOnly || profile.hasIdentificationNumber ? (
             <p className="rounded-lg border border-border bg-surface-muted px-3 py-3 text-body-sm text-text-secondary">
               Identification number:{" "}

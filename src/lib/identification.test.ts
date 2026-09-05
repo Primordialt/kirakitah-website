@@ -1,5 +1,6 @@
 import {
   normalizeIdentificationNumber,
+  validateGovernmentIdType,
   validateIdentificationNumber,
 } from "@/lib/identification";
 import { describe, expect, it } from "vitest";
@@ -25,5 +26,13 @@ describe("identification", () => {
     expect(validateIdentificationNumber("passport", "ABC")).toBe(
       "Passport number must be 6–20 letters or numbers",
     );
+  });
+
+  it("validates other government-issued ID fields", () => {
+    expect(validateGovernmentIdType("Driver's Licence")).toBeUndefined();
+    expect(validateGovernmentIdType("")).toBe("Government ID type is required");
+    expect(
+      validateIdentificationNumber("other_government_id", "DL-123456"),
+    ).toBeUndefined();
   });
 });

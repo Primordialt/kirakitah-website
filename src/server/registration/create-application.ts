@@ -352,6 +352,7 @@ export async function createRegistrationApplication(
       phone: input.phone,
       phoneNormalized,
       identificationType: input.identificationType,
+      governmentIdType: input.governmentIdType ?? null,
       identificationNumberHash,
       identificationNumberEncrypted: encryptSensitiveValue(
         input.identificationNumber,
@@ -377,7 +378,9 @@ export async function createRegistrationApplication(
         details:
           input.identificationType === "nin"
             ? "NIN submitted for manual KIRAKITAH identity review. Automated provider lookup is not enabled."
-            : "International passport submitted for manual KIRAKITAH identity review. Automated verification is not available.",
+            : input.identificationType === "passport"
+              ? "International passport submitted for manual KIRAKITAH identity review. Automated verification is not available."
+              : "Other government-issued ID submitted for manual KIRAKITAH identity review.",
       },
       // Email ownership verified before submit; SMS remains deferred.
       emailVerificationStatus: "verified",

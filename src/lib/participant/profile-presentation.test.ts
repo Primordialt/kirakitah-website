@@ -8,6 +8,7 @@ import {
   getProfilePresentation,
   getTournamentApplyPresentation,
 } from "@/lib/participant/profile-presentation";
+import { PROFILE_REOPENED_PARTICIPANT_MESSAGE } from "@/lib/participant/profile-verification";
 
 const completeBase = {
   firstName: "Ada",
@@ -99,5 +100,15 @@ describe("profile presentation", () => {
     expect(getApplyGateAction("PROFILE_REQUIRES_CORRECTION").buttonLabel).toBe(
       "UPDATE PROFILE",
     );
+  });
+
+  it("shows profile requires review when verified profile was reopened", () => {
+    const presentation = getProfilePresentation(
+      "needs_correction",
+      100,
+      PROFILE_REOPENED_PARTICIPANT_MESSAGE,
+    );
+    expect(presentation.verificationLabel).toBe("PROFILE REQUIRES REVIEW");
+    expect(presentation.buttonLabel).toBe("REVIEW PROFILE");
   });
 });

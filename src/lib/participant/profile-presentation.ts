@@ -1,5 +1,6 @@
 import { TOURNAMENT_EVENT_ID } from "@/config/competition";
 import type { ParticipantProfileStatus } from "@/lib/participant/dashboard-status";
+import { isProfileReopenedForReview } from "@/lib/participant/profile-verification";
 
 export type ProfilePresentation = {
   /** Short verification label for status chips (text, not colour-only). */
@@ -19,6 +20,7 @@ export type ProfilePresentation = {
 export function getProfilePresentation(
   status: ParticipantProfileStatus,
   completionPercent: number,
+  correctionReason?: string | null,
 ): ProfilePresentation {
   switch (status) {
     case "verified":
@@ -40,6 +42,16 @@ export function getProfilePresentation(
         href: "/profile",
       };
     case "needs_correction":
+      if (isProfileReopenedForReview(correctionReason)) {
+        return {
+          verificationLabel: "PROFILE REQUIRES REVIEW",
+          description:
+            "Your profile verification has been reopened for review. Please check your profile information and make any required corrections.",
+          nextActionLabel: "Review profile",
+          buttonLabel: "REVIEW PROFILE",
+          href: "/profile",
+        };
+      }
       return {
         verificationLabel: "NEEDS CORRECTION",
         description:
@@ -157,6 +169,7 @@ export const PROFILE_FIELD_LABELS: Record<string, string> = {
   city: "City",
   phone: "Phone",
   identificationType: "Identification type",
+  governmentIdType: "Government ID type",
   identificationNumber: "Identification number",
   gamerTag: "eFootball username",
   playerPhoto: "Player photo",

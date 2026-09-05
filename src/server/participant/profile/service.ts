@@ -1,10 +1,13 @@
 import { put } from "@vercel/blob";
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, ilike, or, sql } from "drizzle-orm";
 import type { IdentificationType } from "@/lib/identification";
 import {
+  normalizeGovernmentIdType,
   normalizeIdentificationNumber,
+  validateGovernmentIdType,
   validateIdentificationNumber,
 } from "@/lib/identification";
+import { PROFILE_REOPENED_PARTICIPANT_MESSAGE } from "@/lib/participant/profile-verification";
 import {
   calculateAge,
   MINIMUM_TOURNAMENT_AGE,
@@ -22,6 +25,7 @@ import type { ApiErrorCode } from "@/server/errors";
 import { recordParticipantAuditEvent } from "@/server/participant/audit";
 import {
   notifyProfileCorrectionRequired,
+  notifyProfileReopened,
   notifyProfileVerified,
 } from "@/server/participant/communications";
 import {
@@ -79,6 +83,7 @@ export interface ParticipantProfileView {
   city: string | null;
   phone: string | null;
   identificationType: IdentificationType | null;
+  governmentIdType: string | null;
   hasIdentificationNumber: boolean;
   gamerTag: string | null;
   hasPlayerPhoto: boolean;
@@ -102,6 +107,7 @@ function toCompletionInput(row: {
   phone: string | null;
   identificationType: IdentificationType | null;
   identificationNumberHash: string | null;
+  governmentIdType: string | null;
   gamerTag: string | null;
   playerPhotoBlobKey: string | null;
   playerPhotoMeta: PlayerPhotoMeta | null;
@@ -116,6 +122,7 @@ function toCompletionInput(row: {
     phone: row.phone,
     identificationType: row.identificationType,
     hasIdentificationNumber: Boolean(row.identificationNumberHash),
+    governmentIdType: row.governmentIdType,
     gamerTag: row.gamerTag,
     playerPhotoBlobKey: row.playerPhotoBlobKey,
     playerPhotoMeta: row.playerPhotoMeta,
@@ -137,6 +144,7 @@ function toView(row: typeof participantProfiles.$inferSelect): ParticipantProfil
     city: row.city,
     phone: row.phone,
     identificationType: row.identificationType,
+    governmentIdType: row.governmentIdType,
     hasIdentificationNumber: Boolean(row.identificationNumberHash),
     gamerTag: row.gamerTag,
     hasPlayerPhoto: Boolean(row.playerPhotoBlobKey && row.playerPhotoMeta),
@@ -233,6 +241,7 @@ export interface UpdateParticipantProfileInput {
   phone?: string;
   identificationType?: IdentificationType;
   identificationNumber?: string;
+  governmentIdType?: string;
   gamerTag?: string;
   guardian?: {
     fullName: string;
@@ -345,10 +354,42 @@ export async function updateParticipantProfile(
   }
   if (input.identificationType !== undefined) {
     updates.identificationType = input.identificationType;
+    if (input.identificationType !== "other_government_id") {
+      updates.governmentIdType = null;
+    }
+  }
+  if (input.governmentIdType !== undefined) {
+    const resolvedType =
+      input.identificationType ?? existing.identificationType ?? "nin";
+    if (resolvedType !== "other_government_id") {
+      throw new ParticipantProfileError(
+        "VALIDATION_ERROR",
+        "Government ID type is only required for Other Government-Issued ID.",
+      );
+    }
+    const normalizedType = normalizeGovernmentIdType(input.governmentIdType);
+    const typeError = validateGovernmentIdType(normalizedType);
+    if (typeError) {
+      throw new ParticipantProfileError("VALIDATION_ERROR", typeError);
+    }
+    updates.governmentIdType = normalizedType;
   }
   if (input.identificationNumber !== undefined) {
     const idType =
       input.identificationType ?? existing.identificationType ?? "nin";
+    if (idType === "other_government_id") {
+      const resolvedGovernmentIdType =
+        updates.governmentIdType ??
+        (input.governmentIdType !== undefined
+          ? normalizeGovernmentIdType(input.governmentIdType)
+          : existing.governmentIdType);
+      const governmentTypeError = validateGovernmentIdType(
+        resolvedGovernmentIdType ?? "",
+      );
+      if (governmentTypeError) {
+        throw new ParticipantProfileError("VALIDATION_ERROR", governmentTypeError);
+      }
+    }
     const normalized = normalizeIdentificationNumber(
       idType,
       input.identificationNumber,
@@ -405,6 +446,10 @@ export async function updateParticipantProfile(
     hasIdentificationNumber: Boolean(
       updates.identificationNumberHash ?? existing.identificationNumberHash,
     ),
+    governmentIdType:
+      updates.governmentIdType !== undefined
+        ? updates.governmentIdType
+        : existing.governmentIdType,
     gamerTag: updates.gamerTag ?? existing.gamerTag,
     playerPhotoBlobKey:
       updates.playerPhotoBlobKey ?? existing.playerPhotoBlobKey,
@@ -665,6 +710,90 @@ export async function adminRequireCorrection(input: {
   return toView(updated);
 }
 
+export async function adminReopenVerifiedProfile(input: {
+  profileId: string;
+  actorId: string;
+  reason: string;
+}): Promise<ParticipantProfileView> {
+  const reason = input.reason.trim();
+  if (reason.length < 8) {
+    throw new ParticipantProfileError(
+      "VALIDATION_ERROR",
+      "A reason of at least 8 characters is required to reopen a verified profile.",
+    );
+  }
+
+  const db = getDb();
+  const [existing] = await db
+    .select()
+    .from(participantProfiles)
+    .where(eq(participantProfiles.id, input.profileId))
+    .limit(1);
+
+  if (!existing) {
+    throw new ParticipantProfileError(
+      "NOT_FOUND",
+      "Participant profile not found.",
+      404,
+    );
+  }
+
+  if (existing.status !== "verified") {
+    throw new ParticipantProfileError(
+      "CONFLICT",
+      "Only verified profiles can be reopened.",
+      409,
+    );
+  }
+
+  const now = new Date().toISOString();
+  const [updated] = await db
+    .update(participantProfiles)
+    .set({
+      status: "needs_correction",
+      correctionReason: PROFILE_REOPENED_PARTICIPANT_MESSAGE,
+      verifiedAt: null,
+      verifiedBy: null,
+      updatedAt: now,
+    })
+    .where(
+      and(
+        eq(participantProfiles.id, existing.id),
+        eq(participantProfiles.status, "verified"),
+      ),
+    )
+    .returning();
+
+  if (!updated) {
+    throw new ParticipantProfileError(
+      "CONFLICT",
+      "This profile was updated by another request. Refresh and try again.",
+      409,
+    );
+  }
+
+  await recordParticipantAuditEvent({
+    eventType: "PARTICIPANT_PROFILE_REOPENED",
+    accountId: existing.accountId,
+    actor: input.actorId,
+    metadata: {
+      profileId: existing.id,
+      reopenReason: reason,
+    },
+  });
+
+  const [account] = await db
+    .select({ email: participantAccounts.email })
+    .from(participantAccounts)
+    .where(eq(participantAccounts.id, existing.accountId))
+    .limit(1);
+  if (account?.email) {
+    await notifyProfileReopened({ email: account.email });
+  }
+
+  return toView(updated);
+}
+
 export async function getAccountWithProfile(accountId: string) {
   const db = getDb();
   const [account] = await db
@@ -702,14 +831,18 @@ export type ParticipantProfileListItem = {
   lastName: string | null;
   gamerTag: string | null;
   status: ParticipantProfileStatus;
+  identificationType: IdentificationType | null;
+  governmentIdType: string | null;
   completionPercent: number;
   submittedAt: string | null;
+  verifiedAt: string | null;
   correctionReason: string | null;
   updatedAt: string;
 };
 
 export async function listParticipantProfiles(input: {
   status?: ParticipantProfileStatus;
+  search?: string;
   page?: number;
   pageSize?: number;
 }): Promise<{
@@ -723,13 +856,35 @@ export async function listParticipantProfiles(input: {
   const offset = (page - 1) * pageSize;
   const db = getDb();
 
-  const whereClause = input.status
-    ? eq(participantProfiles.status, input.status)
-    : undefined;
+  const searchTerm = input.search?.trim();
+  const searchPattern = searchTerm ? `%${searchTerm}%` : undefined;
+
+  const filters = [
+    input.status ? eq(participantProfiles.status, input.status) : undefined,
+    searchPattern
+      ? or(
+          ilike(participantAccounts.username, searchPattern),
+          ilike(participantAccounts.email, searchPattern),
+          ilike(participantProfiles.firstName, searchPattern),
+          ilike(participantProfiles.lastName, searchPattern),
+          ilike(
+            sql<string>`concat(${participantProfiles.firstName}, ' ', ${participantProfiles.lastName})`,
+            searchPattern,
+          ),
+        )
+      : undefined,
+  ].filter(Boolean);
+
+  const whereClause =
+    filters.length > 0 ? and(...filters) : undefined;
 
   const [countRow] = await db
     .select({ count: sql<number>`count(*)::int` })
     .from(participantProfiles)
+    .innerJoin(
+      participantAccounts,
+      eq(participantAccounts.id, participantProfiles.accountId),
+    )
     .where(whereClause);
 
   const rows = await db
@@ -742,8 +897,11 @@ export async function listParticipantProfiles(input: {
       lastName: participantProfiles.lastName,
       gamerTag: participantProfiles.gamerTag,
       status: participantProfiles.status,
+      identificationType: participantProfiles.identificationType,
+      governmentIdType: participantProfiles.governmentIdType,
       completionPercent: participantProfiles.completionPercent,
       submittedAt: participantProfiles.submittedAt,
+      verifiedAt: participantProfiles.verifiedAt,
       correctionReason: participantProfiles.correctionReason,
       updatedAt: participantProfiles.updatedAt,
     })
@@ -753,7 +911,10 @@ export async function listParticipantProfiles(input: {
       eq(participantAccounts.id, participantProfiles.accountId),
     )
     .where(whereClause)
-    .orderBy(desc(participantProfiles.submittedAt), desc(participantProfiles.updatedAt))
+    .orderBy(
+      desc(participantProfiles.verifiedAt),
+      desc(participantProfiles.updatedAt),
+    )
     .limit(pageSize)
     .offset(offset);
 

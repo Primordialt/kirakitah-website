@@ -4,6 +4,7 @@ import { getVerificationProviders } from "@/server/verification";
 import {
   buildApplicationReceivedTemplate,
   buildProfileCorrectionTemplate,
+  buildProfileReopenedTemplate,
   buildProfileVerifiedTemplate,
   buildSelectionTemplate,
 } from "@/server/verification/templates/lifecycle";
@@ -81,6 +82,18 @@ export async function notifyProfileVerified(input: {
     to: input.email,
     ...template,
     event: "profile_verified",
+  });
+}
+
+export async function notifyProfileReopened(input: {
+  email: string;
+}): Promise<void> {
+  const actionUrl = `${getSiteUrl()}/profile`;
+  const template = buildProfileReopenedTemplate({ actionUrl });
+  await sendLifecycleSafely({
+    to: input.email,
+    ...template,
+    event: "profile_reopened",
   });
 }
 

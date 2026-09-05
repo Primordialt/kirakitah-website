@@ -15,6 +15,7 @@ const querySchema = z.object({
       "verified",
     ])
     .optional(),
+  search: z.string().trim().max(120).optional(),
   page: z.coerce.number().int().min(1).optional(),
   pageSize: z.coerce.number().int().min(1).max(100).optional(),
 });
@@ -35,6 +36,7 @@ export async function GET(request: Request) {
     const url = new URL(request.url);
     const parsed = querySchema.safeParse({
       status: url.searchParams.get("status") ?? undefined,
+      search: url.searchParams.get("search") ?? url.searchParams.get("q") ?? undefined,
       page: url.searchParams.get("page") ?? undefined,
       pageSize: url.searchParams.get("pageSize") ?? undefined,
     });
@@ -49,6 +51,7 @@ export async function GET(request: Request) {
 
     const result = await listParticipantProfiles({
       status: parsed.data.status,
+      search: parsed.data.search,
       page: parsed.data.page,
       pageSize: parsed.data.pageSize,
     });

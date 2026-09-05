@@ -89,6 +89,37 @@ export function buildProfileVerifiedTemplate(input: {
   };
 }
 
+export function buildProfileReopenedTemplate(input: {
+  actionUrl: string;
+}): LifecycleEmailTemplate {
+  const title = "Profile verification updated";
+  const subject = `${COMPETITION_NAME} — Profile verification updated`;
+  const paragraphs = [
+    "Your profile verification has been reopened for review.",
+    "Please check your profile information and make any required corrections.",
+    "You will need to submit your profile again after updating it.",
+  ];
+  return {
+    subject,
+    text: [
+      "KIRAKITAH",
+      "",
+      title,
+      "",
+      ...paragraphs,
+      "",
+      `Review profile: ${input.actionUrl}`,
+      "",
+      "KIRAKITAH",
+      "PLAY. COMPETE. CREATE.",
+    ].join("\n"),
+    html: wrapHtml(title, paragraphs, {
+      href: input.actionUrl,
+      label: "Review profile",
+    }),
+  };
+}
+
 export function buildProfileCorrectionTemplate(input: {
   reason: string;
   actionUrl: string;

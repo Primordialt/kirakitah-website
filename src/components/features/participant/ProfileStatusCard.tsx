@@ -19,8 +19,12 @@ export function ProfileStatusCard({
   correctionReason = null,
   showExploreDistinction = true,
 }: ProfileStatusCardProps) {
-  const presentation = getProfilePresentation(status, completionPercent);
-  const cta = getDashboardProfileCta(status, completionPercent);
+  const presentation = getProfilePresentation(
+    status,
+    completionPercent,
+    correctionReason,
+  );
+  const cta = getDashboardProfileCta(status, completionPercent, correctionReason);
   const clamped = Math.max(0, Math.min(100, completionPercent));
 
   return (
@@ -34,7 +38,12 @@ export function ProfileStatusCard({
           role="alert"
         >
           <p className="text-caption font-semibold uppercase tracking-wide text-error">
-            Action required
+            {correctionReason &&
+            correctionReason.startsWith(
+              "Your profile verification has been reopened",
+            )
+              ? "Profile requires review"
+              : "Action required"}
           </p>
           <p className="mt-1 text-body-sm text-text-primary">
             Your profile needs correction before you can apply.
