@@ -86,6 +86,41 @@ export function computeFixtureOutcome(input: {
   return { outcomeLabel: null, resultLabel: "Result pending" };
 }
 
+export function computeTournamentFixtureResult(input: {
+  matchStatus: string;
+  scoreA: number | null;
+  scoreB: number | null;
+  isDraw: boolean;
+  winnerParticipantId: string | null;
+}): string {
+  if (input.matchStatus === "cancelled") {
+    return "Cancelled";
+  }
+
+  if (input.matchStatus === "forfeited") {
+    return "Forfeited";
+  }
+
+  if (
+    input.scoreA != null &&
+    input.scoreB != null &&
+    (input.matchStatus === "completed" ||
+      input.matchStatus === "disputed" ||
+      input.winnerParticipantId != null)
+  ) {
+    if (input.isDraw) {
+      return `${input.scoreA} – ${input.scoreB} (Draw)`;
+    }
+    return `${input.scoreA} – ${input.scoreB}`;
+  }
+
+  if (input.matchStatus === "disputed") {
+    return "Under review";
+  }
+
+  return "Result pending";
+}
+
 export function sortUpcomingFixtures<T extends { scheduledAt: string | null; matchStatus: string }>(
   items: T[],
 ): T[] {

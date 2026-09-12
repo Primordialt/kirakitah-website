@@ -38,7 +38,12 @@ export async function GET(
       tournamentId,
     );
 
-    const fixtures = await listParticipantFixtures(session.user.id, tournamentId);
+    const fixtures = await listParticipantFixtures({
+      accountId: session.user.id,
+      scope: "mine",
+      tournamentId,
+    });
+
     const upcomingMatch =
       ctx.participantId && ctx.tournamentParticipant?.status === "selected"
         ? await getPlayerSafeUpcomingMatch({

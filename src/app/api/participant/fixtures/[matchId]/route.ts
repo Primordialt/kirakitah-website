@@ -22,9 +22,9 @@ export async function GET(
 
   try {
     const session = await requireParticipantApiSession(request);
-    const fixture = await getParticipantFixtureByMatchId(session.user.id, matchId);
+    const detail = await getParticipantFixtureByMatchId(session.user.id, matchId);
 
-    if (!fixture) {
+    if (!detail) {
       return NextResponse.json(apiError("NOT_FOUND", "Fixture not found."), {
         status: 404,
         headers: { ...API_SECURITY_HEADERS, ...requestIdHeaders(requestId) },
@@ -32,7 +32,7 @@ export async function GET(
     }
 
     return NextResponse.json(
-      { success: true, fixture, requestId },
+      { success: true, ...detail, requestId },
       {
         status: 200,
         headers: { ...API_SECURITY_HEADERS, ...requestIdHeaders(requestId) },

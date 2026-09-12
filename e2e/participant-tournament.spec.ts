@@ -256,8 +256,8 @@ test.describe("Participant tournament experience", () => {
         contentType: "application/json",
         body: JSON.stringify({
           success: true,
-          upcoming: [],
-          completed: [],
+          all: { upcoming: [], completed: [] },
+          mine: { upcoming: [], completed: [] },
         }),
       });
     });
@@ -266,8 +266,9 @@ test.describe("Participant tournament experience", () => {
     await expect(
       page.getByRole("heading", { level: 1, name: /FIXTURES/i }),
     ).toBeVisible();
-    await expect(page.getByText(/No upcoming matches/i)).toBeVisible();
-    await expect(page.getByText(/No completed matches/i)).toBeVisible();
+    await expect(page.getByText(/No upcoming fixtures yet/i)).toBeVisible();
+    await page.getByRole("tab", { name: /My matches/i }).click();
+    await expect(page.getByText(/You don't have any upcoming matches yet/i)).toBeVisible();
     await expect(
       page
         .getByRole("navigation", { name: "Participant portal sidebar" })

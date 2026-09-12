@@ -2,14 +2,29 @@
 
 import Link from "next/link";
 import { FixtureCard } from "@/components/features/participant/FixtureCard";
+import { FixtureTabGroup } from "@/components/features/participant/FixtureTabGroup";
+import { TournamentFixtureCard } from "@/components/features/participant/TournamentFixtureCard";
 import { Button } from "@/components/ui";
 import { apiErrorMessage, participantFetch } from "@/lib/participant/api";
-import type { ParticipantFixtureView } from "@/server/participant/participant-fixture-service";
+import type {
+  ParticipantFixtureBundle,
+  ParticipantFixtureView,
+  TournamentFixtureView,
+} from "@/server/participant/participant-fixture-service";
 import { useEffect, useState } from "react";
 
+type FixtureScope = "all" | "mine";
+type FixtureSection = "upcoming" | "completed";
+
+const emptyBundle: ParticipantFixtureBundle = {
+  all: { upcoming: [], completed: [] },
+  mine: { upcoming: [], completed: [] },
+};
+
 export function FixturesClient() {
-  const [upcoming, setUpcoming] = useState<ParticipantFixtureView[]>([]);
-  const [completed, setCompleted] = useState<ParticipantFixtureView[]>([]);
+  const [bundle, setBundle] = useState<ParticipantFixtureBundle>(emptyBundle);
+  const [scope, setScope] = useState<FixtureScope>("all");
+  const [section, setSection] = useState<FixtureSection>("upcoming");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -17,8 +32,8 @@ export function FixturesClient() {
     let cancelled = false;
     void (async () => {
       const { response, payload } = await participantFetch<{
-        upcoming?: ParticipantFixtureView[];
-        completed?: ParticipantFixtureView[];
+        all?: ParticipantFixtureBundle["all"];
+        mine?: ParticipantFixtureBundle["mine"];
       }>("/api/participant/fixtures");
 
       if (cancelled) return;
@@ -29,8 +44,10 @@ export function FixturesClient() {
         return;
       }
 
-      setUpcoming(payload.upcoming ?? []);
-      setCompleted(payload.completed ?? []);
+      setBundle({
+        all: payload.all ?? emptyBundle.all,
+        mine: payload.mine ?? emptyBundle.mine,
+      });
     })();
     return () => {
       cancelled = true;
@@ -45,12 +62,49 @@ export function FixturesClient() {
     );
   }
 
+  const allUpcoming = bundle.all.upcoming;
+  const allCompleted = bundle.all.completed;
+  const mineUpcoming = bundle.mine.upcoming;
+  const mineCompleted = bundle.mine.completed;
+
+  const activeFixtures: Array<ParticipantFixtureView | TournamentFixtureView> =
+    scope === "all"
+      ? section === "upcoming"
+        ? allUpcoming
+        : allCompleted
+      : section === "upcoming"
+        ? mineUpcoming
+        : mineCompleted;
+
+  const upcomingCount = scope === "all" ? allUpcoming.length : mineUpcoming.length;
+  const completedCount = scope === "all" ? allCompleted.length : mineCompleted.length;
+
+  const emptyTitle =
+    scope === "all"
+      ? section === "upcoming"
+        ? "No upcoming fixtures yet"
+        : "No completed fixtures yet"
+      : section === "upcoming"
+        ? "No upcoming matches"
+        : "No completed matches";
+
+  const emptyDescription =
+    scope === "all"
+      ? section === "upcoming"
+        ? "Tournament fixtures will appear here when they are scheduled."
+        : "Completed tournament fixtures will appear here."
+      : section === "upcoming"
+        ? "You don't have any upcoming matches yet."
+        : "You haven't completed any matches yet.";
+
+  const sectionPanelId = `fixtures-${scope}-${section}-panel`;
+
   return (
-    <div className="mx-auto w-full max-w-3xl space-y-10">
+    <div className="mx-auto w-full max-w-3xl space-y-6">
       <header>
         <h1 className="text-h2 text-text-primary">FIXTURES</h1>
         <p className="mt-2 text-body text-text-secondary">
-          View your upcoming and completed tournament matches.
+          Follow the tournament schedule or view your own matches.
         </p>
       </header>
 
@@ -60,51 +114,61 @@ export function FixturesClient() {
         </p>
       ) : null}
 
-      <section aria-labelledby="upcoming-fixtures-heading">
-        <h2 id="upcoming-fixtures-heading" className="text-h3 text-text-primary">
-          Upcoming matches
-        </h2>
-        {upcoming.length === 0 ? (
-          <div className="mt-4 rounded-xl border border-dashed border-border p-8 text-center">
-            <p className="text-body font-medium text-text-primary">
-              No upcoming matches
-            </p>
-            <p className="mt-2 text-body-sm text-text-secondary">
-              You don&apos;t have any scheduled matches yet.
-            </p>
-            <Button href="/dashboard" variant="secondary" className="mt-4">
-              Back to dashboard
-            </Button>
-          </div>
-        ) : (
-          <ul className="mt-4 space-y-4">
-            {upcoming.map((fixture) => (
-              <li key={fixture.matchId}>
-                <FixtureCard fixture={fixture} variant="upcoming" />
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+      <FixtureTabGroup
+        label="Fixture scope"
+        value={scope}
+        onChange={setScope}
+        options={[
+          { id: "all", label: "All fixtures" },
+          { id: "mine", label: "My matches" },
+        ]}
+      />
 
-      <section aria-labelledby="completed-fixtures-heading">
-        <h2 id="completed-fixtures-heading" className="text-h3 text-text-primary">
-          Completed matches
+      <FixtureTabGroup
+        label="Fixture section"
+        value={section}
+        onChange={setSection}
+        options={[
+          { id: "upcoming", label: "Upcoming", count: upcomingCount },
+          { id: "completed", label: "Completed", count: completedCount },
+        ]}
+      />
+
+      <section
+        role="tabpanel"
+        id={sectionPanelId}
+        aria-labelledby={`fixture-section-${section}`}
+      >
+        <h2 className="sr-only">
+          {scope === "all" ? "All fixtures" : "My matches"} ·{" "}
+          {section === "upcoming" ? "Upcoming" : "Completed"}
         </h2>
-        {completed.length === 0 ? (
-          <div className="mt-4 rounded-xl border border-dashed border-border p-8 text-center">
-            <p className="text-body font-medium text-text-primary">
-              No completed matches
-            </p>
-            <p className="mt-2 text-body-sm text-text-secondary">
-              Your completed matches will appear here.
-            </p>
+
+        {activeFixtures.length === 0 ? (
+          <div className="mt-2 rounded-xl border border-dashed border-border p-8 text-center">
+            <p className="text-body font-medium text-text-primary">{emptyTitle}</p>
+            <p className="mt-2 text-body-sm text-text-secondary">{emptyDescription}</p>
+            {scope === "mine" && section === "upcoming" ? (
+              <Button href="/dashboard" variant="secondary" className="mt-4">
+                Back to dashboard
+              </Button>
+            ) : null}
           </div>
         ) : (
-          <ul className="mt-4 space-y-4">
-            {completed.map((fixture) => (
+          <ul className="mt-2 space-y-4">
+            {activeFixtures.map((fixture) => (
               <li key={fixture.matchId}>
-                <FixtureCard fixture={fixture} variant="completed" />
+                {scope === "all" ? (
+                  <TournamentFixtureCard
+                    fixture={fixture as TournamentFixtureView}
+                    variant={section}
+                  />
+                ) : (
+                  <FixtureCard
+                    fixture={fixture as ParticipantFixtureView}
+                    variant={section}
+                  />
+                )}
               </li>
             ))}
           </ul>
