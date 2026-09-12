@@ -39,18 +39,31 @@ export default async function AdminQualificationPage({
   const canManage = roleHasPermission(session.user.role, "tournament:pod_manage");
   const canAdvance = roleHasPermission(session.user.role, "tournament:phase_manage");
 
+  const positionsAvailable = Math.max(
+    0,
+    dashboard.totalPodCapacityTarget - dashboard.participantsAssigned,
+  );
+  const selectedOverCapacity = Math.max(
+    0,
+    dashboard.selectedParticipants - dashboard.totalPodCapacityTarget,
+  );
+
   const readinessCards = [
     {
       label: "SELECTED PARTICIPANTS",
-      value: `${dashboard.selectedParticipants} / ${dashboard.selectedParticipantsTarget}`,
+      value: `${dashboard.selectedParticipants} selected`,
     },
     {
       label: "PODS READY",
       value: `${dashboard.podsReady} / ${dashboard.targetPods}`,
     },
     {
-      label: "TOTAL POD CAPACITY",
+      label: "POSITIONS ASSIGNED",
       value: `${dashboard.participantsAssigned} / ${dashboard.totalPodCapacityTarget}`,
+    },
+    {
+      label: "POSITIONS AVAILABLE",
+      value: String(positionsAvailable),
     },
     {
       label: "PARTICIPANTS UNASSIGNED",
@@ -87,10 +100,54 @@ export default async function AdminQualificationPage({
         {dashboard.phaseStatus}
       </p>
       <p className="mt-2 text-body-sm text-text-muted">
-        128 participants · 32 pods · 4 positions per pod · single elimination · 1
-        qualifier per pod · KIRAKITAH TOP 32. Pairing and assignment are manually
-        controlled by the tournament team.
+        Maximum 128 qualification positions · 32 pods · 4 positions per pod · single
+        elimination · 1 qualifier per pod · KIRAKITAH TOP 32. Participants can be
+        assigned incrementally as they are selected. Match generation remains a
+        separate step.
       </p>
+
+      <section
+        aria-labelledby="qualification-assignment-status-heading"
+        className="mt-4 rounded-xl border border-border bg-surface-elevated p-4"
+      >
+        <h2 id="qualification-assignment-status-heading" className="text-h3">
+          Assignment status
+        </h2>
+        <p className="mt-2 text-body text-text-secondary">
+          {dashboard.selectedParticipants} selected · {dashboard.participantsAssigned}{" "}
+          assigned · {dashboard.participantsUnassigned} unassigned ·{" "}
+          {positionsAvailable} positions available
+        </p>
+        {dashboard.participantsUnassigned > 0 ? (
+          <p className="mt-2 text-body-sm text-text-secondary">
+            {dashboard.participantsUnassigned} selected participant
+            {dashboard.participantsUnassigned === 1 ? " is" : "s are"} ready to be
+            assigned to the next available qualification positions.
+          </p>
+        ) : dashboard.selectedParticipants > 0 ? (
+          <p className="mt-2 text-body-sm text-text-secondary">
+            All selected participants are assigned.
+          </p>
+        ) : (
+          <p className="mt-2 text-body-sm text-text-secondary">
+            No selected participants yet. Assignment can begin as soon as participants
+            are selected.
+          </p>
+        )}
+        {dashboard.participantsAssigned >= dashboard.totalPodCapacityTarget ? (
+          <p className="mt-2 text-body-sm text-text-secondary">
+            Qualification capacity reached: {dashboard.totalPodCapacityTarget}/
+            {dashboard.totalPodCapacityTarget} positions assigned.
+          </p>
+        ) : null}
+        {selectedOverCapacity > 0 ? (
+          <p className="mt-2 text-body-sm text-error" role="status">
+            {selectedOverCapacity} selected participant
+            {selectedOverCapacity === 1 ? "" : "s"} exceed qualification capacity and
+            cannot be auto-assigned until positions are freed.
+          </p>
+        ) : null}
+      </section>
 
       <nav className="mt-4 flex flex-wrap gap-3 text-body-sm">
         <Link
@@ -140,7 +197,13 @@ export default async function AdminQualificationPage({
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <h2 className="text-h3">Pods 1–32</h2>
           {canManage ? (
-            <QualificationAutoAssignButton tournamentId={tournamentId} />
+            <QualificationAutoAssignButton
+              tournamentId={tournamentId}
+              selectedCount={dashboard.selectedParticipants}
+              assignedCount={dashboard.participantsAssigned}
+              unassignedCount={dashboard.participantsUnassigned}
+              totalCapacity={dashboard.totalPodCapacityTarget}
+            />
           ) : null}
         </div>
 
