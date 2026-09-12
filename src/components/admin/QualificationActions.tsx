@@ -114,8 +114,16 @@ export function QualificationPodActions({
 
 export function QualificationAutoAssignButton({
   tournamentId,
+  selectedCount,
+  assignedCount,
+  unassignedCount,
+  totalCapacity,
 }: {
   tournamentId: string;
+  selectedCount: number;
+  assignedCount: number;
+  unassignedCount: number;
+  totalCapacity: number;
 }) {
   const router = useRouter();
   const dialogRef = useRef<HTMLDialogElement>(null);
@@ -149,7 +157,12 @@ export function QualificationAutoAssignButton({
     }
     const assigned = payload.participantsAssigned ?? 0;
     if (assigned === 0) {
-      setSummary(payload.message ?? "No new participants were assigned.");
+      setSummary(
+        payload.message ??
+          (unassignedCount === 0
+            ? "All selected participants are already assigned."
+            : "No new participants were assigned."),
+      );
     } else {
       setSummary(
         `AUTO ASSIGN COMPLETE — Participants assigned: ${assigned}; Pods filled: ${payload.podsFilled ?? 0}; Positions remaining: ${payload.positionsRemaining ?? 0}; Already assigned: ${payload.alreadyAssigned ?? 0}.`,
@@ -162,12 +175,29 @@ export function QualificationAutoAssignButton({
     <div className="space-y-2">
       <button
         type="button"
-        disabled={loading}
+        disabled={loading || unassignedCount === 0}
         onClick={() => dialogRef.current?.showModal()}
         className="min-h-11 rounded-lg bg-brand-primary px-4 py-2 text-button text-white disabled:opacity-50"
+        aria-disabled={loading || unassignedCount === 0}
       >
         AUTO ASSIGN PARTICIPANTS
       </button>
+      {unassignedCount === 0 && selectedCount > 0 ? (
+        <p className="text-body-sm text-text-secondary">
+          All selected participants are assigned.
+        </p>
+      ) : unassignedCount > 0 ? (
+        <p className="text-body-sm text-text-secondary">
+          {unassignedCount} selected participant{unassignedCount === 1 ? "" : "s"}{" "}
+          ready to assign into the next available positions.
+        </p>
+      ) : null}
+      {assignedCount >= totalCapacity ? (
+        <p className="text-body-sm text-text-secondary">
+          Qualification capacity reached: {totalCapacity}/{totalCapacity} positions
+          assigned.
+        </p>
+      ) : null}
       {summary ? (
         <p className="text-body-sm text-text-secondary" role="status">
           {summary}
@@ -184,11 +214,15 @@ export function QualificationAutoAssignButton({
         className="w-[min(100%,28rem)] rounded-xl border border-border bg-surface p-4 shadow-lg backdrop:bg-black/50"
       >
         <h2 id={titleId} className="text-h3">
-          Auto assign participants?
+          {unassignedCount === 1
+            ? "Assign 1 selected participant?"
+            : `Assign ${unassignedCount} selected participants?`}
         </h2>
         <p className="mt-2 text-body-sm text-text-secondary">
-          This will assign eligible selected participants into available qualification
-          pod positions. Existing assignments will not be overwritten.
+          This will assign currently unassigned selected participants into the next
+          available qualification positions (Pod 1 position 1 through Pod 32 position
+          4). Existing assignments will not be overwritten. Partial pods and empty
+          pods are valid. Maximum capacity is {totalCapacity} positions.
         </p>
         <div className="mt-4 flex flex-wrap gap-2">
           <button

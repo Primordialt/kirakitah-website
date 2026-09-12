@@ -21,4 +21,12 @@ describe("Admin qualification page", () => {
     expect(source).toContain("QualificationAutoAssignButton");
     expect(source).toContain("canManage");
   });
+
+  it("communicates incremental assignment readiness without requiring 128 selected", () => {
+    const source = readFileSync(pagePath, "utf8");
+    expect(source).toContain("Assignment status");
+    expect(source).toContain("unassignedCount={dashboard.participantsUnassigned}");
+    expect(source).toContain("assigned incrementally");
+    expect(source).not.toMatch(/wait until 128/i);
+  });
 });
