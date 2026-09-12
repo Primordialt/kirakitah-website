@@ -5,8 +5,10 @@ import {
   QualificationAssignForm,
   QualificationHostForm,
   QualificationMatchRecordForm,
+  QualificationPositionReassignDialog,
   QualificationReassignForm,
   QualificationRemoveButton,
+  type QualificationRosterOption,
 } from "@/components/admin/QualificationActions";
 import { MatchResultActions } from "@/components/admin/MatchResultActions";
 import { MatchSchedulePanel } from "@/components/admin/MatchSchedulePanel";
@@ -16,6 +18,7 @@ import {
   explainPodReadiness,
   getPodByNumber,
   getPodDetail,
+  listQualificationParticipantRoster,
 } from "@/server/tournament/qualification/pod-service";
 import { getPodMatchDetail } from "@/server/tournament/qualification/match-engine";
 import { listMatchScheduleHistory } from "@/server/tournament/scheduling/notification-service";
@@ -40,6 +43,20 @@ export default async function AdminQualificationPodPage({
   const matches = await getPodMatchDetail(pod.id);
   const members = detail?.members ?? [];
   const canManage = roleHasPermission(session.user.role, "tournament:pod_manage");
+  const canReassignPosition = roleHasPermission(
+    session.user.role,
+    "qualification:reassign_position",
+  );
+  const roster: QualificationRosterOption[] = (
+    await listQualificationParticipantRoster(tournamentId)
+  ).map((row) => ({
+    participantId: row.participantId,
+    publicCode: row.publicCode,
+    gamerTag: row.gamerTag,
+    podNumber: row.podNumber,
+    positionNumber: row.positionNumber,
+  }));
+  const membershipMutable = matches.length === 0 && pod.status !== "completed";
   const canRecord = roleHasPermission(session.user.role, "tournament:result_record");
   const canCorrect = roleHasPermission(session.user.role, "tournament:result_correct");
   const canForfeit = roleHasPermission(session.user.role, "tournament:forfeit");
@@ -109,14 +126,33 @@ export default async function AdminQualificationPodPage({
                   <span className="text-text-muted">Empty</span>
                 )}
               </span>
-              {canManage && member && pod.status !== "completed" ? (
-                <QualificationRemoveButton
-                  tournamentId={tournamentId}
-                  podNumber={podNumber}
-                  participantId={member.participantId}
-                  publicCode={member.publicCode}
-                />
-              ) : null}
+              <span className="flex flex-wrap items-center gap-2">
+                {canReassignPosition && membershipMutable ? (
+                  <QualificationPositionReassignDialog
+                    tournamentId={tournamentId}
+                    podNumber={podNumber}
+                    positionNumber={positionNumber}
+                    currentParticipant={
+                      member
+                        ? {
+                            participantId: member.participantId,
+                            publicCode: member.publicCode,
+                            gamerTag: member.gamerTag,
+                          }
+                        : null
+                    }
+                    roster={roster}
+                  />
+                ) : null}
+                {canManage && member && pod.status !== "completed" ? (
+                  <QualificationRemoveButton
+                    tournamentId={tournamentId}
+                    podNumber={podNumber}
+                    participantId={member.participantId}
+                    publicCode={member.publicCode}
+                  />
+                ) : null}
+              </span>
             </li>
           ))}
         </ul>

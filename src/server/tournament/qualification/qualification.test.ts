@@ -116,6 +116,13 @@ describe("qualification RBAC", () => {
     expect(roleHasPermission("REVIEWER", "tournament:match_manage")).toBe(false);
     expect(roleHasPermission("REVIEWER", "tournament:participant_select")).toBe(false);
   });
+
+  it("restricts position reassignment to SUPER_ADMIN", () => {
+    expect(roleHasPermission("SUPER_ADMIN", "qualification:reassign_position")).toBe(true);
+    expect(roleHasPermission("TOURNAMENT_ADMIN", "qualification:reassign_position")).toBe(
+      false,
+    );
+  });
 });
 
 describe("pod readiness messaging", () => {

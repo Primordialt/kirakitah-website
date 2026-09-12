@@ -2,6 +2,7 @@ import { withAdminApi, adminJson } from "@/server/admin/http";
 import {
   assignParticipantToPod,
   reassignParticipantToPod,
+  reassignPodPosition,
 } from "@/server/tournament/qualification/assignment-service";
 import {
   advancePodWinnerToTop32,
@@ -100,6 +101,26 @@ export async function POST(
       });
       return adminJson({ success: true, ...result, requestId }, 200, requestId);
     });
+  }
+
+  if (body.action === "reassign_position") {
+    return withAdminApi(
+      request,
+      "qualification:reassign_position",
+      async (session, requestId) => {
+        const result = await reassignPodPosition({
+          tournamentId,
+          podNumber: Number(podNumber),
+          positionNumber: body.positionNumber ?? 1,
+          newParticipantId: body.participantId ?? "",
+          reason: body.reason ?? "",
+          actorId: session.user.id,
+          actorRole: session.user.role,
+          requestId,
+        });
+        return adminJson({ success: true, ...result, requestId }, 200, requestId);
+      },
+    );
   }
 
   if (body.action === "set_host") {
