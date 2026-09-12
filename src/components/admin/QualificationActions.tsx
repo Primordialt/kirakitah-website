@@ -12,12 +12,6 @@ export type QualificationRosterOption = {
   positionNumber: number | null;
 };
 
-export function podFillLabel(memberCount: number, capacity: number): string {
-  if (memberCount <= 0) return "EMPTY";
-  if (memberCount >= capacity) return "FULL";
-  return "PARTIAL";
-}
-
 async function postPodAction(
   tournamentId: string,
   podNumber: number,
