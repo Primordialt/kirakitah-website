@@ -1,6 +1,7 @@
 import { and, count, eq } from "drizzle-orm";
 import { getDb } from "@/server/db";
 import {
+  matches,
   qualificationPodMembers,
   registrationApplications,
   tournamentParticipants,
@@ -56,6 +57,39 @@ async function assertParticipantAssignable(
     .limit(1);
 
   return { participant, existingInPhase: existingInPhase ?? null };
+}
+
+/** Pods with generated matches cannot safely change membership. */
+export async function assertPodMembershipMutable(podId: string) {
+  const pod = await getPodById(podId);
+  if (!pod) {
+    throw new CompetitionOperationsError("Pod not found.", "NOT_FOUND", 404);
+  }
+
+  if (pod.status === "completed" || pod.status === "cancelled") {
+    throw new CompetitionOperationsError(
+      "Cannot change membership in a completed or cancelled pod.",
+      "CONFLICT",
+      409,
+    );
+  }
+
+  const db = getDb();
+  const [matchRow] = await db
+    .select({ id: matches.id })
+    .from(matches)
+    .where(eq(matches.qualificationPodId, podId))
+    .limit(1);
+
+  if (matchRow) {
+    throw new CompetitionOperationsError(
+      "Cannot reassign positions after matches have been generated for this pod. Resolve via official match correction workflows if available.",
+      "CONFLICT",
+      409,
+    );
+  }
+
+  return pod;
 }
 
 export async function assignParticipantToPod(input: {
@@ -321,6 +355,148 @@ export async function reassignParticipantToPod(input: {
 
   await updatePodStatusFromMembers(pod.id);
   return { podId: pod.id, reassigned: true };
+}
+
+/**
+ * SUPER_ADMIN position reassignment: replace the participant at an exact pod position.
+ * Other positions in the pod are unchanged.
+ */
+export async function reassignPodPosition(input: {
+  tournamentId: string;
+  podNumber: number;
+  positionNumber: number;
+  newParticipantId: string;
+  reason: string;
+  actorId: string;
+  actorRole: AdminRole;
+  requestId?: string;
+}) {
+  const sanitizedReason = input.reason.replace(/<[^>]*>/g, "").trim().slice(0, 500);
+  if (sanitizedReason.length < 8) {
+    throw new CompetitionOperationsError(
+      "Reassignment reason is required (minimum 8 characters).",
+      "VALIDATION_ERROR",
+      400,
+    );
+  }
+
+  if (input.positionNumber < 1 || input.positionNumber > 4) {
+    throw new CompetitionOperationsError(
+      "Position must be between 1 and 4.",
+      "VALIDATION_ERROR",
+      400,
+    );
+  }
+
+  const phase = await getQualificationPhase(input.tournamentId);
+  const pod = await getPodByNumber(input.tournamentId, input.podNumber);
+  if (!pod) {
+    throw new CompetitionOperationsError("Pod not found.", "NOT_FOUND", 404);
+  }
+
+  await assertPodMembershipMutable(pod.id);
+
+  const { existingInPhase } = await assertParticipantAssignable(
+    input.tournamentId,
+    phase.id,
+    input.newParticipantId,
+  );
+
+  if (existingInPhase && existingInPhase.podId !== pod.id) {
+    throw new CompetitionOperationsError(
+      "Participant is already assigned to another pod.",
+      "CONFLICT",
+      409,
+    );
+  }
+
+  const db = getDb();
+  const [currentAtPosition] = await db
+    .select({
+      id: qualificationPodMembers.id,
+      participantId: qualificationPodMembers.participantId,
+    })
+    .from(qualificationPodMembers)
+    .where(
+      and(
+        eq(qualificationPodMembers.podId, pod.id),
+        eq(qualificationPodMembers.positionNumber, input.positionNumber),
+      ),
+    )
+    .limit(1);
+
+  if (currentAtPosition?.participantId === input.newParticipantId) {
+    return {
+      podId: pod.id,
+      reassigned: false,
+      previousParticipantId: currentAtPosition.participantId,
+      newParticipantId: input.newParticipantId,
+    };
+  }
+
+  if (currentAtPosition) {
+    await db
+      .delete(qualificationPodMembers)
+      .where(eq(qualificationPodMembers.id, currentAtPosition.id));
+  }
+
+  await db.insert(qualificationPodMembers).values({
+    podId: pod.id,
+    phaseId: phase.id,
+    participantId: input.newParticipantId,
+    positionNumber: input.positionNumber,
+  });
+
+  await recordAdminAuditEvent({
+    eventType: "QUALIFICATION_POSITION_REASSIGNED",
+    actorId: input.actorId,
+    actorRole: input.actorRole,
+    requestId: input.requestId,
+    metadata: {
+      tournamentId: input.tournamentId,
+      podId: pod.id,
+      podNumber: pod.podNumber,
+      positionNumber: input.positionNumber,
+      previousParticipantId: currentAtPosition?.participantId ?? null,
+      newParticipantId: input.newParticipantId,
+      reasonLength: sanitizedReason.length,
+    },
+  });
+
+  const [participantRow] = await db
+    .select({ applicationId: tournamentParticipants.applicationId })
+    .from(tournamentParticipants)
+    .where(eq(tournamentParticipants.id, input.newParticipantId))
+    .limit(1);
+  if (participantRow?.applicationId) {
+    const [application] = await db
+      .select({
+        participantAccountId: registrationApplications.participantAccountId,
+      })
+      .from(registrationApplications)
+      .where(eq(registrationApplications.id, participantRow.applicationId))
+      .limit(1);
+    if (application?.participantAccountId) {
+      await recordParticipantAuditEvent({
+        eventType: "PARTICIPANT_QUALIFICATION_ASSIGNED",
+        accountId: application.participantAccountId,
+        actor: input.actorId,
+        metadata: {
+          tournamentId: input.tournamentId,
+          podNumber: pod.podNumber,
+          reassigned: true,
+        },
+      });
+    }
+  }
+
+  await updatePodStatusFromMembers(pod.id);
+  return {
+    podId: pod.id,
+    reassigned: true,
+    previousParticipantId: currentAtPosition?.participantId ?? null,
+    newParticipantId: input.newParticipantId,
+  };
 }
 
 export async function removeParticipantFromPod(input: {

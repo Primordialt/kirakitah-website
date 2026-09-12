@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { AdminShell, loadAdminSession } from "@/components/admin/AdminShell";
 import {
+  QualificationAutoAssignButton,
   QualificationBulkAdvanceButton,
   QualificationPodActions,
+  podFillLabel,
 } from "@/components/admin/QualificationActions";
 import { roleHasPermission } from "@/server/admin/authorization/permissions";
 import { isRegistrationBackendConfigured } from "@/server/env";
@@ -135,8 +137,45 @@ export default async function AdminQualificationPage({
       ) : null}
 
       <section className="mt-8">
-        <h2 className="text-h3">Pods 1–32</h2>
-        <div className="mt-3 overflow-x-auto rounded-xl border border-border">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <h2 className="text-h3">Pods 1–32</h2>
+          {canManage ? (
+            <QualificationAutoAssignButton tournamentId={tournamentId} />
+          ) : null}
+        </div>
+
+        <ul className="mt-4 space-y-3 lg:hidden">
+          {pods.map((pod) => (
+            <li
+              key={pod.id}
+              className="rounded-xl border border-border bg-surface-elevated p-4"
+            >
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <p className="font-semibold">Pod {pod.podNumber}</p>
+                <span className="rounded-full border border-border px-2 py-0.5 text-label">
+                  {podFillLabel(pod.memberCount, pod.capacity)}
+                </span>
+              </div>
+              <p className="mt-2 text-body-sm">
+                {pod.memberCount} / {pod.capacity} · {pod.status}
+              </p>
+              <p className="mt-1 text-body-sm text-text-secondary">
+                {pod.readinessReason}
+              </p>
+              <div className="mt-3">
+                <QualificationPodActions
+                  tournamentId={tournamentId}
+                  podNumber={pod.podNumber}
+                  status={pod.status}
+                  canManage={canManage}
+                  canAdvance={canAdvance}
+                />
+              </div>
+            </li>
+          ))}
+        </ul>
+
+        <div className="mt-3 hidden overflow-x-auto rounded-xl border border-border lg:block">
           <table className="min-w-full text-left text-body-sm">
             <thead className="bg-surface-elevated text-text-muted">
               <tr>
@@ -155,7 +194,12 @@ export default async function AdminQualificationPage({
                 <tr key={pod.id} className="border-t border-border">
                   <td className="px-4 py-3">Pod {pod.podNumber}</td>
                   <td className="px-4 py-3">
-                    {pod.memberCount} / {pod.capacity}
+                    <span>
+                      {pod.memberCount} / {pod.capacity}
+                    </span>{" "}
+                    <span className="text-label text-text-muted">
+                      {podFillLabel(pod.memberCount, pod.capacity)}
+                    </span>
                   </td>
                   <td className="px-4 py-3">{pod.status}</td>
                   <td className="px-4 py-3">

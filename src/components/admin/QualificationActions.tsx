@@ -1,8 +1,22 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+
+export type QualificationRosterOption = {
+  participantId: string;
+  publicCode: string | null;
+  gamerTag: string;
+  podNumber: number | null;
+  positionNumber: number | null;
+};
+
+export function podFillLabel(memberCount: number, capacity: number): string {
+  if (memberCount <= 0) return "EMPTY";
+  if (memberCount >= capacity) return "FULL";
+  return "PARTIAL";
+}
 
 async function postPodAction(
   tournamentId: string,
@@ -101,6 +115,320 @@ export function QualificationPodActions({
         </p>
       ) : null}
     </div>
+  );
+}
+
+export function QualificationAutoAssignButton({
+  tournamentId,
+}: {
+  tournamentId: string;
+}) {
+  const router = useRouter();
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  const titleId = useId();
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [summary, setSummary] = useState<string | null>(null);
+
+  const run = async () => {
+    setLoading(true);
+    setError(null);
+    setSummary(null);
+    const response = await fetch(
+      `/api/admin/tournaments/${tournamentId}/qualification/auto-assign`,
+      { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" },
+    );
+    const payload = (await response.json()) as {
+      success?: boolean;
+      participantsAssigned?: number;
+      podsFilled?: number;
+      positionsRemaining?: number;
+      alreadyAssigned?: number;
+      message?: string;
+      error?: { message: string };
+    };
+    setLoading(false);
+    dialogRef.current?.close();
+    if (!response.ok || !payload.success) {
+      setError(payload.error?.message ?? "Auto assign failed.");
+      return;
+    }
+    const assigned = payload.participantsAssigned ?? 0;
+    if (assigned === 0) {
+      setSummary(payload.message ?? "No new participants were assigned.");
+    } else {
+      setSummary(
+        `AUTO ASSIGN COMPLETE — Participants assigned: ${assigned}; Pods filled: ${payload.podsFilled ?? 0}; Positions remaining: ${payload.positionsRemaining ?? 0}; Already assigned: ${payload.alreadyAssigned ?? 0}.`,
+      );
+    }
+    router.refresh();
+  };
+
+  return (
+    <div className="space-y-2">
+      <button
+        type="button"
+        disabled={loading}
+        onClick={() => dialogRef.current?.showModal()}
+        className="min-h-11 rounded-lg bg-brand-primary px-4 py-2 text-button text-white disabled:opacity-50"
+      >
+        AUTO ASSIGN PARTICIPANTS
+      </button>
+      {summary ? (
+        <p className="text-body-sm text-text-secondary" role="status">
+          {summary}
+        </p>
+      ) : null}
+      {error ? (
+        <p role="alert" className="text-body-sm text-error">
+          {error}
+        </p>
+      ) : null}
+      <dialog
+        ref={dialogRef}
+        aria-labelledby={titleId}
+        className="w-[min(100%,28rem)] rounded-xl border border-border bg-surface p-4 shadow-lg backdrop:bg-black/50"
+      >
+        <h2 id={titleId} className="text-h3">
+          Auto assign participants?
+        </h2>
+        <p className="mt-2 text-body-sm text-text-secondary">
+          This will assign eligible selected participants into available qualification
+          pod positions. Existing assignments will not be overwritten.
+        </p>
+        <div className="mt-4 flex flex-wrap gap-2">
+          <button
+            type="button"
+            className="min-h-11 rounded-lg border border-border-interactive px-4 py-2 text-button"
+            onClick={() => dialogRef.current?.close()}
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            disabled={loading}
+            className="min-h-11 rounded-lg bg-brand-primary px-4 py-2 text-button text-white disabled:opacity-50"
+            onClick={() => void run()}
+          >
+            Auto Assign
+          </button>
+        </div>
+      </dialog>
+    </div>
+  );
+}
+
+export function QualificationPositionReassignDialog({
+  tournamentId,
+  podNumber,
+  positionNumber,
+  currentParticipant,
+  roster,
+}: {
+  tournamentId: string;
+  podNumber: number;
+  positionNumber: number;
+  currentParticipant: {
+    participantId: string;
+    publicCode: string | null;
+    gamerTag: string;
+  } | null;
+  roster: QualificationRosterOption[];
+}) {
+  const router = useRouter();
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  const confirmRef = useRef<HTMLDialogElement>(null);
+  const titleId = useId();
+  const confirmTitleId = useId();
+  const [participantId, setParticipantId] = useState("");
+  const [reason, setReason] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const eligibleOptions = roster.filter(
+    (row) =>
+      row.participantId !== currentParticipant?.participantId &&
+      row.podNumber == null,
+  );
+
+  const selected = roster.find((row) => row.participantId === participantId);
+
+  const openConfirm = () => {
+    if (!participantId.trim()) {
+      setError("Select a participant.");
+      return;
+    }
+    if (reason.trim().length < 8) {
+      setError("Reason must be at least 8 characters.");
+      return;
+    }
+    setError(null);
+    dialogRef.current?.close();
+    confirmRef.current?.showModal();
+  };
+
+  const submit = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      await postPodAction(tournamentId, podNumber, {
+        action: "reassign_position",
+        participantId: participantId.trim(),
+        positionNumber,
+        reason: reason.trim(),
+      });
+      confirmRef.current?.close();
+      setParticipantId("");
+      setReason("");
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Reassignment failed.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <>
+      <button
+        type="button"
+        className="min-h-11 rounded border border-border-interactive px-3 py-1 text-button"
+        onClick={() => dialogRef.current?.showModal()}
+      >
+        Reassign
+      </button>
+      <dialog
+        ref={dialogRef}
+        aria-labelledby={titleId}
+        className="w-[min(100%,32rem)] rounded-xl border border-border bg-surface p-4 shadow-lg backdrop:bg-black/50"
+      >
+        <h2 id={titleId} className="text-h3">
+          Reassign Pod {podNumber} — Position {positionNumber}
+        </h2>
+        <p className="mt-2 text-body-sm">
+          Current participant:{" "}
+          {currentParticipant ? (
+            <>
+              <span className="font-mono text-xs">{currentParticipant.publicCode ?? "—"}</span>{" "}
+              ({currentParticipant.gamerTag})
+            </>
+          ) : (
+            <span className="text-text-muted">Empty</span>
+          )}
+        </p>
+        <div className="mt-4 space-y-3">
+          <label className="block text-body-sm">
+            <span className="font-medium">New participant</span>
+            <select
+              value={participantId}
+              onChange={(e) => setParticipantId(e.target.value)}
+              className="mt-1 w-full min-h-11 rounded border border-border px-2 py-2"
+              aria-label="New participant"
+            >
+              <option value="">Select participant</option>
+              {eligibleOptions.map((row) => (
+                <option key={row.participantId} value={row.participantId}>
+                  {row.publicCode ?? "—"} · {row.gamerTag}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="block text-body-sm">
+            <span className="font-medium">Reason for reassignment</span>
+            <textarea
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              rows={3}
+              className="mt-1 w-full rounded border border-border px-2 py-2"
+              aria-label="Reason for reassignment"
+              placeholder="Required — minimum 8 characters"
+            />
+          </label>
+        </div>
+        {error ? (
+          <p role="alert" className="mt-2 text-body-sm text-error">
+            {error}
+          </p>
+        ) : null}
+        <div className="mt-4 flex flex-wrap gap-2">
+          <button
+            type="button"
+            className="min-h-11 rounded-lg border border-border-interactive px-4 py-2 text-button"
+            onClick={() => dialogRef.current?.close()}
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            className="min-h-11 rounded-lg bg-brand-primary px-4 py-2 text-button text-white"
+            onClick={openConfirm}
+          >
+            Continue
+          </button>
+        </div>
+      </dialog>
+      <dialog
+        ref={confirmRef}
+        aria-labelledby={confirmTitleId}
+        className="w-[min(100%,28rem)] rounded-xl border border-border bg-surface p-4 shadow-lg backdrop:bg-black/50"
+      >
+        <h2 id={confirmTitleId} className="text-h3">
+          Reassign this position?
+        </h2>
+        <dl className="mt-3 space-y-2 text-body-sm">
+          <div>
+            <dt className="font-medium">Pod</dt>
+            <dd>{podNumber}</dd>
+          </div>
+          <div>
+            <dt className="font-medium">Position</dt>
+            <dd>{positionNumber}</dd>
+          </div>
+          <div>
+            <dt className="font-medium">Current participant</dt>
+            <dd>
+              {currentParticipant
+                ? `${currentParticipant.publicCode ?? "—"} (${currentParticipant.gamerTag})`
+                : "Empty"}
+            </dd>
+          </div>
+          <div>
+            <dt className="font-medium">New participant</dt>
+            <dd>
+              {selected
+                ? `${selected.publicCode ?? "—"} (${selected.gamerTag})`
+                : "—"}
+            </dd>
+          </div>
+          <div>
+            <dt className="font-medium">Reason</dt>
+            <dd>{reason.trim()}</dd>
+          </div>
+        </dl>
+        {error ? (
+          <p role="alert" className="mt-2 text-body-sm text-error">
+            {error}
+          </p>
+        ) : null}
+        <div className="mt-4 flex flex-wrap gap-2">
+          <button
+            type="button"
+            className="min-h-11 rounded-lg border border-border-interactive px-4 py-2 text-button"
+            onClick={() => confirmRef.current?.close()}
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            disabled={loading}
+            className="min-h-11 rounded-lg bg-brand-primary px-4 py-2 text-button text-white disabled:opacity-50"
+            onClick={() => void submit()}
+          >
+            Confirm Reassignment
+          </button>
+        </div>
+      </dialog>
+    </>
   );
 }
 
