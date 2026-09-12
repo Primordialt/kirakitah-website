@@ -4,8 +4,8 @@ import {
   QualificationAutoAssignButton,
   QualificationBulkAdvanceButton,
   QualificationPodActions,
-  podFillLabel,
 } from "@/components/admin/QualificationActions";
+import { podFillLabel } from "@/lib/admin/pod-fill-label";
 import { roleHasPermission } from "@/server/admin/authorization/permissions";
 import { isRegistrationBackendConfigured } from "@/server/env";
 import { getTournamentById } from "@/server/tournament/participant-service";

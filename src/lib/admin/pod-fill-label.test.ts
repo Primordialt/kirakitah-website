@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { podFillLabel } from "@/components/admin/QualificationActions";
+import { podFillLabel } from "@/lib/admin/pod-fill-label";
 
 describe("podFillLabel", () => {
   it("labels empty, partial, and full pods with text not colour alone", () => {
