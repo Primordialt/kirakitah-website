@@ -1,11 +1,11 @@
-import { MatchesClient } from "@/components/features/participant/MatchesClient";
+import { FixturesClient } from "@/components/features/participant/FixturesClient";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Matches — KIRAKITAH Participant Portal",
+  title: "Fixtures — KIRAKITAH Participant Portal",
   robots: { index: false, follow: false },
 };
 
-export default function MatchesPage() {
-  return <MatchesClient />;
+export default function FixturesPage() {
+  return <FixturesClient />;
 }

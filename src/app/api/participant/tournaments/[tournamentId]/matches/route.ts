@@ -5,7 +5,7 @@ import {
   ParticipantAuthenticationError,
   requireParticipantApiSession,
 } from "@/server/participant";
-import { listParticipantMatches } from "@/server/participant/tournament-experience-service";
+import { listParticipantFixtures } from "@/server/participant/participant-fixture-service";
 import { getPlayerSafeUpcomingMatch } from "@/server/tournament/scheduling/player-match-projection";
 import { resolveParticipantTournamentContext } from "@/server/participant/tournament-context";
 import { API_SECURITY_HEADERS } from "@/server/security/api";
@@ -38,8 +38,8 @@ export async function GET(
       tournamentId,
     );
 
-    const matches = await listParticipantMatches(session.user.id, tournamentId);
-    const upcoming =
+    const fixtures = await listParticipantFixtures(session.user.id, tournamentId);
+    const upcomingMatch =
       ctx.participantId && ctx.tournamentParticipant?.status === "selected"
         ? await getPlayerSafeUpcomingMatch({
             tournamentId,
@@ -48,7 +48,14 @@ export async function GET(
         : null;
 
     return NextResponse.json(
-      { success: true, matches, upcoming, requestId },
+      {
+        success: true,
+        upcoming: fixtures.upcoming,
+        completed: fixtures.completed,
+        matches: [...fixtures.upcoming, ...fixtures.completed],
+        upcomingMatch,
+        requestId,
+      },
       {
         status: 200,
         headers: { ...API_SECURITY_HEADERS, ...requestIdHeaders(requestId) },
