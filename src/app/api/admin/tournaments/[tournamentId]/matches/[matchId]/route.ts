@@ -1,4 +1,5 @@
 import { withAdminApi, adminJson } from "@/server/admin/http";
+import { getAdminMatchProjection } from "@/server/tournament/competition/admin-match-projection";
 import {
   correctMatchResult,
   forfeitMatch,
@@ -7,6 +8,10 @@ import {
   markMatchDisputed,
   recordMatchResult,
 } from "@/server/tournament/competition/match-service";
+import {
+  updateMatchBySuperAdmin,
+  type MatchEditSlotInput,
+} from "@/server/tournament/competition/match-edit-service";
 
 export const runtime = "nodejs";
 
@@ -26,8 +31,15 @@ export async function GET(
         requestId,
       );
     }
-    const history = await getMatchResultHistory(matchId);
-    return adminJson({ success: true, match, history, requestId }, 200, requestId);
+    const [history, projection] = await Promise.all([
+      getMatchResultHistory(matchId),
+      getAdminMatchProjection(matchId),
+    ]);
+    return adminJson(
+      { success: true, match, projection, history, requestId },
+      200,
+      requestId,
+    );
   });
 }
 
@@ -39,11 +51,16 @@ export async function POST(
 ) {
   const { tournamentId, matchId } = await context.params;
   const body = (await request.json()) as {
-    action?: "record" | "correct" | "dispute" | "forfeit";
+    action?: "record" | "correct" | "dispute" | "forfeit" | "edit";
     participantAScore?: number;
     participantBScore?: number;
     reason?: string;
     forfeitingParticipantId?: string;
+    slotA?: { mode: "keep" | "dependency" | "participant"; participantId?: string };
+    slotB?: { mode: "keep" | "dependency" | "participant"; participantId?: string };
+    date?: string;
+    time?: string;
+    timezone?: string;
   };
 
   if (body.action === "record") {
@@ -104,6 +121,24 @@ export async function POST(
         actorId: session.user.id,
         actorRole: session.user.role,
         requestId,
+      });
+      return adminJson({ success: true, result, requestId }, 200, requestId);
+    });
+  }
+
+  if (body.action === "edit") {
+    return withAdminApi(request, "tournament:match_edit", async (session, requestId) => {
+      const result = await updateMatchBySuperAdmin({
+        matchId,
+        tournamentId,
+        actorId: session.user.id,
+        actorRole: session.user.role,
+        requestId,
+        slotA: body.slotA as MatchEditSlotInput | undefined,
+        slotB: body.slotB as MatchEditSlotInput | undefined,
+        date: body.date,
+        time: body.time,
+        timezone: body.timezone,
       });
       return adminJson({ success: true, result, requestId }, 200, requestId);
     });

@@ -9,6 +9,9 @@ export function MatchResultActions({
   status,
   participantAId,
   participantBId,
+  slotALabel,
+  slotBLabel,
+  participantsReady: participantsReadyProp,
   canRecord,
   canCorrect,
   canForfeit,
@@ -19,6 +22,9 @@ export function MatchResultActions({
   status: string;
   participantAId: string | null;
   participantBId: string | null;
+  slotALabel?: string;
+  slotBLabel?: string;
+  participantsReady?: boolean;
   canRecord: boolean;
   canCorrect: boolean;
   canForfeit: boolean;
@@ -54,12 +60,23 @@ export function MatchResultActions({
     router.refresh();
   };
 
-  const participantsReady = Boolean(participantAId && participantBId);
+  const participantsReady =
+    participantsReadyProp ?? Boolean(participantAId && participantBId);
 
   return (
     <div className="space-y-2">
       {!participantsReady ? (
-        <p className="text-body-sm text-text-muted">Participants not resolved</p>
+        <div className="text-body-sm text-text-muted">
+          <p>Awaiting participants:</p>
+          <ul className="mt-1 list-inside list-disc">
+            {!participantAId ? (
+              <li>Player A: {slotALabel ?? "Awaiting opponent"}</li>
+            ) : null}
+            {!participantBId ? (
+              <li>Player B: {slotBLabel ?? "Awaiting opponent"}</li>
+            ) : null}
+          </ul>
+        </div>
       ) : null}
       {(canRecord || canCorrect) && status !== "cancelled" && participantsReady ? (
         <div className="flex flex-wrap gap-2">

@@ -379,6 +379,7 @@ export const adminAuditEventTypeEnum = pgEnum("admin_audit_event_type", [
   "TOURNAMENT_COMPLETED",
   "CHAMPION_RECORDED",
   "MATCH_RESCHEDULED",
+  "MATCH_EDITED",
   "MATCH_SCHEDULE_CANCELLED",
   "MATCH_ACTIVATED",
   "MATCH_RULES_VIEWED",
