@@ -307,7 +307,7 @@ export function TournamentExperienceClient({
             href="/matches"
             className="mt-4 inline-block text-body-sm font-medium text-accent underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus"
           >
-            View all matches
+            View fixtures
           </Link>
         </section>
       ) : null}

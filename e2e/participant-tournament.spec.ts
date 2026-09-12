@@ -117,7 +117,7 @@ test.describe("Participant tournament experience", () => {
     await expect(
       page.getByRole("navigation", { name: "Participant portal sidebar" }).getByRole(
         "link",
-        { name: "MATCHES", exact: true },
+        { name: "FIXTURES", exact: true },
       ),
     ).toBeVisible();
   });
@@ -245,28 +245,29 @@ test.describe("Participant tournament experience", () => {
     await expect(page.getByText(/X:/i)).toBeVisible();
   });
 
-  test("participant nav links are present on matches page with empty state", async ({
+  test("participant nav links are present on fixtures page with empty state", async ({
     page,
     context,
   }) => {
     await seedParticipantCookie(context);
-    await page.route("**/api/participant/tournaments/event-kg926/matches", async (route) => {
+    await page.route("**/api/participant/fixtures", async (route) => {
       await route.fulfill({
         status: 200,
         contentType: "application/json",
         body: JSON.stringify({
           success: true,
-          matches: [],
-          upcoming: null,
+          upcoming: [],
+          completed: [],
         }),
       });
     });
 
     await page.goto("/matches");
     await expect(
-      page.getByRole("heading", { level: 1, name: /MY MATCHES/i }),
+      page.getByRole("heading", { level: 1, name: /FIXTURES/i }),
     ).toBeVisible();
-    await expect(page.getByText(/No matches scheduled yet/i)).toBeVisible();
+    await expect(page.getByText(/No upcoming matches/i)).toBeVisible();
+    await expect(page.getByText(/No completed matches/i)).toBeVisible();
     await expect(
       page
         .getByRole("navigation", { name: "Participant portal sidebar" })

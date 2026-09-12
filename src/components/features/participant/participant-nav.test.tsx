@@ -43,5 +43,10 @@ describe("ParticipantNavLinks", () => {
       "aria-current",
       "page",
     );
+
+    expect(screen.getByRole("link", { name: /FIXTURES/i })).toHaveAttribute(
+      "href",
+      "/matches",
+    );
   });
 });
