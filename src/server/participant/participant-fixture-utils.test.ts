@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   classifyFixtureSection,
   computeFixtureOutcome,
+  computeTournamentFixtureResult,
   formatFixtureScheduleParts,
   sortCompletedFixtures,
   sortUpcomingFixtures,
@@ -82,6 +83,32 @@ describe("computeFixtureOutcome", () => {
       opponentScore: null,
     });
     expect(loss.outcomeLabel).toBe("Loss");
+  });
+});
+
+describe("computeTournamentFixtureResult", () => {
+  it("returns neutral score labels for completed matches", () => {
+    expect(
+      computeTournamentFixtureResult({
+        matchStatus: "completed",
+        scoreA: 3,
+        scoreB: 1,
+        isDraw: false,
+        winnerParticipantId: "a",
+      }),
+    ).toBe("3 – 1");
+  });
+
+  it("returns cancelled and forfeit labels", () => {
+    expect(
+      computeTournamentFixtureResult({
+        matchStatus: "cancelled",
+        scoreA: null,
+        scoreB: null,
+        isDraw: false,
+        winnerParticipantId: null,
+      }),
+    ).toBe("Cancelled");
   });
 });
 
