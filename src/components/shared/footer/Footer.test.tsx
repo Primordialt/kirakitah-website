@@ -54,7 +54,10 @@ describe("Footer", () => {
       "href",
       "https://www.tiktok.com/@kirakitah926",
     );
-    expect(screen.queryByRole("link", { name: "YouTube" })).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "YouTube" })).toHaveAttribute(
+      "href",
+      "https://youtube.com/@Kirakitah926",
+    );
     expect(screen.getByRole("link", { name: "Privacy Policy" })).toHaveAttribute(
       "href",
       "/privacy",

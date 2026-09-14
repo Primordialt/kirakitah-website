@@ -97,6 +97,7 @@ export interface ApplyToTournamentBody {
     mediaConsent: true;
   };
   socialFollowAttestation: true;
+  youtubeSubscriptionAttested: true;
 }
 
 export async function applyParticipantToTournament(input: {
@@ -319,6 +320,7 @@ export async function applyParticipantToTournament(input: {
     await insertPendingSocialFollows({
       applicationId,
       handles: input.body.socialHandles ?? {},
+      youtubeSubscriptionAttested: input.body.youtubeSubscriptionAttested,
     });
 
     if (profile.guardian) {

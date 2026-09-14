@@ -8,7 +8,7 @@ import {
   type TournamentEligibilityRulesConfig,
 } from "@/server/tournament/eligibility/eligibility-types";
 
-/** Default KG926 eligibility configuration (kg926-v3). */
+/** Default KG926 eligibility configuration (kg926-v4). */
 export const DEFAULT_KG926_ELIGIBILITY_RULES: TournamentEligibilityRulesConfig = {
   minimumAge: 10,
   emailVerificationRequired: false,

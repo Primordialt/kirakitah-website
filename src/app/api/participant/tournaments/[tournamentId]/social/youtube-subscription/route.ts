@@ -4,17 +4,14 @@ import { resolveTournamentId } from "@/lib/tournament/resolve-id";
 import { apiError } from "@/server/errors";
 import { isRegistrationBackendConfigured } from "@/server/env";
 import {
-  ApplicationGateError,
-  applyParticipantToTournament,
   assertParticipantCsrf,
   ParticipantAuthenticationError,
   requireParticipantApiSession,
 } from "@/server/participant";
 import {
-  DuplicateRegistrationError,
-  RateLimitError,
-} from "@/server/registration/create-application";
-import { RegistrationGateError } from "@/server/registration/registration-gate";
+  submitYouTubeSubscriptionAttestation,
+  YouTubeSubscriptionAttestationError,
+} from "@/server/participant/youtube-subscription-attestation";
 import { API_SECURITY_HEADERS } from "@/server/security/api";
 import {
   getOrCreateRequestId,
@@ -23,31 +20,9 @@ import {
 
 export const runtime = "nodejs";
 
-const applySchema = z.object({
-  game: z.string().min(1),
-  platform: z.string().min(1),
-  gamingProfile: z.string().max(500).optional(),
-  timezone: z.string().min(1),
-  availability: z.array(z.string().min(1)).min(1),
-  socialHandles: z.record(z.string()).optional(),
-  socialFollowAttestation: z.literal(true),
-  youtubeSubscriptionAttested: z.literal(true),
-  consents: z.object({
-    rules: z.literal(true),
-    terms: z.literal(true),
-    privacy: z.literal(true),
-    codeOfConduct: z.literal(true),
-    mediaConsent: z.literal(true),
-  }),
+const bodySchema = z.object({
+  youtubeChannel: z.string().max(200).optional(),
 });
-
-function getClientIp(request: Request): string | null {
-  const forwarded = request.headers.get("x-forwarded-for");
-  if (forwarded) {
-    return forwarded.split(",")[0]?.trim() ?? null;
-  }
-  return request.headers.get("x-real-ip");
-}
 
 export async function POST(
   request: Request,
@@ -91,10 +66,10 @@ export async function POST(
       });
     }
 
-    const parsed = applySchema.safeParse(body);
+    const parsed = bodySchema.safeParse(body);
     if (!parsed.success) {
       return NextResponse.json(
-        apiError("VALIDATION_ERROR", "Invalid tournament application."),
+        apiError("VALIDATION_ERROR", "Invalid YouTube subscription attestation."),
         {
           status: 400,
           headers: { ...API_SECURITY_HEADERS, ...requestIdHeaders(requestId) },
@@ -102,24 +77,21 @@ export async function POST(
       );
     }
 
-    const result = await applyParticipantToTournament({
+    const result = await submitYouTubeSubscriptionAttestation({
       accountId: session.user.id,
       tournamentId,
-      body: parsed.data,
-      clientIp: getClientIp(request),
-      requestId,
+      youtubeChannel: parsed.data.youtubeChannel,
     });
 
     return NextResponse.json(
       {
         success: true,
-        referenceId: result.referenceId,
-        status: result.status,
-        contactVerification: result.contactVerification,
-        requestId,
+        socialFollowStatus: result.socialFollowStatus,
+        message:
+          "YouTube subscription attestation recorded. Manual review is required before verification.",
       },
       {
-        status: 201,
+        status: 200,
         headers: { ...API_SECURITY_HEADERS, ...requestIdHeaders(requestId) },
       },
     );
@@ -130,32 +102,33 @@ export async function POST(
         headers: { ...API_SECURITY_HEADERS, ...requestIdHeaders(requestId) },
       });
     }
-    if (error instanceof ApplicationGateError) {
-      return NextResponse.json(apiError(error.code, error.message), {
-        status: error.status,
+
+    if (error instanceof YouTubeSubscriptionAttestationError) {
+      const status =
+        error.code === "NOT_FOUND"
+          ? 404
+          : error.code === "RATE_LIMITED"
+            ? 429
+            : error.code === "ALREADY_VERIFIED"
+              ? 409
+              : 403;
+      const apiCode =
+        error.code === "NOT_FOUND"
+          ? "NOT_FOUND"
+          : error.code === "RATE_LIMITED"
+            ? "RATE_LIMITED"
+            : error.code === "ALREADY_VERIFIED"
+              ? "CONFLICT"
+              : "FORBIDDEN";
+      return NextResponse.json(apiError(apiCode, error.message), {
+        status,
         headers: { ...API_SECURITY_HEADERS, ...requestIdHeaders(requestId) },
       });
     }
-    if (error instanceof RegistrationGateError) {
-      return NextResponse.json(apiError(error.code, error.message), {
-        status: error.status,
-        headers: { ...API_SECURITY_HEADERS, ...requestIdHeaders(requestId) },
-      });
-    }
-    if (error instanceof DuplicateRegistrationError) {
-      return NextResponse.json(apiError(error.code, error.message), {
-        status: 409,
-        headers: { ...API_SECURITY_HEADERS, ...requestIdHeaders(requestId) },
-      });
-    }
-    if (error instanceof RateLimitError) {
-      return NextResponse.json(apiError("RATE_LIMITED", error.message), {
-        status: 429,
-        headers: { ...API_SECURITY_HEADERS, ...requestIdHeaders(requestId) },
-      });
-    }
+
+    console.error("[participant/youtube-subscription]", error);
     return NextResponse.json(
-      apiError("INTERNAL_ERROR", "Unable to submit tournament application."),
+      apiError("INTERNAL_ERROR", "Unable to record YouTube subscription attestation."),
       {
         status: 500,
         headers: { ...API_SECURITY_HEADERS, ...requestIdHeaders(requestId) },

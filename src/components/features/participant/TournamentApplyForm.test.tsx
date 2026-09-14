@@ -148,6 +148,11 @@ async function advanceToReview() {
       name: /I confirm that I follow KIRAKITAH/i,
     }),
   );
+  fireEvent.click(
+    screen.getByRole("checkbox", {
+      name: /I have subscribed to KIRAKITAH on YouTube/i,
+    }),
+  );
   fireEvent.click(screen.getByRole("button", { name: /^Continue$/i }));
 }
 

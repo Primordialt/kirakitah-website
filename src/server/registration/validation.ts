@@ -5,6 +5,10 @@ import {
   requiresGuardian,
 } from "@/domain/registration";
 import { TOURNAMENT_EVENT_ID } from "@/config/competition";
+import {
+  REQUIRED_FOLLOW_ACCOUNTS,
+  REQUIRED_SUBSCRIPTION_ACCOUNTS,
+} from "@/config/social";
 import type { IdentificationType } from "@/lib/identification";
 import {
   normalizeIdentificationNumber,
@@ -37,6 +41,7 @@ export interface ParsedRegistrationRequest {
   availability: string[];
   socialHandles?: Record<string, string>;
   socialFollowAttestation: true;
+  youtubeSubscriptionAttested: true;
   guardian?: z.infer<typeof guardianSchema>;
   consents: {
     rules: true;
@@ -117,6 +122,7 @@ export async function parseRegistrationFormData(
   let availability: string[] = [];
   let socialHandles: Record<string, string> | undefined;
   let socialFollowAttestation: true | undefined;
+  let youtubeSubscriptionAttested: true | undefined;
   let guardian: z.infer<typeof guardianSchema> | undefined;
   let consents: ParsedRegistrationRequest["consents"] | undefined;
   let eventId = "";
@@ -180,6 +186,15 @@ export async function parseRegistrationFormData(
       socialAttestationRaw === "1"
     ) {
       socialFollowAttestation = true;
+    }
+
+    const youtubeAttestationRaw = formData.get("youtubeSubscriptionAttested");
+    if (
+      youtubeAttestationRaw === "true" ||
+      youtubeAttestationRaw === "on" ||
+      youtubeAttestationRaw === "1"
+    ) {
+      youtubeSubscriptionAttested = true;
     }
 
     const guardianRaw = formData.get("guardian");
@@ -263,27 +278,37 @@ export async function parseRegistrationFormData(
     consents = consentsResult.data;
   }
 
-  const requiredSocialPlatforms = ["x", "instagram", "tiktok"] as const;
   const normalizedSocialHandles: Record<string, string> = {};
-  for (const platform of requiredSocialPlatforms) {
-    const handle = socialHandles?.[platform]?.trim();
+  for (const account of REQUIRED_FOLLOW_ACCOUNTS) {
+    const handle = socialHandles?.[account.platform]?.trim();
     if (!handle) {
-      const label =
-        platform === "x"
-          ? "X username is required"
-          : platform === "instagram"
-            ? "Instagram username is required"
-            : "TikTok username is required";
-      addIssue(`socialHandles.${platform}`, label);
+      addIssue(
+        `socialHandles.${account.platform}`,
+        `${account.label} username is required`,
+      );
     } else {
-      normalizedSocialHandles[platform] = handle;
+      normalizedSocialHandles[account.platform] = handle;
+    }
+  }
+
+  for (const account of REQUIRED_SUBSCRIPTION_ACCOUNTS) {
+    const channel = socialHandles?.[account.platform]?.trim();
+    if (channel) {
+      normalizedSocialHandles[account.platform] = channel;
     }
   }
 
   if (socialFollowAttestation !== true) {
     addIssue(
       "socialFollowAttestation",
-      "Confirm that you follow KIRAKITAH on all official social platforms",
+      "Confirm that you follow KIRAKITAH on the required social platforms",
+    );
+  }
+
+  if (youtubeSubscriptionAttested !== true) {
+    addIssue(
+      "youtubeSubscriptionAttested",
+      "Confirm that you have subscribed to KIRAKITAH on YouTube",
     );
   }
 
@@ -316,7 +341,13 @@ export async function parseRegistrationFormData(
     addIssue("game", "Game must be eFootball Mobile");
   }
 
-  if (details.length > 0 || !consents || !playerPhoto || socialFollowAttestation !== true) {
+  if (
+    details.length > 0 ||
+    !consents ||
+    !playerPhoto ||
+    socialFollowAttestation !== true ||
+    youtubeSubscriptionAttested !== true
+  ) {
     throw new z.ZodError(details);
   }
 
@@ -347,6 +378,7 @@ export async function parseRegistrationFormData(
     availability,
     socialHandles: normalizedSocialHandles,
     socialFollowAttestation: true,
+    youtubeSubscriptionAttested: true,
     guardian,
     consents,
     eventId,

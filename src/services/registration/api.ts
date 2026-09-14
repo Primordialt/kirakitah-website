@@ -57,11 +57,18 @@ function buildRegistrationFormData(
     x: data.socialHandles.x,
     instagram: data.socialHandles.instagram,
     tiktok: data.socialHandles.tiktok,
+    ...(data.socialHandles.youtube?.trim()
+      ? { youtube: data.socialHandles.youtube.trim() }
+      : {}),
   };
   formData.append("socialHandles", JSON.stringify(socialHandles));
   formData.append(
     "socialFollowAttestation",
     data.socialFollowAttestation ? "true" : "false",
+  );
+  formData.append(
+    "youtubeSubscriptionAttested",
+    data.youtubeSubscriptionAttested ? "true" : "false",
   );
 
   if (options.includeGuardian && data.guardian) {

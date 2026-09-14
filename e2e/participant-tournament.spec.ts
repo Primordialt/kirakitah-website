@@ -210,10 +210,24 @@ test.describe("Participant tournament experience", () => {
               submittedAt: "2026-01-01T00:00:00.000Z",
               identityLabel: "Pending review",
               socialLabel: "Pending review",
+              needsYouTubeSubscriptionAttestation: false,
               socialPlatforms: [
-                { platformLabel: "X", label: "Pending review" },
-                { platformLabel: "Instagram", label: "Pending review" },
-                { platformLabel: "TikTok", label: "Pending review" },
+                { platform: "x", platformLabel: "X", label: "Pending review" },
+                {
+                  platform: "instagram",
+                  platformLabel: "Instagram",
+                  label: "Pending review",
+                },
+                {
+                  platform: "tiktok",
+                  platformLabel: "TikTok",
+                  label: "Pending review",
+                },
+                {
+                  platform: "youtube",
+                  platformLabel: "YouTube",
+                  label: "Pending review",
+                },
               ],
             },
             eligibility: {

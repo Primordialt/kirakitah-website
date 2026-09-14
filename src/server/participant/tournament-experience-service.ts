@@ -44,6 +44,7 @@ import {
   PARTICIPANT_VISIBLE_AUDIT_EVENT_TYPES,
   PLATFORM_LABELS,
 } from "@/lib/participant/tournament-status";
+import { applicationNeedsYouTubeSubscriptionAttestation } from "@/server/registration/social-follow";
 
 export type ParticipantApplicationView = {
   referenceId: string;
@@ -62,6 +63,7 @@ export type ParticipantApplicationView = {
     status: string;
     label: string;
   }>;
+  needsYouTubeSubscriptionAttestation: boolean;
 };
 
 export type ParticipantTournamentSummary = {
@@ -156,6 +158,7 @@ function toApplicationView(
   socialRows: Array<{
     platform: string;
     verificationStatus: string;
+    applicantHandle: string;
   }>,
 ): ParticipantApplicationView {
   const appPresentation = getApplicationStatusPresentation(application.status);
@@ -188,6 +191,8 @@ function toApplicationView(
         label: platformPresentation.label,
       };
     }),
+    needsYouTubeSubscriptionAttestation:
+      applicationNeedsYouTubeSubscriptionAttestation(socialRows),
   };
 }
 
@@ -257,6 +262,7 @@ export async function getParticipantTournamentExperience(
       .select({
         platform: registrationSocialFollows.platform,
         verificationStatus: registrationSocialFollows.verificationStatus,
+        applicantHandle: registrationSocialFollows.applicantHandle,
       })
       .from(registrationSocialFollows)
       .where(eq(registrationSocialFollows.applicationId, ctx.application.id));

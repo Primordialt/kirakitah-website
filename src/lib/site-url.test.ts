@@ -38,4 +38,25 @@ describe("getSiteUrl", () => {
     const { getSiteUrl } = await import("./site-url");
     expect(getSiteUrl()).toBe("http://localhost:3000");
   });
+
+  it("ignores malformed NEXT_PUBLIC_SITE_URL without a protocol", async () => {
+    vi.stubEnv("NEXT_PUBLIC_SITE_URL", "localhost:3000");
+    vi.stubEnv("VERCEL_URL", "");
+    const { getSiteUrl } = await import("./site-url");
+    expect(getSiteUrl()).toBe("http://localhost:3000");
+  });
+
+  it("ignores whitespace-only NEXT_PUBLIC_SITE_URL", async () => {
+    vi.stubEnv("NEXT_PUBLIC_SITE_URL", "   ");
+    vi.stubEnv("VERCEL_URL", "");
+    const { getSiteUrl } = await import("./site-url");
+    expect(getSiteUrl()).toBe("http://localhost:3000");
+  });
+
+  it("keeps production canonical when explicit URL is malformed on production", async () => {
+    vi.stubEnv("NEXT_PUBLIC_SITE_URL", "www.kirakitah.com");
+    vi.stubEnv("VERCEL_ENV", "production");
+    const { getSiteUrl } = await import("./site-url");
+    expect(getSiteUrl()).toBe("https://www.kirakitah.com");
+  });
 });

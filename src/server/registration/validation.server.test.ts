@@ -36,6 +36,7 @@ function buildValidFormData(): FormData {
     }),
   );
   formData.append("socialFollowAttestation", "true");
+  formData.append("youtubeSubscriptionAttested", "true");
   formData.append(
     "consents",
     JSON.stringify({

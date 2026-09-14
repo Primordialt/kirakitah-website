@@ -1,4 +1,5 @@
 const CANONICAL_PRODUCTION_URL = "https://www.kirakitah.com";
+const LOCAL_DEV_URL = "http://localhost:3000";
 
 function normalizeSiteUrl(url: string): string {
   const trimmed = url.replace(/\/$/, "");
@@ -8,20 +9,40 @@ function normalizeSiteUrl(url: string): string {
   return trimmed;
 }
 
+function isValidAbsoluteHttpUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === "http:" || parsed.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
+function resolveExplicitSiteUrl(): string | null {
+  const raw = process.env.NEXT_PUBLIC_SITE_URL?.trim();
+  if (!raw) return null;
+
+  const normalized = normalizeSiteUrl(raw);
+  return isValidAbsoluteHttpUrl(normalized) ? normalized : null;
+}
+
 /**
  * Resolves the public site URL for metadata, canonical links, and sitemaps.
- * Prefers NEXT_PUBLIC_SITE_URL, then production canonical, then Vercel preview URL.
+ * Prefers a valid NEXT_PUBLIC_SITE_URL, then production canonical, then Vercel preview URL.
  */
 export function getSiteUrl(): string {
-  const explicit = process.env.NEXT_PUBLIC_SITE_URL;
-  if (explicit) return normalizeSiteUrl(explicit);
+  const explicit = resolveExplicitSiteUrl();
+  if (explicit) return explicit;
 
   if (process.env.VERCEL_ENV === "production") {
     return CANONICAL_PRODUCTION_URL;
   }
 
   const vercelUrl = process.env.VERCEL_URL?.replace(/\/$/, "");
-  if (vercelUrl) return `https://${vercelUrl}`;
+  if (vercelUrl) {
+    const candidate = `https://${vercelUrl}`;
+    if (isValidAbsoluteHttpUrl(candidate)) return candidate;
+  }
 
-  return "http://localhost:3000";
+  return LOCAL_DEV_URL;
 }

@@ -135,7 +135,12 @@ async function fillRequiredRegistrationFields(user: ReturnType<typeof userEvent.
   await user.type(screen.getByLabelText(/Instagram username/i), "test_ig");
   await user.type(screen.getByLabelText(/TikTok username/i), "test_tt");
   await user.click(
-    screen.getByLabelText(/I confirm that I follow KIRAKITAH on all three official social platforms/i),
+    screen.getByLabelText(
+      /I confirm that I follow KIRAKITAH on X, Instagram and TikTok/i,
+    ),
+  );
+  await user.click(
+    screen.getByLabelText(/I have subscribed to KIRAKITAH on YouTube/i),
   );
   await user.selectOptions(screen.getByLabelText(/Mobile platform/i), "android");
   await user.selectOptions(screen.getByLabelText(/Time zone/i), "Africa/Lagos");
@@ -187,6 +192,7 @@ describe("registration domain", () => {
         tiktok: "test_tt",
       },
       socialFollowAttestation: true,
+      youtubeSubscriptionAttested: true,
       consents: {
         rules: true,
         terms: true,
@@ -226,6 +232,7 @@ describe("registration domain", () => {
           x: "test_x",
         },
         socialFollowAttestation: true,
+        youtubeSubscriptionAttested: true,
         consents: {
           rules: true,
           terms: true,

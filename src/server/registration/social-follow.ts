@@ -1,6 +1,9 @@
 import { and, eq } from "drizzle-orm";
 import {
+  getRequiredSocialAccount,
   REQUIRED_SOCIAL_PLATFORMS,
+  YOUTUBE_SUBSCRIPTION_ATTESTED_HANDLE,
+  YOUTUBE_SUBSCRIPTION_PENDING_HANDLE,
   type SocialPlatform,
 } from "@/config/social";
 import { getDb } from "@/server/db";
@@ -45,12 +48,42 @@ export function deriveApplicationSocialFollowStatus(
   return "pending_review";
 }
 
+function resolveYouTubeApplicantHandle(
+  channel: string | undefined,
+  subscriptionAttested: boolean,
+): string {
+  const trimmedChannel = channel?.trim();
+  if (trimmedChannel) {
+    return trimmedChannel;
+  }
+  if (subscriptionAttested) {
+    return YOUTUBE_SUBSCRIPTION_ATTESTED_HANDLE;
+  }
+  throw new Error("Missing YouTube subscription attestation");
+}
+
 export async function insertPendingSocialFollows(input: {
   applicationId: string;
   handles: Record<string, string>;
+  youtubeSubscriptionAttested?: boolean;
 }): Promise<void> {
   const db = getDb();
   const rows = REQUIRED_SOCIAL_PLATFORMS.map((platform) => {
+    const account = getRequiredSocialAccount(platform);
+
+    if (account.requirementKind === "subscription") {
+      const applicantHandle = resolveYouTubeApplicantHandle(
+        input.handles[platform],
+        input.youtubeSubscriptionAttested === true,
+      );
+      return {
+        applicationId: input.applicationId,
+        platform,
+        applicantHandle,
+        verificationStatus: "pending" as const,
+      };
+    }
+
     const handle = input.handles[platform]?.trim();
     if (!handle) {
       throw new Error(`Missing social handle for ${platform}`);
@@ -64,6 +97,79 @@ export async function insertPendingSocialFollows(input: {
   });
 
   await db.insert(registrationSocialFollows).values(rows);
+}
+
+export function applicationNeedsYouTubeSubscriptionAttestation(
+  rows: Array<{ platform: string; applicantHandle: string }>,
+): boolean {
+  const youtube = rows.find((row) => row.platform === "youtube");
+  if (!youtube) {
+    return true;
+  }
+  return youtube.applicantHandle === YOUTUBE_SUBSCRIPTION_PENDING_HANDLE;
+}
+
+export async function attestYouTubeSubscription(input: {
+  applicationId: string;
+  youtubeChannel?: string;
+}): Promise<{ socialFollowStatus: ApplicationSocialFollowStatus }> {
+  const db = getDb();
+  const channel = input.youtubeChannel?.trim();
+  const updatedAt = new Date().toISOString();
+  const applicantHandle = channel || YOUTUBE_SUBSCRIPTION_ATTESTED_HANDLE;
+
+  const [existing] = await db
+    .select()
+    .from(registrationSocialFollows)
+    .where(
+      and(
+        eq(registrationSocialFollows.applicationId, input.applicationId),
+        eq(registrationSocialFollows.platform, "youtube"),
+      ),
+    )
+    .limit(1);
+
+  if (existing?.verificationStatus === "verified") {
+    throw new Error("YouTube subscription is already verified.");
+  }
+
+  if (existing) {
+    await db
+      .update(registrationSocialFollows)
+      .set({
+        applicantHandle,
+        verificationStatus: "pending",
+        updatedAt,
+      })
+      .where(eq(registrationSocialFollows.id, existing.id));
+  } else {
+    await db.insert(registrationSocialFollows).values({
+      applicationId: input.applicationId,
+      platform: "youtube",
+      applicantHandle,
+      verificationStatus: "pending",
+    });
+  }
+
+  const allRows = await listSocialFollowsForApplication(input.applicationId);
+  const requiredStatuses = REQUIRED_SOCIAL_PLATFORMS.map((platform) => {
+    const row = allRows.find((item) => item.platform === platform);
+    return row?.verificationStatus ?? ("pending" as const);
+  });
+  const socialFollowStatus = deriveApplicationSocialFollowStatus(
+    requiredStatuses,
+    REQUIRED_SOCIAL_PLATFORMS.length,
+  );
+
+  await db
+    .update(registrationApplications)
+    .set({
+      socialFollowStatus,
+      updatedAt,
+    })
+    .where(eq(registrationApplications.id, input.applicationId));
+
+  return { socialFollowStatus };
 }
 
 export async function listSocialFollowsForApplication(
@@ -176,6 +282,8 @@ export async function submitSocialFollowReview(input: {
     metadata: {
       platform: input.platform,
       action: input.decision,
+      previousStatus: row.verificationStatus,
+      newStatus: platformStatus,
       rulesVersion: KG926_ELIGIBILITY_RULES_VERSION,
     },
   });
@@ -193,6 +301,8 @@ export async function submitSocialFollowReview(input: {
     metadata: {
       platform: input.platform,
       action: input.decision,
+      previousStatus: row.verificationStatus,
+      newStatus: platformStatus,
       rulesVersion: KG926_ELIGIBILITY_RULES_VERSION,
     },
   });

@@ -13,7 +13,7 @@ describe("EligibilityRequirements", () => {
     expect(screen.getByText("10+")).toBeInTheDocument();
     expect(screen.getByText(/Required for ages 10–17/i)).toBeInTheDocument();
     expect(screen.getByText("Manual review")).toBeInTheDocument();
-    expect(screen.getByText("X + Instagram + TikTok")).toBeInTheDocument();
+    expect(screen.getByText("X + Instagram + TikTok + YouTube")).toBeInTheDocument();
     expect(screen.getByText(/Manual review and approval/i)).toBeInTheDocument();
     expect(
       screen.getByText(/Final participant selection is separate/i),
@@ -21,6 +21,6 @@ describe("EligibilityRequirements", () => {
     expect(
       screen.getByText(/Application submission is not the same as eligibility/i),
     ).toBeInTheDocument();
-    expect(screen.queryByText(/YouTube/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/YouTube/i)).toBeInTheDocument();
   });
 });
