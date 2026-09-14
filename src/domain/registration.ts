@@ -56,8 +56,10 @@ export interface RegistrationSubmission {
     x: string;
     instagram: string;
     tiktok: string;
+    youtube?: string;
   };
   socialFollowAttestation: true;
+  youtubeSubscriptionAttested: true;
   guardian?: GuardianInfo;
   consents: RegistrationConsents;
   eventId: string;
@@ -184,11 +186,18 @@ export const registrationSchema = z
       x: z.string().min(1, "X username is required"),
       instagram: z.string().min(1, "Instagram username is required"),
       tiktok: z.string().min(1, "TikTok username is required"),
+      youtube: z.string().optional(),
     }),
     socialFollowAttestation: z.literal(true, {
       errorMap: () => ({
         message:
-          "Confirm that you follow KIRAKITAH on all three official social platforms",
+          "Confirm that you follow KIRAKITAH on the required social platforms",
+      }),
+    }),
+    youtubeSubscriptionAttested: z.literal(true, {
+      errorMap: () => ({
+        message:
+          "Confirm that you have subscribed to KIRAKITAH on YouTube",
       }),
     }),
     guardian: guardianSchema.optional(),
@@ -264,8 +273,12 @@ export function toRegistrationSubmission(
       x: data.socialHandles.x.trim(),
       instagram: data.socialHandles.instagram.trim(),
       tiktok: data.socialHandles.tiktok.trim(),
+      ...(data.socialHandles.youtube?.trim()
+        ? { youtube: data.socialHandles.youtube.trim() }
+        : {}),
     },
     socialFollowAttestation: true,
+    youtubeSubscriptionAttested: true,
     guardian: options.includeGuardian ? data.guardian : undefined,
     consents: data.consents,
     eventId: data.eventId,

@@ -8,8 +8,9 @@ import {
   registrationPlatforms,
   registrationTimezones,
 } from "@/config/esports";
+import { YouTubeSubscriptionFields } from "@/components/features/social/YouTubeSubscriptionFields";
 import { followKirakitahCopy } from "@/config/eligibility-requirements";
-import { REQUIRED_SOCIAL_ACCOUNTS } from "@/config/social";
+import { REQUIRED_FOLLOW_ACCOUNTS } from "@/config/social";
 import { apiErrorMessage, participantFetch } from "@/lib/participant/api";
 import type { ApplicationPreflight } from "@/server/participant/application-preflight";
 import Link from "next/link";
@@ -51,8 +52,11 @@ export function TournamentApplyForm({
     x: "",
     instagram: "",
     tiktok: "",
+    youtube: "",
   });
   const [socialFollowAttestation, setSocialFollowAttestation] = useState(false);
+  const [youtubeSubscriptionAttested, setYoutubeSubscriptionAttested] =
+    useState(false);
   const [consents, setConsents] = useState({
     rules: false,
     terms: false,
@@ -108,13 +112,16 @@ export function TournamentApplyForm({
       return null;
     }
     if (id === "socials") {
-      for (const account of REQUIRED_SOCIAL_ACCOUNTS) {
+      for (const account of REQUIRED_FOLLOW_ACCOUNTS) {
         if (!socialHandles[account.platform]?.trim()) {
           return `Enter your ${account.label} username.`;
         }
       }
       if (!socialFollowAttestation) {
-        return "Confirm that you follow KIRAKITAH on the required platforms.";
+        return "Confirm that you follow KIRAKITAH on X, Instagram and TikTok.";
+      }
+      if (!youtubeSubscriptionAttested) {
+        return "Confirm that you have subscribed to KIRAKITAH on YouTube.";
       }
       return null;
     }
@@ -178,6 +185,7 @@ export function TournamentApplyForm({
         availability,
         socialHandles,
         socialFollowAttestation: true,
+        youtubeSubscriptionAttested: true,
         consents: {
           rules: true,
           terms: true,
@@ -417,10 +425,11 @@ export function TournamentApplyForm({
               {followKirakitahCopy.supporting}
             </p>
             <p className="text-body-sm text-text-muted">
-              Your follows will be manually reviewed before participation.
+              Your follows and YouTube subscription will be manually reviewed
+              before participation.
             </p>
             <ul className="space-y-3">
-              {REQUIRED_SOCIAL_ACCOUNTS.map((account) => (
+              {REQUIRED_FOLLOW_ACCOUNTS.map((account) => (
                 <li key={account.platform}>
                   <a
                     href={account.href}
@@ -433,7 +442,7 @@ export function TournamentApplyForm({
                 </li>
               ))}
             </ul>
-            {REQUIRED_SOCIAL_ACCOUNTS.map((account) => (
+            {REQUIRED_FOLLOW_ACCOUNTS.map((account) => (
               <Input
                 key={account.platform}
                 label={account.handleFieldLabel}
@@ -456,6 +465,14 @@ export function TournamentApplyForm({
               onChange={(event) =>
                 setSocialFollowAttestation(event.target.checked)
               }
+            />
+            <YouTubeSubscriptionFields
+              channelValue={socialHandles.youtube ?? ""}
+              onChannelChange={(value) =>
+                setSocialHandles((prev) => ({ ...prev, youtube: value }))
+              }
+              attested={youtubeSubscriptionAttested}
+              onAttestedChange={setYoutubeSubscriptionAttested}
             />
           </fieldset>
         ) : null}
@@ -547,15 +564,22 @@ export function TournamentApplyForm({
                 </Button>
               </div>
               <ul className="space-y-2 text-body-sm text-text-secondary">
-                {REQUIRED_SOCIAL_ACCOUNTS.map((account) => (
+                {REQUIRED_FOLLOW_ACCOUNTS.map((account) => (
                   <li key={account.platform}>
                     {account.label}: Confirmed follow attestation · @
                     {socialHandles[account.platform]}
                   </li>
                 ))}
+                <li>
+                  YouTube: Subscription attested
+                  {socialHandles.youtube?.trim()
+                    ? ` · ${socialHandles.youtube.trim()}`
+                    : ""}
+                </li>
               </ul>
               <p className="text-body-sm text-text-muted">
-                Follows are manually reviewed. This is not automatic verification.
+                Social requirements are manually reviewed. This is not automatic
+                verification.
               </p>
             </section>
 

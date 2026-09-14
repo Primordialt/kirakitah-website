@@ -1,12 +1,10 @@
 /**
  * Official KIRAKITAH social platforms — single source of truth.
  *
- * KG926 required follow platforms: X, Instagram, TikTok.
- * YouTube remains in the platform model for future use but is NOT required
- * until an official YouTube URL is explicitly provided.
+ * KG926 required platforms: X, Instagram, TikTok, YouTube (subscription).
  */
 
-/** All known platform keys (extensible). Includes optional future platforms. */
+/** All known platform keys (extensible). */
 export const SOCIAL_PLATFORMS = [
   "x",
   "instagram",
@@ -15,6 +13,9 @@ export const SOCIAL_PLATFORMS = [
 ] as const;
 
 export type SocialPlatform = (typeof SOCIAL_PLATFORMS)[number];
+
+/** How a required platform is verified — follow handle vs YouTube subscription. */
+export type SocialRequirementKind = "follow" | "subscription";
 
 export interface OfficialSocialAccount {
   platform: SocialPlatform;
@@ -25,11 +26,23 @@ export interface OfficialSocialAccount {
   handlePlaceholder: string;
   /** When true, required for KG926 social-follow eligibility. */
   requiredForKg926: boolean;
+  /** Follow platforms require an applicant handle; subscription uses optional channel. */
+  requirementKind: SocialRequirementKind;
 }
 
+/** Official KIRAKITAH YouTube channel for KG926 subscription requirement. */
+export const KIRAKITAH_YOUTUBE_CHANNEL_URL =
+  "https://youtube.com/@Kirakitah926" as const;
+
+/** Placeholder when an existing application awaits YouTube subscription attestation. */
+export const YOUTUBE_SUBSCRIPTION_PENDING_HANDLE = "Pending attestation";
+
+/** Recorded when a participant attests YouTube subscription — still pending manual review. */
+export const YOUTUBE_SUBSCRIPTION_ATTESTED_HANDLE =
+  "Subscription attested — pending review";
+
 /**
- * Official accounts. Required KG926 follow set = requiredForKg926 true.
- * Do not invent URLs for platforms without Product Owner confirmation.
+ * Official accounts. Required KG926 set = requiredForKg926 true.
  */
 export const OFFICIAL_SOCIAL_ACCOUNTS: readonly OfficialSocialAccount[] = [
   {
@@ -39,6 +52,7 @@ export const OFFICIAL_SOCIAL_ACCOUNTS: readonly OfficialSocialAccount[] = [
     handleFieldLabel: "X username",
     handlePlaceholder: "Your X username",
     requiredForKg926: true,
+    requirementKind: "follow",
   },
   {
     platform: "instagram",
@@ -47,6 +61,7 @@ export const OFFICIAL_SOCIAL_ACCOUNTS: readonly OfficialSocialAccount[] = [
     handleFieldLabel: "Instagram username",
     handlePlaceholder: "Your Instagram username",
     requiredForKg926: true,
+    requirementKind: "follow",
   },
   {
     platform: "tiktok",
@@ -55,19 +70,25 @@ export const OFFICIAL_SOCIAL_ACCOUNTS: readonly OfficialSocialAccount[] = [
     handleFieldLabel: "TikTok username",
     handlePlaceholder: "Your TikTok username",
     requiredForKg926: true,
+    requirementKind: "follow",
   },
   {
     platform: "youtube",
     label: "YouTube",
-    href: null,
-    handleFieldLabel: "YouTube handle / channel name",
-    handlePlaceholder: "Your YouTube handle or channel name",
-    requiredForKg926: false,
+    href: KIRAKITAH_YOUTUBE_CHANNEL_URL,
+    handleFieldLabel: "YouTube channel (optional)",
+    handlePlaceholder: "Your YouTube channel or handle (helps our team verify)",
+    requiredForKg926: true,
+    requirementKind: "subscription",
   },
 ] as const;
 
-/** KG926 required platform keys (excludes optional platforms such as YouTube). */
-export type RequiredKg926SocialPlatform = "x" | "instagram" | "tiktok";
+/** KG926 required platform keys. */
+export type RequiredKg926SocialPlatform =
+  | "x"
+  | "instagram"
+  | "tiktok"
+  | "youtube";
 
 type RequiredKg926SocialAccount = OfficialSocialAccount & {
   platform: RequiredKg926SocialPlatform;
@@ -81,7 +102,7 @@ function isRequiredKg926Account(
   return account.requiredForKg926 === true && Boolean(account.href);
 }
 
-/** Platforms applicants must follow for KG926 participation. */
+/** Platforms applicants must satisfy for KG926 participation. */
 export const REQUIRED_SOCIAL_PLATFORMS: readonly RequiredKg926SocialPlatform[] =
   OFFICIAL_SOCIAL_ACCOUNTS.filter(isRequiredKg926Account).map(
     (account) => account.platform,
@@ -89,6 +110,28 @@ export const REQUIRED_SOCIAL_PLATFORMS: readonly RequiredKg926SocialPlatform[] =
 
 export const REQUIRED_SOCIAL_ACCOUNTS: readonly RequiredKg926SocialAccount[] =
   OFFICIAL_SOCIAL_ACCOUNTS.filter(isRequiredKg926Account);
+
+/** Required platforms where the applicant must supply a social handle. */
+export const REQUIRED_FOLLOW_ACCOUNTS = REQUIRED_SOCIAL_ACCOUNTS.filter(
+  (account) => account.requirementKind === "follow",
+);
+
+/** Required subscription platforms (YouTube). */
+export const REQUIRED_SUBSCRIPTION_ACCOUNTS = REQUIRED_SOCIAL_ACCOUNTS.filter(
+  (account) => account.requirementKind === "subscription",
+);
+
+export function getRequiredSocialAccount(
+  platform: RequiredKg926SocialPlatform,
+): RequiredKg926SocialAccount {
+  const account = REQUIRED_SOCIAL_ACCOUNTS.find(
+    (item) => item.platform === platform,
+  );
+  if (!account) {
+    throw new Error(`Unknown required social platform: ${platform}`);
+  }
+  return account;
+}
 
 /** Public footer / nav — only platforms with configured official URLs. */
 export function officialSocialFooterLinks(): Array<{

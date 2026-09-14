@@ -327,13 +327,26 @@ describe("tournament admin permissions", () => {
 });
 
 describe("eligibility rules version", () => {
-  it("uses kg926-v3 as current eligibility version constant", () => {
-    expect(KG926_ELIGIBILITY_RULES_VERSION).toBe("kg926-v3");
+  it("uses kg926-v4 as current eligibility version constant", () => {
+    expect(KG926_ELIGIBILITY_RULES_VERSION).toBe("kg926-v4");
     expect(DEFAULT_KG926_ELIGIBILITY_RULES.requiredSocialPlatforms).toEqual([
       "x",
       "instagram",
       "tiktok",
+      "youtube",
     ]);
+  });
+
+  it("is not eligible when X, Instagram and TikTok are verified but YouTube is not", () => {
+    const result = evaluateWithConfig({
+      ...baseInput,
+      application: {
+        ...baseApplication,
+        socialFollowStatus: "pending_review",
+      },
+    });
+    expect(result.eligible).toBe(false);
+    expect(result.reasons).toContain("SOCIAL_FOLLOWING_NOT_VERIFIED");
   });
 
   it("rejects when social following is pending", () => {

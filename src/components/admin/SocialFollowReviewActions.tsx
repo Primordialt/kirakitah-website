@@ -2,7 +2,12 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import type { SocialPlatform } from "@/config/social";
+import {
+  KIRAKITAH_YOUTUBE_CHANNEL_URL,
+  YOUTUBE_SUBSCRIPTION_ATTESTED_HANDLE,
+  YOUTUBE_SUBSCRIPTION_PENDING_HANDLE,
+  type SocialPlatform,
+} from "@/config/social";
 
 export interface SocialFollowRow {
   platform: SocialPlatform;
@@ -73,8 +78,9 @@ export function SocialFollowReviewActions({
     <div className="space-y-4 rounded-xl border border-border bg-surface p-4">
       <h3 className="text-h3">Social following</h3>
       <p className="text-body-sm text-text-secondary">
-        Manual follow verification only. Approving social follows does not
-        approve identity or select a participant.
+        Manual verification only — including YouTube subscription review. No
+        automated social API. Approving social requirements does not approve
+        identity or select a participant.
       </p>
       <dl className="space-y-1 text-body-sm">
         <div>
@@ -102,11 +108,40 @@ export function SocialFollowReviewActions({
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div>
                   <p className="font-medium capitalize">
-                    {row.platform === "x" ? "X" : row.platform}
+                    {row.platform === "x"
+                      ? "X"
+                      : row.platform === "youtube"
+                        ? "YouTube"
+                        : row.platform}
                   </p>
-                  <p className="text-body-sm text-text-secondary">
-                    Handle: {row.applicantHandle}
-                  </p>
+                  {row.platform === "youtube" ? (
+                    <>
+                      <p className="text-body-sm text-text-secondary">
+                        Requirement: Subscribe to{" "}
+                        <a
+                          href={KIRAKITAH_YOUTUBE_CHANNEL_URL}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-accent underline-offset-2 hover:underline"
+                        >
+                          @Kirakitah926
+                        </a>
+                      </p>
+                      <p className="text-body-sm text-text-secondary">
+                        Applicant record:{" "}
+                        {row.applicantHandle ===
+                          YOUTUBE_SUBSCRIPTION_PENDING_HANDLE ||
+                        row.applicantHandle ===
+                          YOUTUBE_SUBSCRIPTION_ATTESTED_HANDLE
+                          ? row.applicantHandle
+                          : `Channel: ${row.applicantHandle}`}
+                      </p>
+                    </>
+                  ) : (
+                    <p className="text-body-sm text-text-secondary">
+                      Handle: {row.applicantHandle}
+                    </p>
+                  )}
                   <p className="text-body-sm text-text-muted">
                     Status: {row.verificationStatus}
                     {row.reviewedAt

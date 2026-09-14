@@ -95,7 +95,7 @@ describe("EsportsPage", () => {
     expect(screen.getAllByText("10+").length).toBeGreaterThan(0);
     expect(screen.getByText(/Required for ages 10–17/i)).toBeInTheDocument();
     expect(screen.getAllByText("Manual review").length).toBeGreaterThan(0);
-    expect(screen.getByText("X + Instagram + TikTok")).toBeInTheDocument();
+    expect(screen.getByText("X + Instagram + TikTok + YouTube")).toBeInTheDocument();
     expect(
       screen.getByText(/Final participant selection is separate/i),
     ).toBeInTheDocument();
@@ -106,10 +106,12 @@ describe("EsportsPage", () => {
       ).length,
     ).toBeGreaterThan(0);
     expect(
-      screen.getByText(/Your follows are manually verified by the KIRAKITAH team/i),
+      screen.getByText(
+        /Your follows and YouTube subscription are manually verified by the KIRAKITAH team/i,
+      ),
     ).toBeInTheDocument();
 
-    expect(screen.queryByText(/YouTube \+/i)).not.toBeInTheDocument();
+    expect(screen.getAllByText(/YouTube/i).length).toBeGreaterThan(0);
     expect(
       screen.queryByText(/follows are automatically verified/i),
     ).not.toBeInTheDocument();

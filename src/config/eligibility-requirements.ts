@@ -1,5 +1,9 @@
 import { COMPETITION_NAME } from "@/config/competition";
-import { REQUIRED_SOCIAL_ACCOUNTS } from "@/config/social";
+import {
+  KIRAKITAH_YOUTUBE_CHANNEL_URL,
+  REQUIRED_FOLLOW_ACCOUNTS,
+  REQUIRED_SOCIAL_ACCOUNTS,
+} from "@/config/social";
 
 /** Public-facing KG926 eligibility messaging — frontend clarity only. */
 export const eligibilitySummaryItems = [
@@ -44,13 +48,13 @@ export const howToParticipateSteps = [
   {
     step: "03",
     title: "FOLLOW KIRAKITAH",
-    description: `Follow KIRAKITAH on ${REQUIRED_SOCIAL_ACCOUNTS.map((account) => account.label).join(", ")}.`,
+    description: `Follow KIRAKITAH on ${REQUIRED_FOLLOW_ACCOUNTS.map((account) => account.label).join(", ")} and subscribe on YouTube.`,
   },
   {
     step: "04",
     title: "COMPLETE REVIEW",
     description:
-      "Our team reviews your application, identity information and social follow status.",
+      "Our team reviews your application, identity information and social requirements.",
   },
   {
     step: "05",
@@ -68,11 +72,12 @@ export const howToParticipateSteps = [
 
 export const socialRequirementCopy = {
   title: "REQUIRED BEFORE PARTICIPATION",
-  lead: "You must follow KIRAKITAH on all three official social platforms:",
+  lead: "You must follow KIRAKITAH on all official social platforms and subscribe on YouTube:",
   platforms: REQUIRED_SOCIAL_ACCOUNTS,
   points: [
-    "Your follows are manually verified by the KIRAKITAH team.",
-    "Following the accounts is required for tournament participation.",
+    "Your follows and YouTube subscription are manually verified by the KIRAKITAH team.",
+    "Completing these requirements is required for tournament participation.",
+    "Self-reported attestation is not automatic verification.",
   ],
   applicationNote:
     "Submitting an application does not automatically qualify you for the tournament.",
@@ -84,11 +89,12 @@ export const beforeYouApplyCopy = {
   requirements: [
     "Age 10 or older",
     "Parent/guardian details for applicants aged 10–17",
-    `Following KIRAKITAH on ${REQUIRED_SOCIAL_ACCOUNTS.map((account) => account.label).join(", ")}`,
-    "Manual review of your application, identity and social-follow status",
+    `Following KIRAKITAH on ${REQUIRED_FOLLOW_ACCOUNTS.map((account) => account.label).join(", ")}`,
+    "Subscribing to the official KIRAKITAH YouTube channel",
+    "Manual review of your application, identity and social requirements",
   ],
   participationNote:
-    "You can submit your application before social verification is completed, but you cannot participate in the tournament until all required social follows have been verified.",
+    "You can submit your application before social verification is completed, but you cannot participate in the tournament until all required social requirements have been verified.",
   qualificationNote:
     "Submitting an application does not automatically qualify you for the tournament.",
 } as const;
@@ -96,11 +102,28 @@ export const beforeYouApplyCopy = {
 export const followKirakitahCopy = {
   legend: "FOLLOW KIRAKITAH",
   supporting:
-    "Following KIRAKITAH on all three official platforms below is required before tournament participation.",
+    "Following KIRAKITAH on the official platforms below and subscribing on YouTube are required before tournament participation.",
   reviewNote:
-    "Your social follows will be manually verified by the KIRAKITAH team.",
+    "Your social follows and YouTube subscription will be manually verified by the KIRAKITAH team.",
   attestationLabel:
-    "I confirm that I follow KIRAKITAH on all three official social platforms listed above.",
+    "I confirm that I follow KIRAKITAH on X, Instagram and TikTok as listed above.",
   attestationDescription:
     "Required before tournament participation. This attestation is not automatic verification.",
 } as const;
+
+export const youtubeSubscriptionCopy = {
+  title: "YOUTUBE SUBSCRIPTION",
+  lead: "Subscribe to the official KIRAKITAH YouTube channel to complete your KG926 eligibility requirements.",
+  channelLabel: "KIRAKITAH",
+  channelHandle: "@Kirakitah926",
+  subscribeCta: "Subscribe to KIRAKITAH on YouTube",
+  attestationLabel: "I have subscribed to KIRAKITAH on YouTube",
+  attestationDescription:
+    "This creates a review item for our team. It is not automatic verification.",
+  pendingReviewNote:
+    "Your YouTube subscription is pending manual review. We will verify it before marking this requirement complete.",
+  channelFieldDescription:
+    "Optional — helps our team verify your subscription during manual review.",
+} as const;
+
+export const KIRAKITAH_YOUTUBE_URL = KIRAKITAH_YOUTUBE_CHANNEL_URL;

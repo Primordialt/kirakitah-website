@@ -1,8 +1,9 @@
 "use client";
 
+import { YouTubeSubscriptionFields } from "@/components/features/social/YouTubeSubscriptionFields";
 import { Checkbox, Input } from "@/components/ui";
 import { followKirakitahCopy } from "@/config/eligibility-requirements";
-import { REQUIRED_SOCIAL_ACCOUNTS } from "@/config/social";
+import { REQUIRED_FOLLOW_ACCOUNTS } from "@/config/social";
 import { Controller } from "react-hook-form";
 import type { FormSectionProps } from "./types";
 
@@ -17,7 +18,7 @@ export function SocialInformation({ register, control, errors }: FormSectionProp
       </p>
 
       <ul className="space-y-2 text-body-sm">
-        {REQUIRED_SOCIAL_ACCOUNTS.map((account) => (
+        {REQUIRED_FOLLOW_ACCOUNTS.map((account) => (
           <li key={account.platform}>
             <span className="font-medium text-text-primary">{account.label}: </span>
             <a
@@ -37,7 +38,7 @@ export function SocialInformation({ register, control, errors }: FormSectionProp
         {followKirakitahCopy.reviewNote}
       </p>
 
-      {REQUIRED_SOCIAL_ACCOUNTS.map((account) => (
+      {REQUIRED_FOLLOW_ACCOUNTS.map((account) => (
         <Input
           key={account.platform}
           label={account.handleFieldLabel}
@@ -63,6 +64,32 @@ export function SocialInformation({ register, control, errors }: FormSectionProp
             error={errors.socialFollowAttestation?.message}
             label={followKirakitahCopy.attestationLabel}
             description={followKirakitahCopy.attestationDescription}
+          />
+        )}
+      />
+
+      <Controller
+        name="socialHandles.youtube"
+        control={control}
+        render={({ field: { value, onChange } }) => (
+          <Controller
+            name="youtubeSubscriptionAttested"
+            control={control}
+            render={({
+              field: {
+                value: attested,
+                onChange: onAttestedChange,
+              },
+            }) => (
+              <YouTubeSubscriptionFields
+                channelValue={typeof value === "string" ? value : ""}
+                onChannelChange={onChange}
+                attested={Boolean(attested)}
+                onAttestedChange={onAttestedChange}
+                attestationError={errors.youtubeSubscriptionAttested?.message}
+                channelError={errors.socialHandles?.youtube?.message}
+              />
+            )}
           />
         )}
       />

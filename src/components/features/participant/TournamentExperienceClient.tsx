@@ -1,11 +1,13 @@
 "use client";
 
+import { YouTubeSubscriptionAttestationPanel } from "@/components/features/participant/YouTubeSubscriptionAttestationPanel";
 import { Button } from "@/components/ui";
+import { youtubeSubscriptionCopy } from "@/config/eligibility-requirements";
 import { getApplyGateAction } from "@/lib/participant/profile-presentation";
 import { TOURNAMENT_EVENT_ID } from "@/config/competition";
 import { apiErrorMessage, participantFetch } from "@/lib/participant/api";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 type Experience = {
   tournament: { id: string; name: string; game: string; status: string };
@@ -18,9 +20,11 @@ type Experience = {
     identityLabel: string;
     socialLabel: string;
     socialPlatforms: Array<{
+      platform: string;
       platformLabel: string;
       label: string;
     }>;
+    needsYouTubeSubscriptionAttestation: boolean;
   } | null;
   eligibility: { label: string; description: string } | null;
   selection: {
@@ -79,26 +83,25 @@ export function TournamentExperienceClient({
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    let cancelled = false;
-    void (async () => {
-      const { response, payload } = await participantFetch<{
-        experience?: Experience;
-      }>(`/api/participant/tournaments/${tournamentId}`);
+  const loadExperience = useCallback(async () => {
+    setLoading(true);
+    const { response, payload } = await participantFetch<{
+      experience?: Experience;
+    }>(`/api/participant/tournaments/${tournamentId}`);
 
-      if (cancelled) return;
-      setLoading(false);
+    setLoading(false);
 
-      if (!response.ok || !payload.experience) {
-        setError(apiErrorMessage(payload, "Unable to load tournament."));
-        return;
-      }
-      setExperience(payload.experience);
-    })();
-    return () => {
-      cancelled = true;
-    };
+    if (!response.ok || !payload.experience) {
+      setError(apiErrorMessage(payload, "Unable to load tournament."));
+      return;
+    }
+    setError(null);
+    setExperience(payload.experience);
   }, [tournamentId]);
+
+  useEffect(() => {
+    void loadExperience();
+  }, [loadExperience]);
 
   if (loading) {
     return (
@@ -282,6 +285,21 @@ export function TournamentExperienceClient({
               </dd>
             </div>
           </dl>
+
+          {application.needsYouTubeSubscriptionAttestation ? (
+            <YouTubeSubscriptionAttestationPanel
+              tournamentId={tournamentId}
+              onAttested={() => void loadExperience()}
+            />
+          ) : application.socialPlatforms.some(
+              (platform) =>
+                platform.platform === "youtube" &&
+                platform.label === "Pending review",
+            ) ? (
+            <p className="mt-4 text-body-sm text-text-muted">
+              {youtubeSubscriptionCopy.pendingReviewNote}
+            </p>
+          ) : null}
         </section>
       ) : null}
 

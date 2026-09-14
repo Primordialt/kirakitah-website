@@ -80,7 +80,7 @@ export default async function AdminApplicationDetailPage({
   const verifiedSocialCount = detail.socialFollow.platforms.filter(
     (platform) => platform.verificationStatus === "verified",
   ).length;
-  const socialTotal = detail.socialFollow.platforms.length || 3;
+  const socialTotal = detail.socialFollow.platforms.length || 4;
 
   return (
     <AdminShell session={session}>

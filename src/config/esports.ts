@@ -213,25 +213,19 @@ export const esportsTechnology = {
 export const esportsWatch = {
   title: "WATCH THE ACTION",
   copy: "Selected KIRAKITAH Gaming 926 matches will be featured through KIRAKITAH's official broadcast and social channels. Follow the competition, watch selected matches live and catch the best moments throughout the tournament.",
-  platforms: [
-    ...REQUIRED_SOCIAL_ACCOUNTS.map((account) => ({
-      label: account.label,
-      href: account.href,
-    })),
-    { label: "YouTube", href: null },
-  ] satisfies EsportsPlatform[],
+  platforms: REQUIRED_SOCIAL_ACCOUNTS.map((account) => ({
+    label: account.label,
+    href: account.href,
+  })) satisfies EsportsPlatform[],
 } as const;
 
 export const esportsHighlights = {
   title: "CATCH THE MOMENTS",
   copy: "From unbelievable goals to unexpected comebacks, follow the best moments from the tournament across KIRAKITAH's social channels.",
-  platforms: [
-    ...REQUIRED_SOCIAL_ACCOUNTS.map((account) => ({
-      label: account.label,
-      href: account.href,
-    })),
-    { label: "YouTube", href: null },
-  ] satisfies EsportsPlatform[],
+  platforms: REQUIRED_SOCIAL_ACCOUNTS.map((account) => ({
+    label: account.label,
+    href: account.href,
+  })) satisfies EsportsPlatform[],
 } as const;
 
 export const esportsRulesPreview = {

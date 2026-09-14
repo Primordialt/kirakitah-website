@@ -2,7 +2,7 @@ import type { EligibilityReasonCode } from "@/server/tournament/eligibility/elig
 import type { SocialPlatform } from "@/config/social";
 
 /** Single source of truth for current KG926 eligibility rules version. */
-export const KG926_ELIGIBILITY_RULES_VERSION = "kg926-v3" as const;
+export const KG926_ELIGIBILITY_RULES_VERSION = "kg926-v4" as const;
 
 /**
  * Configurable tournament eligibility requirements.

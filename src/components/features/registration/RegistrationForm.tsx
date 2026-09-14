@@ -51,8 +51,10 @@ const defaultValues: RegistrationFormValues = {
     x: "",
     instagram: "",
     tiktok: "",
+    youtube: "",
   },
   socialFollowAttestation: false as unknown as true,
+  youtubeSubscriptionAttested: false as unknown as true,
   consents: {
     rules: false as unknown as true,
     terms: false as unknown as true,

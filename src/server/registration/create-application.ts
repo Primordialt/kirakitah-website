@@ -396,6 +396,7 @@ export async function createRegistrationApplication(
     await insertPendingSocialFollows({
       applicationId,
       handles: input.socialHandles ?? {},
+      youtubeSubscriptionAttested: input.youtubeSubscriptionAttested,
     });
 
     if (input.guardian) {
