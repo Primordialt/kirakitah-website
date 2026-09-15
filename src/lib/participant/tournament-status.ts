@@ -144,6 +144,61 @@ export function getSelectionPresentation(status: string): {
   }
 }
 
+export function getParticipationEligibilityPresentation(input: {
+  state: "NOT_APPLICABLE" | "OK" | "ACTION_REQUIRED" | "BLOCKED";
+  deadlineState: "unset" | "pending" | "passed";
+  deadlineDisplay: string | null;
+  youtubeStatusLabel: string;
+}): {
+  label: string;
+  description: string;
+  tone: "ok" | "pending" | "action" | "blocked";
+} {
+  if (input.state === "NOT_APPLICABLE") {
+    return {
+      label: "NOT APPLICABLE",
+      description:
+        "Participation eligibility applies after you are selected for the tournament.",
+      tone: "pending",
+    };
+  }
+
+  if (input.state === "OK") {
+    return {
+      label: "CLEARED TO PROCEED",
+      description: "Your YouTube verification requirement is satisfied.",
+      tone: "ok",
+    };
+  }
+
+  if (input.state === "BLOCKED") {
+    if (input.deadlineState === "passed") {
+      return {
+        label: "PARTICIPATION BLOCKED",
+        description:
+          "The YouTube verification deadline has passed and your YouTube subscription is not verified. Contact KIRAKITAH if you need support.",
+        tone: "blocked",
+      };
+    }
+    return {
+      label: "PARTICIPATION BLOCKED",
+      description:
+        "Your social verification requirements are not satisfied for tournament participation.",
+      tone: "blocked",
+    };
+  }
+
+  const deadlineText = input.deadlineDisplay
+    ? ` Verification deadline: ${input.deadlineDisplay}.`
+    : "";
+
+  return {
+    label: "YOUTUBE VERIFICATION REQUIRED",
+    description: `YouTube verification is required before the verification deadline. Current YouTube status: ${input.youtubeStatusLabel}.${deadlineText} Your selection remains in place until the deadline.`,
+    tone: "action",
+  };
+}
+
 export function getNotificationPresentation(eventType: string): {
   title: string;
   description: string;

@@ -385,6 +385,8 @@ export const adminAuditEventTypeEnum = pgEnum("admin_audit_event_type", [
   "MATCH_RULES_VIEWED",
   "COMPETITION_POLICY_VIEWED",
   "COMPETITION_POLICY_CHANGED",
+  "TOURNAMENT_ELIGIBILITY_CONFIG_VIEWED",
+  "TOURNAMENT_ELIGIBILITY_CONFIG_CHANGED",
   "NO_SHOW_RECORDED",
   "DISCONNECT_RESOLVED",
   "DISPUTE_RESOLVED",
@@ -1235,6 +1237,42 @@ export const competitionPolicyHistory = pgTable(
   },
   (table) => [
     index("competition_policy_history_tournament_idx").on(
+      table.tournamentId,
+      table.effectiveAt,
+    ),
+  ],
+);
+
+/**
+ * Append-only eligibility configuration history (YouTube verification deadline).
+ */
+export const eligibilityConfigHistory = pgTable(
+  "eligibility_config_history",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tournamentId: text("tournament_id")
+      .notNull()
+      .references(() => tournaments.id, { onDelete: "cascade" }),
+    rulesVersion: text("rules_version").notNull(),
+    previousDeadline: timestamp("previous_deadline", {
+      withTimezone: true,
+      mode: "string",
+    }),
+    newDeadline: timestamp("new_deadline", {
+      withTimezone: true,
+      mode: "string",
+    }),
+    changeReason: text("change_reason").notNull(),
+    changedBy: text("changed_by").notNull(),
+    effectiveAt: timestamp("effective_at", { withTimezone: true, mode: "string" })
+      .notNull()
+      .defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "string" })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index("eligibility_config_history_tournament_idx").on(
       table.tournamentId,
       table.effectiveAt,
     ),

@@ -126,4 +126,19 @@ export const youtubeSubscriptionCopy = {
     "Optional — helps our team verify your subscription during manual review.",
 } as const;
 
+export const youtubeVerificationDeadlineCopy = {
+  unsetNotice:
+    "YouTube verification is required for KG926. Complete attestation and await admin review.",
+  beforeDeadlineNotice:
+    "YouTube verification is required before the verification deadline.",
+  afterDeadlineBlocked:
+    "The YouTube verification deadline has passed. Verified YouTube subscription is required to proceed in the tournament.",
+  deadlineLabel: "Verification deadline",
+  timezoneLabel: "Africa/Lagos (WAT)",
+  graceSelectionNote:
+    "Your tournament selection remains in place while you complete YouTube verification before the deadline.",
+  pendingAttestationNote:
+    "Your attestation is pending manual admin review. YouTube is not verified until our team confirms it.",
+} as const;
+
 export const KIRAKITAH_YOUTUBE_URL = KIRAKITAH_YOUTUBE_CHANNEL_URL;

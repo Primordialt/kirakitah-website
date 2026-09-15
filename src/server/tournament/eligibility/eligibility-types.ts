@@ -27,6 +27,12 @@ export interface TournamentEligibilityRulesConfig {
   socialFollowingRequired: boolean;
   /** KG926 required follow platforms (config-driven; extensible). */
   requiredSocialPlatforms: readonly SocialPlatform[];
+  /**
+   * Optional deadline for existing selected participants to complete YouTube verification.
+   * Stored as UTC ISO instant representing the end of a configured Africa/Lagos wall-clock minute.
+   * When null/unset, selected participants are not penalized for pending YouTube verification.
+   */
+  youtubeVerificationDeadline?: string | null;
 }
 
 export interface EligibilityEvaluationResult {

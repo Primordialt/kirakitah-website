@@ -152,6 +152,13 @@ export default async function AdminTournamentDetailPage({
         >
           Competition policy
         </Link>
+        {" · "}
+        <Link
+          href={`/admin/tournaments/${tournamentId}/eligibility`}
+          className="mt-3 inline-block text-accent underline"
+        >
+          Eligibility configuration
+        </Link>
       </section>
 
       <section className="mt-6 rounded-xl border border-border bg-surface-elevated p-4">

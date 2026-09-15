@@ -2,7 +2,7 @@
 
 import { YouTubeSubscriptionAttestationPanel } from "@/components/features/participant/YouTubeSubscriptionAttestationPanel";
 import { Button } from "@/components/ui";
-import { youtubeSubscriptionCopy } from "@/config/eligibility-requirements";
+import { youtubeVerificationDeadlineCopy } from "@/config/eligibility-requirements";
 import { getApplyGateAction } from "@/lib/participant/profile-presentation";
 import { TOURNAMENT_EVENT_ID } from "@/config/competition";
 import { apiErrorMessage, participantFetch } from "@/lib/participant/api";
@@ -27,6 +27,19 @@ type Experience = {
     needsYouTubeSubscriptionAttestation: boolean;
   } | null;
   eligibility: { label: string; description: string } | null;
+  participationEligibility: {
+    label: string;
+    description: string;
+    tone: "ok" | "pending" | "action" | "blocked";
+    canProceed: boolean;
+  } | null;
+  youtubeVerification: {
+    statusLabel: string;
+    deadlineDisplay: string | null;
+    deadlineState: "unset" | "pending" | "passed";
+    graceApplies: boolean;
+    canProceed: boolean;
+  } | null;
   selection: {
     label: string;
     description: string;
@@ -122,7 +135,8 @@ export function TournamentExperienceClient({
     );
   }
 
-  const { application, selection, qualification, upcomingMatch } = experience;
+  const { application, selection, qualification, upcomingMatch, participationEligibility, youtubeVerification } =
+    experience;
 
   const applicationLabel = application?.statusLabel ?? "NOT STARTED";
   const applicationDescription = application
@@ -216,6 +230,28 @@ export function TournamentExperienceClient({
               Public code: {selection.publicCode}
             </p>
           ) : null}
+          {selection?.label === "SELECTED" && participationEligibility ? (
+            <div className="mt-4 rounded-lg border border-border bg-surface-elevated p-4">
+              <p className="text-body-sm font-semibold text-text-primary">
+                {participationEligibility.label}
+              </p>
+              <p className="mt-2 text-body-sm text-text-secondary">
+                {participationEligibility.description}
+              </p>
+              {youtubeVerification?.deadlineDisplay ? (
+                <p className="mt-2 text-body-sm text-text-muted">
+                  {youtubeVerificationDeadlineCopy.deadlineLabel}:{" "}
+                  {youtubeVerification.deadlineDisplay} (
+                  {youtubeVerificationDeadlineCopy.timezoneLabel})
+                </p>
+              ) : null}
+              {youtubeVerification?.graceApplies ? (
+                <p className="mt-2 text-body-sm text-text-muted">
+                  {youtubeVerificationDeadlineCopy.graceSelectionNote}
+                </p>
+              ) : null}
+            </div>
+          ) : null}
         </JourneyStage>
 
         <JourneyStage
@@ -286,7 +322,8 @@ export function TournamentExperienceClient({
             </div>
           </dl>
 
-          {application.needsYouTubeSubscriptionAttestation ? (
+          {application.needsYouTubeSubscriptionAttestation &&
+          youtubeVerification?.canProceed !== false ? (
             <YouTubeSubscriptionAttestationPanel
               tournamentId={tournamentId}
               onAttested={() => void loadExperience()}
@@ -297,7 +334,10 @@ export function TournamentExperienceClient({
                 platform.label === "Pending review",
             ) ? (
             <p className="mt-4 text-body-sm text-text-muted">
-              {youtubeSubscriptionCopy.pendingReviewNote}
+              {youtubeVerification?.deadlineState === "passed" &&
+              !youtubeVerification.canProceed
+                ? youtubeVerificationDeadlineCopy.afterDeadlineBlocked
+                : youtubeVerificationDeadlineCopy.pendingAttestationNote}
             </p>
           ) : null}
         </section>
