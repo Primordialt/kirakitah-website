@@ -176,6 +176,13 @@
       "when": 1721865600000,
       "tag": "0024_kg926_youtube_required",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1721952000000,
+      "tag": "0025_kg926_youtube_verification_deadline",
+      "breakpoints": true
     }
   ]
 }

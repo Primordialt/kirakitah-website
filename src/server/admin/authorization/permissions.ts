@@ -41,6 +41,8 @@ export const ADMIN_PERMISSIONS = [
   "tournament:match_edit",
   "tournament:policy_view",
   "tournament:policy_manage",
+  "tournament:eligibility_config_view",
+  "tournament:eligibility_config_manage",
   "participant:delete",
   "profile:reopen_verified",
   "qualification:reassign_position",
@@ -80,6 +82,8 @@ const ROLE_PERMISSIONS: Record<AdminRole, readonly AdminPermission[]> = {
     "tournament:match_edit",
     "tournament:policy_view",
     "tournament:policy_manage",
+    "tournament:eligibility_config_view",
+    "tournament:eligibility_config_manage",
     "participant:delete",
     "profile:reopen_verified",
     "qualification:reassign_position",
@@ -108,6 +112,7 @@ const ROLE_PERMISSIONS: Record<AdminRole, readonly AdminPermission[]> = {
     "tournament:knockout_manage",
     "tournament:match_schedule",
     "tournament:policy_view",
+    "tournament:eligibility_config_view",
   ],
   REVIEWER: [
     "dashboard:view",
@@ -126,6 +131,7 @@ const ROLE_PERMISSIONS: Record<AdminRole, readonly AdminPermission[]> = {
     "tournament:match_view",
     "tournament:standings_view",
     "tournament:policy_view",
+    "tournament:eligibility_config_view",
   ],
   SUPPORT: [
     "dashboard:view",
@@ -134,6 +140,7 @@ const ROLE_PERMISSIONS: Record<AdminRole, readonly AdminPermission[]> = {
     "tournament:view",
     "tournament:standings_view",
     "tournament:policy_view",
+    "tournament:eligibility_config_view",
   ],
 };
 

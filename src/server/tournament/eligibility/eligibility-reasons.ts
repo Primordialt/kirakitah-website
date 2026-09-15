@@ -12,6 +12,7 @@ export const ELIGIBILITY_REASON_CODES = [
   "GUARDIAN_CONSENT_MISSING",
   "SOCIAL_FOLLOWING_NOT_VERIFIED",
   "SOCIAL_FOLLOWING_REJECTED",
+  "YOUTUBE_VERIFICATION_DEADLINE_PASSED",
   "TOURNAMENT_REGISTRATION_CLOSED",
   "TOURNAMENT_REGISTRATION_NOT_OPEN",
   "ALREADY_SELECTED",
@@ -36,6 +37,8 @@ export const ELIGIBILITY_REASON_LABELS: Record<EligibilityReasonCode, string> = 
     "Social following requirement not satisfied — verification is still pending.",
   SOCIAL_FOLLOWING_REJECTED:
     "Social following requirement not satisfied — one or more platforms were rejected.",
+  YOUTUBE_VERIFICATION_DEADLINE_PASSED:
+    "YouTube verification deadline has passed — verified YouTube subscription is required to proceed.",
   TOURNAMENT_REGISTRATION_CLOSED: "Tournament registration is closed.",
   TOURNAMENT_REGISTRATION_NOT_OPEN: "Tournament registration is not yet open.",
   ALREADY_SELECTED: "Applicant is already selected for this tournament.",

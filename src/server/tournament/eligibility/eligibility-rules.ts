@@ -19,6 +19,7 @@ export const DEFAULT_KG926_ELIGIBILITY_RULES: TournamentEligibilityRulesConfig =
   requireGuardianForMinors: true,
   socialFollowingRequired: true,
   requiredSocialPlatforms: [...REQUIRED_SOCIAL_PLATFORMS],
+  youtubeVerificationDeadline: null,
 };
 
 function parseRequiredPlatforms(raw: unknown): readonly SocialPlatform[] {
@@ -64,6 +65,12 @@ export function parseEligibilityRules(
       socialFollowingRequired:
         obj.socialFollowingRequired ?? base.socialFollowingRequired,
       requiredSocialPlatforms: parseRequiredPlatforms(obj.requiredSocialPlatforms),
+      youtubeVerificationDeadline:
+        typeof obj.youtubeVerificationDeadline === "string"
+          ? obj.youtubeVerificationDeadline
+          : obj.youtubeVerificationDeadline === null
+            ? null
+            : base.youtubeVerificationDeadline ?? null,
     },
   };
 }

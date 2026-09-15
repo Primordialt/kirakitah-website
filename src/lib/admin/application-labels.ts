@@ -59,6 +59,10 @@ export function formatAuditEventLabel(eventType: string): string {
       return "Social follow approved";
     case "SOCIAL_FOLLOW_REJECTED":
       return "Social follow rejected";
+    case "TOURNAMENT_ELIGIBILITY_CONFIG_CHANGED":
+      return "Eligibility configuration changed";
+    case "TOURNAMENT_ELIGIBILITY_CONFIG_VIEWED":
+      return "Eligibility configuration viewed";
     default:
       return eventType.replace(/_/g, " ");
   }

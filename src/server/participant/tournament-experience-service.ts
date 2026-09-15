@@ -22,6 +22,10 @@ import {
 } from "@/server/participant/tournament-context";
 import { assertNoSensitivePublicFields } from "@/server/tournament/competition/public-projections";
 import { evaluateRegistrationEligibilityByReference } from "@/server/tournament/eligibility/eligibility-service";
+import { parseEligibilityRules } from "@/server/tournament/eligibility/eligibility-rules";
+import { evaluateParticipationEligibility } from "@/server/tournament/eligibility/participation-eligibility";
+import { ELIGIBILITY_REASON_LABELS } from "@/server/tournament/eligibility/eligibility-reasons";
+import { formatScheduleInAfricaLagos } from "@/server/tournament/scheduling/timezone";
 import { formatEligibilitySummary } from "@/server/tournament/participant-service";
 import { getPodDetail } from "@/server/tournament/qualification/pod-service";
 import {
@@ -38,6 +42,7 @@ import {
   getEligibilityPresentation,
   getIdentityStatusPresentation,
   getNotificationPresentation,
+  getParticipationEligibilityPresentation,
   getSelectionPresentation,
   getSocialAggregatePresentation,
   getSocialPlatformPresentation,
@@ -64,6 +69,25 @@ export type ParticipantApplicationView = {
     label: string;
   }>;
   needsYouTubeSubscriptionAttestation: boolean;
+};
+
+export type ParticipantYouTubeVerificationView = {
+  status: string;
+  statusLabel: string;
+  deadlineAt: string | null;
+  deadlineDisplay: string | null;
+  deadlineState: "unset" | "pending" | "passed";
+  graceApplies: boolean;
+  canProceed: boolean;
+};
+
+export type ParticipantParticipationEligibilityView = {
+  state: "NOT_APPLICABLE" | "OK" | "ACTION_REQUIRED" | "BLOCKED";
+  label: string;
+  description: string;
+  tone: "ok" | "pending" | "action" | "blocked";
+  canProceed: boolean;
+  reasons: Array<{ code: string; label: string }>;
 };
 
 export type ParticipantTournamentSummary = {
@@ -143,6 +167,8 @@ export type ParticipantTournamentExperience = {
     label: string;
     description: string;
   } | null;
+  participationEligibility: ParticipantParticipationEligibilityView | null;
+  youtubeVerification: ParticipantYouTubeVerificationView | null;
   selection: {
     status: string;
     label: string;
@@ -252,6 +278,10 @@ export async function getParticipantTournamentExperience(
 
   let applicationView: ParticipantApplicationView | null = null;
   let eligibilityView: ParticipantTournamentExperience["eligibility"] = null;
+  let participationEligibilityView: ParticipantTournamentExperience["participationEligibility"] =
+    null;
+  let youtubeVerificationView: ParticipantTournamentExperience["youtubeVerification"] =
+    null;
   let selectionView: ParticipantTournamentExperience["selection"] = null;
   let qualificationView: ParticipantPodView | null = null;
   let upcomingMatch: PlayerSafeMatchProjection | null = null;
@@ -268,6 +298,57 @@ export async function getParticipantTournamentExperience(
       .where(eq(registrationSocialFollows.applicationId, ctx.application.id));
 
     applicationView = toApplicationView(ctx.application, socialRows);
+
+    const { config } = parseEligibilityRules(
+      ctx.tournament.eligibilityRules,
+      ctx.tournament.eligibilityRulesVersion,
+    );
+    const platformStatuses = Object.fromEntries(
+      socialRows.map((row) => [row.platform, row.verificationStatus]),
+    );
+    const youtubeRow = socialRows.find((row) => row.platform === "youtube");
+    const youtubeStatus = youtubeRow?.verificationStatus ?? "pending";
+    const youtubePlatformPresentation = getSocialPlatformPresentation(youtubeStatus);
+
+    const participation = evaluateParticipationEligibility({
+      participantStatus: ctx.tournamentParticipant?.status ?? null,
+      youtubeVerificationStatus: youtubeStatus,
+      socialFollowStatus: ctx.application.socialFollowStatus,
+      platformStatuses,
+      config,
+    });
+    const participationPresentation = getParticipationEligibilityPresentation({
+      state: participation.state,
+      deadlineState: participation.deadlineState,
+      deadlineDisplay: participation.deadlineAt
+        ? formatScheduleInAfricaLagos(participation.deadlineAt)
+        : null,
+      youtubeStatusLabel: youtubePlatformPresentation.label,
+    });
+
+    participationEligibilityView = {
+      state: participation.state,
+      label: participationPresentation.label,
+      description: participationPresentation.description,
+      tone: participationPresentation.tone,
+      canProceed: participation.canProceed,
+      reasons: participation.reasons.map((code) => ({
+        code,
+        label: ELIGIBILITY_REASON_LABELS[code] ?? code,
+      })),
+    };
+
+    youtubeVerificationView = {
+      status: youtubeStatus,
+      statusLabel: youtubePlatformPresentation.label,
+      deadlineAt: participation.deadlineAt,
+      deadlineDisplay: participation.deadlineAt
+        ? formatScheduleInAfricaLagos(participation.deadlineAt)
+        : null,
+      deadlineState: participation.deadlineState,
+      graceApplies: participation.graceApplies,
+      canProceed: participation.canProceed,
+    };
 
     const evaluation = await evaluateRegistrationEligibilityByReference(
       tournamentId,
@@ -352,6 +433,8 @@ export async function getParticipantTournamentExperience(
     },
     application: applicationView,
     eligibility: eligibilityView,
+    participationEligibility: participationEligibilityView,
+    youtubeVerification: youtubeVerificationView,
     selection: selectionView,
     qualification: qualificationView,
     upcomingMatch,

@@ -3,7 +3,10 @@ import {
   evaluateWithConfig,
   resolveRegistrationWindow,
 } from "@/server/tournament/eligibility/eligibility-service";
-import { DEFAULT_KG926_ELIGIBILITY_RULES } from "@/server/tournament/eligibility/eligibility-rules";
+import {
+  DEFAULT_KG926_ELIGIBILITY_RULES,
+  parseEligibilityRules,
+} from "@/server/tournament/eligibility/eligibility-rules";
 import { KG926_ELIGIBILITY_RULES_VERSION } from "@/server/tournament/eligibility/eligibility-types";
 import { roleHasPermission } from "@/server/admin/authorization/permissions";
 
@@ -323,6 +326,21 @@ describe("tournament admin permissions", () => {
       false,
     );
     expect(roleHasPermission("SUPPORT", "tournament:result_record")).toBe(false);
+    expect(roleHasPermission("SUPPORT", "tournament:eligibility_config_manage")).toBe(
+      false,
+    );
+  });
+
+  it("limits eligibility config management to SUPER_ADMIN", () => {
+    expect(roleHasPermission("SUPER_ADMIN", "tournament:eligibility_config_manage")).toBe(
+      true,
+    );
+    expect(
+      roleHasPermission("TOURNAMENT_ADMIN", "tournament:eligibility_config_manage"),
+    ).toBe(false);
+    expect(roleHasPermission("REVIEWER", "tournament:eligibility_config_view")).toBe(
+      true,
+    );
   });
 });
 
@@ -377,5 +395,15 @@ describe("eligibility rules version", () => {
     const result = evaluateWithConfig(baseInput);
     expect(result.eligible).toBe(true);
     expect(result.evaluatedRequirements.socialFollowStatus).toBe("verified");
+  });
+
+  it("parses youtubeVerificationDeadline from eligibility rules JSON", () => {
+    const parsed = parseEligibilityRules(
+      { youtubeVerificationDeadline: "2026-12-31T22:59:00.000Z" },
+      "kg926-v4",
+    );
+    expect(parsed.config.youtubeVerificationDeadline).toBe(
+      "2026-12-31T22:59:00.000Z",
+    );
   });
 });
