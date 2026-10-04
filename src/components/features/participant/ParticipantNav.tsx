@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useId, useState } from "react";
+import { ChatboxNavLink } from "@/components/features/chatbox/ChatboxNavLink";
 import { LogoutButton } from "@/components/features/participant/LogoutButton";
 import { VerifiedBadge } from "@/components/ui/VerifiedBadge";
 
@@ -11,6 +12,7 @@ export const PARTICIPANT_PORTAL_NAV = [
   { href: "/profile", label: "Profile" },
   { href: "/tournaments", label: "Tournaments" },
   { href: "/matches", label: "Fixtures" },
+  { href: "/chatbox", label: "Chatbox" },
   { href: "/notifications", label: "Notifications" },
   { href: "/account", label: "Account" },
 ] as const;
@@ -45,6 +47,18 @@ export function ParticipantNavLinks({
     >
       {PARTICIPANT_PORTAL_NAV.map((item) => {
         const active = isActive(pathname, item.href);
+        if (item.href === "/chatbox") {
+          return (
+            <li key={item.href}>
+              <ChatboxNavLink
+                href={item.href}
+                label={item.label}
+                onNavigate={onNavigate}
+                orientation={orientation}
+              />
+            </li>
+          );
+        }
         return (
           <li key={item.href}>
             <Link

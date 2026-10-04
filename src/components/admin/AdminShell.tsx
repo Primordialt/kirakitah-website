@@ -48,6 +48,7 @@ export function AdminShell({
     session.user.role,
     "tournament:view",
   );
+  const canModerateChat = roleHasPermission(session.user.role, "chat:moderate");
 
   return (
     <div className="min-h-screen bg-background text-text-primary">
@@ -148,6 +149,14 @@ export function AdminShell({
                 href="/admin/participants"
               >
                 Participant accounts
+              </Link>
+            ) : null}
+            {canModerateChat ? (
+              <Link
+                className="hover:text-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-border-focus"
+                href="/admin/chatbox"
+              >
+                Chatbox
               </Link>
             ) : null}
             <AdminLogoutButton />

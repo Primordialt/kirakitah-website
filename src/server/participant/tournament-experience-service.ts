@@ -657,12 +657,21 @@ export async function listParticipantNotifications(
       metaTournamentId
     ) {
       href = `/tournaments/${metaTournamentId}`;
-    } else if (
+    } else     if (
       (row.eventType === "PARTICIPANT_SELECTED" ||
         row.eventType === "PARTICIPANT_QUALIFICATION_ASSIGNED") &&
       metaTournamentId
     ) {
       href = `/tournaments/${metaTournamentId}`;
+    }
+
+    if (
+      (row.eventType === "CHAT_MENTION" ||
+        row.eventType === "CHAT_REPLY" ||
+        row.eventType === "CHAT_ANNOUNCEMENT") &&
+      typeof row.metadata?.href === "string"
+    ) {
+      href = row.metadata.href;
     }
 
     const view: ParticipantNotificationView = {

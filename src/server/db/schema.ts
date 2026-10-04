@@ -391,6 +391,14 @@ export const adminAuditEventTypeEnum = pgEnum("admin_audit_event_type", [
   "DISCONNECT_RESOLVED",
   "DISPUTE_RESOLVED",
   "MATCH_NOTIFICATION_CREATED",
+  "CHAT_LOCKED",
+  "CHAT_UNLOCKED",
+  "CHAT_MESSAGE_DELETED",
+  "CHAT_MESSAGE_PINNED",
+  "CHAT_MESSAGE_UNPINNED",
+  "CHAT_MEMBER_RESTRICTED",
+  "CHAT_MEMBER_UNRESTRICTED",
+  "CHAT_ANNOUNCEMENT_CREATED",
 ]);
 
 export const tournamentPhaseTypeEnum = pgEnum("tournament_phase_type", [
@@ -1564,6 +1572,161 @@ export const participantAuditEvents = pgTable(
     index("participant_audit_events_type_created_idx").on(
       table.eventType,
       table.createdAt,
+    ),
+  ],
+);
+
+export const chatRoomTypeEnum = pgEnum("chat_room_type", [
+  "community",
+  "tournament",
+  "pod",
+  "match",
+  "private",
+]);
+
+export const chatMessageTypeEnum = pgEnum("chat_message_type", [
+  "user",
+  "announcement",
+  "system",
+]);
+
+export const chatMemberStatusEnum = pgEnum("chat_member_status", [
+  "active",
+  "muted",
+  "restricted",
+]);
+
+export const chatRooms = pgTable(
+  "chat_rooms",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    slug: text("slug").notNull(),
+    name: text("name").notNull(),
+    roomType: chatRoomTypeEnum("room_type").notNull(),
+    isLocked: boolean("is_locked").notNull().default(false),
+    pinnedMessageId: uuid("pinned_message_id"),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "string" })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true, mode: "string" })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [uniqueIndex("chat_rooms_slug_uidx").on(table.slug)],
+);
+
+export const chatRoomMembers = pgTable(
+  "chat_room_members",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    roomId: uuid("room_id")
+      .notNull()
+      .references(() => chatRooms.id, { onDelete: "cascade" }),
+    participantAccountId: uuid("participant_account_id")
+      .notNull()
+      .references(() => participantAccounts.id, { onDelete: "cascade" }),
+    status: chatMemberStatusEnum("status").notNull().default("active"),
+    statusReason: text("status_reason"),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "string" })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true, mode: "string" })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("chat_room_members_room_account_uidx").on(
+      table.roomId,
+      table.participantAccountId,
+    ),
+    index("chat_room_members_account_idx").on(table.participantAccountId),
+  ],
+);
+
+export const chatMessages = pgTable(
+  "chat_messages",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    roomId: uuid("room_id")
+      .notNull()
+      .references(() => chatRooms.id, { onDelete: "cascade" }),
+    senderParticipantAccountId: uuid("sender_participant_account_id").references(
+      () => participantAccounts.id,
+      { onDelete: "set null" },
+    ),
+    senderAdminUserId: uuid("sender_admin_user_id").references(
+      () => adminUsers.id,
+      { onDelete: "set null" },
+    ),
+    content: text("content").notNull(),
+    messageType: chatMessageTypeEnum("message_type").notNull().default("user"),
+    replyToMessageId: uuid("reply_to_message_id"),
+    editedAt: timestamp("edited_at", { withTimezone: true, mode: "string" }),
+    deletedAt: timestamp("deleted_at", { withTimezone: true, mode: "string" }),
+    deletedByAdminUserId: uuid("deleted_by_admin_user_id").references(
+      () => adminUsers.id,
+      { onDelete: "set null" },
+    ),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "string" })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true, mode: "string" })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index("chat_messages_room_created_idx").on(table.roomId, table.createdAt),
+    index("chat_messages_sender_participant_idx").on(
+      table.senderParticipantAccountId,
+    ),
+  ],
+);
+
+export const chatMessageMentions = pgTable(
+  "chat_message_mentions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    messageId: uuid("message_id")
+      .notNull()
+      .references(() => chatMessages.id, { onDelete: "cascade" }),
+    mentionedAccountId: uuid("mentioned_account_id")
+      .notNull()
+      .references(() => participantAccounts.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "string" })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("chat_message_mentions_message_account_uidx").on(
+      table.messageId,
+      table.mentionedAccountId,
+    ),
+    index("chat_message_mentions_account_idx").on(table.mentionedAccountId),
+  ],
+);
+
+export const chatMessageReads = pgTable(
+  "chat_message_reads",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    roomId: uuid("room_id")
+      .notNull()
+      .references(() => chatRooms.id, { onDelete: "cascade" }),
+    participantAccountId: uuid("participant_account_id")
+      .notNull()
+      .references(() => participantAccounts.id, { onDelete: "cascade" }),
+    lastReadMessageId: uuid("last_read_message_id").references(
+      () => chatMessages.id,
+      { onDelete: "set null" },
+    ),
+    lastReadAt: timestamp("last_read_at", { withTimezone: true, mode: "string" })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("chat_message_reads_room_account_uidx").on(
+      table.roomId,
+      table.participantAccountId,
     ),
   ],
 );
