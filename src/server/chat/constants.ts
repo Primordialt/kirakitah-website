@@ -1,6 +1,6 @@
 export const COMMUNITY_ROOM_SLUG = "kirakitah-community" as const;
 
-export const COMMUNITY_ROOM_ID = "c0mm0000-0000-4000-8000-000000000001" as const;
+export const COMMUNITY_ROOM_ID = "c0a70000-0000-4000-8000-000000000001" as const;
 
 export const CHAT_MAX_MESSAGE_LENGTH = 2000;
 

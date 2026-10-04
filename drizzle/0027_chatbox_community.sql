@@ -139,7 +139,7 @@ ALTER TABLE "chat_rooms"
 
 INSERT INTO "chat_rooms" ("id", "slug", "name", "room_type", "is_locked")
 VALUES (
-  'c0mm0000-0000-4000-8000-000000000001',
+  'c0a70000-0000-4000-8000-000000000001',
   'kirakitah-community',
   'KIRAKITAH Community',
   'community',
