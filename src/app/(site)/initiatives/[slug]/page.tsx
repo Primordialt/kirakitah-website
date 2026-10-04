@@ -84,7 +84,7 @@ export default async function InitiativeDetailPage({
               Explore KIRAKITAH Gaming
             </h2>
             <p className="mt-4 max-w-2xl text-body text-text-secondary">
-              KIRAKITAH Gaming is the platform&apos;s first major active initiative.
+              KIRAKITAH Gaming is the platform&apos;s next major active initiative.
               The full competition experience — including {COMPETITION_NAME} —
               lives on the dedicated eSports section.
             </p>

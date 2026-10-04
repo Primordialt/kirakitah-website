@@ -15,7 +15,7 @@ export const mockTournaments: Tournament[] = [
     name: COMPETITION_NAME,
     competitionTitle: "eFootball Mobile Championship",
     description:
-      "The inaugural KIRAKITAH eFootball Mobile competition — an online 1v1 championship.",
+      "The next major KIRAKITAH eFootball Mobile competition — an online 1v1 championship.",
     status: "registration-open",
     registrationState: "open",
     startDate: KG926_EDITION_START_ISO,

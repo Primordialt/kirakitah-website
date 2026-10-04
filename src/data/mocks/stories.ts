@@ -23,16 +23,16 @@ Today, KIRAKITAH Gaming is our most developed initiative — but it is one part 
     id: "story-002",
     slug: "kirakitah-gaming-926",
     title: "KIRAKITAH GAMING 926",
-    excerpt: `The first major KIRAKITAH competition begins ${KG926_EDITION_START_DISPLAY}.`,
-    content: `The first major KIRAKITAH competition is taking shape.
+    excerpt: `The next major KIRAKITAH competition begins ${KG926_EDITION_START_DISPLAY}.`,
+    content: `The next major KIRAKITAH competition is taking shape.
 
-The inaugural KIRAKITAH Gaming championship brings players together for an online eFootball Mobile competition beginning ${KG926_EDITION_START_DISPLAY}.
+The next major KIRAKITAH Gaming championship brings players together for an online eFootball Mobile competition beginning ${KG926_EDITION_START_DISPLAY}.
 
 128 players. 32 qualifiers. 1 champion. US$100 grand prize.
 
 KIRAKITAH GAMING 926 is an online 1v1 eFootball Mobile championship open to players aged 10 and above. Registration is now open — submit your application and KIRAKITAH will review your information before competition stages begin.
 
-This is the first edition of KIRAKITAH Gaming, and the beginning of competitive experiences on the platform.`,
+This edition continues competitive KIRAKITAH Gaming experiences on the platform.`,
     publishedAt: "2026-08-15T00:00:00.000Z",
     category: "Tournament",
     featured: true,
@@ -64,7 +64,7 @@ Whether you are playing for the experience, the recognition or the prize, compet
       "KIRAKITAH is expanding beyond gaming, with new ideas and experiences being developed across technology, creativity, community and culture.",
     content: `KIRAKITAH is expanding beyond gaming.
 
-While KIRAKITAH Gaming is the first major public-facing programme, the platform is being developed across multiple areas — innovation, creativity, community and experiences.
+While KIRAKITAH Gaming is a major public-facing programme, the platform is being developed across multiple areas — innovation, creativity, community and experiences.
 
 Some initiatives are actively operating. Others are in development. Each one is designed to create room for people to participate, connect and contribute.
 

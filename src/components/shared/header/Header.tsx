@@ -4,11 +4,17 @@ import { cn } from "@/lib/cn";
 import { BrandLogo } from "@/components/shared/brand/BrandLogo";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState, type CSSProperties } from "react";
+import type { SiteHeaderAuthState } from "@/config/site-header-auth";
+import { unauthenticatedSiteHeaderAuth } from "@/config/site-header-auth";
 import { DesktopNavigation } from "./DesktopNavigation";
 import { MobileMenuButton } from "./MobileMenuButton";
 import { MobileNavigation } from "./MobileNavigation";
 
-export function Header() {
+export interface HeaderProps {
+  auth?: SiteHeaderAuthState;
+}
+
+export function Header({ auth = unauthenticatedSiteHeaderAuth }: HeaderProps) {
   const pathname = usePathname();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
@@ -46,7 +52,7 @@ export function Header() {
       <div className="container-wide flex h-16 items-center justify-between gap-4">
         <BrandLogo tone="white" aria-current={isHome ? "page" : undefined} />
 
-        <DesktopNavigation />
+        <DesktopNavigation auth={auth} />
 
         <MobileMenuButton
           ref={menuButtonRef}
@@ -55,7 +61,7 @@ export function Header() {
         />
       </div>
 
-      <MobileNavigation isOpen={isMenuOpen} onClose={closeMenu} />
+      <MobileNavigation isOpen={isMenuOpen} onClose={closeMenu} auth={auth} />
     </header>
   );
 }

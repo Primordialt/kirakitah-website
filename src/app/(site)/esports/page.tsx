@@ -27,7 +27,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 const description =
-  `Compete in KIRAKITAH Gaming 926, the inaugural eFootball Mobile championship. Edition begins ${KG926_EDITION_START_DISPLAY}. 128 players, 32 qualifiers, 1 champion and a US$100 grand prize.`;
+  `Compete in KIRAKITAH Gaming 926, the next major eFootball Mobile championship. Edition begins ${KG926_EDITION_START_DISPLAY}. 128 players, 32 qualifiers, 1 champion and a US$100 grand prize.`;
 
 export const metadata: Metadata = {
   title: "KIRAKITAH Gaming 926 | eFootball Mobile Championship",

@@ -1,11 +1,13 @@
 import { Footer } from "@/components/shared/footer/Footer";
 import { Header } from "@/components/shared/header/Header";
+import type { SiteHeaderAuthState } from "@/config/site-header-auth";
 
 export interface SiteShellProps {
   children: React.ReactNode;
+  auth: SiteHeaderAuthState;
 }
 
-export function SiteShell({ children }: SiteShellProps) {
+export function SiteShell({ children, auth }: SiteShellProps) {
   return (
     <div className="flex min-h-screen flex-col">
       <a
@@ -14,7 +16,7 @@ export function SiteShell({ children }: SiteShellProps) {
       >
         Skip to main content
       </a>
-      <Header />
+      <Header auth={auth} />
       <main id="main-content" className="flex-1">
         {children}
       </main>

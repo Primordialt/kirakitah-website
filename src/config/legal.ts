@@ -96,7 +96,7 @@ export const termsAndConditions: LegalDocumentConfig = {
       id: "prize",
       title: "10. Prize",
       content: [
-        "The inaugural KIRAKITAH Gaming 926 competition has one Grand Prize: US$100.",
+        "The KIRAKITAH Gaming 926 competition has one Grand Prize: US$100.",
         "There will be one overall winner.",
         "Prize payment is subject to winner verification and the applicable prize and payment procedures.",
         "If the winner is under 18, KIRAKITAH may require parent or guardian verification and may arrange payment through an appropriate parent or guardian process.",

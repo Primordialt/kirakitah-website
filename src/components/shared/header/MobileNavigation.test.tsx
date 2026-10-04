@@ -28,6 +28,8 @@ describe("MobileNavigation", () => {
     render(<MobileNavigation isOpen onClose={vi.fn()} />);
     expect(screen.getByRole("dialog", { name: "Mobile navigation" })).toBeVisible();
     expect(screen.getByRole("navigation", { name: "Mobile primary" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Log in" })).toHaveAttribute("href", "/login");
+    expect(screen.getByRole("link", { name: "Sign up" })).toHaveAttribute("href", "/register");
   });
 
   it("closes on Escape key", async () => {
