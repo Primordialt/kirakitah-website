@@ -1,9 +1,15 @@
 import Link from "next/link";
+import { AdminBulkApproveControls } from "@/components/admin/AdminBulkApproveControls";
+import { AdminDashboardStatCard } from "@/components/admin/AdminDashboardStatCard";
 import { AdminShell, loadAdminSession } from "@/components/admin/AdminShell";
+import { COMPETITION_NAME, TOURNAMENT_EVENT_ID } from "@/config/competition";
+import {
+  DASHBOARD_STAT_CARDS,
+  applicationStatCardHref,
+} from "@/lib/admin/dashboard-stat-links";
 import { roleHasPermission } from "@/server/admin/authorization/permissions";
 import { getAdminDashboardStats } from "@/server/admin/registration/service";
 import { isRegistrationBackendConfigured } from "@/server/env";
-import { COMPETITION_NAME, TOURNAMENT_EVENT_ID } from "@/config/competition";
 
 export default async function AdminDashboardPage() {
   const session = await loadAdminSession("dashboard:view");
@@ -44,6 +50,17 @@ export default async function AdminDashboardPage() {
     unavailable = true;
   }
 
+  const statValues: Record<string, number> = {
+    totalApplications: stats.totalApplications,
+    received: stats.received,
+    pendingIdentityReviews: stats.pendingIdentityReviews,
+    pendingSocialReviews: stats.pendingSocialReviews,
+    underReview: stats.underReview,
+    approved: stats.approved,
+    rejected: stats.rejected,
+    pendingContactVerification: stats.pendingContactVerification,
+  };
+
   const attentionItems = [
     canListApplications
       ? {
@@ -56,14 +73,14 @@ export default async function AdminDashboardPage() {
       ? {
           label: "Identity reviews pending",
           value: stats.pendingIdentityReviews,
-          href: "/admin/reviews/identity",
+          href: `/admin/tournaments/${TOURNAMENT_EVENT_ID}/applications?identityStatus=pending_review`,
         }
       : null,
     canReviewSocial
       ? {
           label: "Social reviews pending",
           value: stats.pendingSocialReviews,
-          href: "/admin/reviews/social",
+          href: `/admin/tournaments/${TOURNAMENT_EVENT_ID}/applications?socialFollowStatus=pending_review`,
         }
       : null,
     canReviewProfiles
@@ -78,16 +95,6 @@ export default async function AdminDashboardPage() {
     value: number | null;
     href: string;
   }>;
-
-  const cards = [
-    { label: "Total applications", value: stats.totalApplications },
-    { label: "Received", value: stats.received },
-    { label: "Pending identity reviews", value: stats.pendingIdentityReviews },
-    { label: "Pending social reviews", value: stats.pendingSocialReviews },
-    { label: "Under review", value: stats.underReview },
-    { label: "Verified applications", value: stats.approved },
-    { label: "Rejected applications", value: stats.rejected },
-  ];
 
   return (
     <AdminShell session={session}>
@@ -138,17 +145,39 @@ export default async function AdminDashboardPage() {
           unavailable.
         </p>
       ) : (
-        <ul className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {cards.map((card) => (
-            <li
-              key={card.label}
-              className="rounded-xl border border-border bg-surface-elevated p-4"
-            >
-              <p className="text-body-sm text-text-muted">{card.label}</p>
-              <p className="mt-2 text-h2">{card.value}</p>
-            </li>
-          ))}
-        </ul>
+        <>
+          <ul className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {DASHBOARD_STAT_CARDS.map((card) => (
+              <li key={card.key}>
+                <AdminDashboardStatCard
+                  href={applicationStatCardHref(card.key, TOURNAMENT_EVENT_ID)}
+                  label={card.label}
+                  value={statValues[card.key] ?? 0}
+                  hint={card.hint}
+                />
+              </li>
+            ))}
+          </ul>
+
+          <div className="mt-6 flex flex-wrap gap-4">
+            {canReviewIdentity ? (
+              <AdminBulkApproveControls
+                queue="identity_pending"
+                eventId={TOURNAMENT_EVENT_ID}
+                label="pending identity reviews"
+                canApprove
+              />
+            ) : null}
+            {canReviewSocial ? (
+              <AdminBulkApproveControls
+                queue="social_pending"
+                eventId={TOURNAMENT_EVENT_ID}
+                label="pending social reviews"
+                canApprove
+              />
+            ) : null}
+          </div>
+        </>
       )}
 
       <div className="mt-8 flex flex-wrap gap-3">

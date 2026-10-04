@@ -3,11 +3,13 @@ import {
   count,
   desc,
   eq,
+  exists,
   gt,
   ilike,
   inArray,
   isNull,
   lt,
+  sql,
 } from "drizzle-orm";
 import { getDb } from "@/server/db";
 import {
@@ -320,6 +322,141 @@ export async function listCommunityMessages(input: {
 
   const usernames = new Map(usernameRows.map((row) => [row.id, row.username]));
 
+  const messages = await projectMessages(page.reverse(), usernames);
+  return { messages, nextCursor };
+}
+
+export type AdminCommunityMessageFilters = {
+  search?: string;
+  messageType?: "user" | "announcement" | "system";
+  mentionsOnly?: boolean;
+  pinnedOnly?: boolean;
+  username?: string;
+};
+
+export async function getCommunityRoomStateForAdmin(): Promise<ChatRoomStateView> {
+  const room = await getCommunityRoom();
+  const db = getDb();
+
+  const [memberCountRow] = await db
+    .select({ value: count() })
+    .from(chatRoomMembers)
+    .where(eq(chatRoomMembers.roomId, room.id));
+
+  let pinnedMessage: ChatMessageView | null = null;
+  if (room.pinnedMessageId) {
+    const [pinned] = await db
+      .select()
+      .from(chatMessages)
+      .where(eq(chatMessages.id, room.pinnedMessageId))
+      .limit(1);
+    if (pinned) {
+      const [projected] = await projectMessages([pinned], new Map());
+      pinnedMessage = projected ?? null;
+    }
+  }
+
+  return {
+    slug: room.slug,
+    name: room.name,
+    memberCount: Number(memberCountRow?.value ?? 0),
+    isLocked: room.isLocked,
+    pinnedMessage,
+    canSend: false,
+    sendBlockedReason: null,
+  };
+}
+
+export async function listCommunityMessagesForAdmin(input: {
+  cursor?: string | null;
+  limit?: number;
+  filters?: AdminCommunityMessageFilters;
+}): Promise<{ messages: ChatMessageView[]; nextCursor: string | null }> {
+  const room = await getCommunityRoom();
+  const db = getDb();
+  const limit = Math.min(input.limit ?? CHAT_MESSAGES_PAGE_SIZE, 80);
+  const filters = input.filters ?? {};
+
+  const conditions = [eq(chatMessages.roomId, room.id)];
+
+  if (input.cursor) {
+    const [cursorRow] = await db
+      .select({ createdAt: chatMessages.createdAt })
+      .from(chatMessages)
+      .where(eq(chatMessages.id, input.cursor))
+      .limit(1);
+    if (cursorRow) {
+      conditions.push(lt(chatMessages.createdAt, cursorRow.createdAt));
+    }
+  }
+
+  if (filters.messageType) {
+    conditions.push(eq(chatMessages.messageType, filters.messageType));
+  }
+
+  if (filters.search?.trim()) {
+    const term = `%${filters.search.trim()}%`;
+    conditions.push(ilike(chatMessages.content, term));
+  }
+
+  if (filters.pinnedOnly) {
+    if (!room.pinnedMessageId) {
+      return { messages: [], nextCursor: null };
+    }
+    conditions.push(eq(chatMessages.id, room.pinnedMessageId));
+  }
+
+  if (filters.mentionsOnly) {
+    conditions.push(
+      exists(
+        db
+          .select({ id: chatMessageMentions.id })
+          .from(chatMessageMentions)
+          .where(eq(chatMessageMentions.messageId, chatMessages.id)),
+      ),
+    );
+  }
+
+  if (filters.username?.trim()) {
+    const normalized = filters.username.trim().replace(/^@/, "").toLowerCase();
+    conditions.push(
+      exists(
+        db
+          .select({ id: participantAccounts.id })
+          .from(participantAccounts)
+          .where(
+            and(
+              eq(participantAccounts.id, chatMessages.senderParticipantAccountId),
+              ilike(participantAccounts.usernameNormalized, normalized),
+            ),
+          ),
+      ),
+    );
+  }
+
+  const rows = await db
+    .select()
+    .from(chatMessages)
+    .where(and(...conditions))
+    .orderBy(desc(chatMessages.createdAt))
+    .limit(limit + 1);
+
+  const page = rows.slice(0, limit);
+  const nextCursor = rows.length > limit ? page[page.length - 1]?.id ?? null : null;
+
+  const accountIds = page
+    .map((row) => row.senderParticipantAccountId)
+    .filter((id): id is string => Boolean(id));
+
+  const usernameRows =
+    accountIds.length > 0
+      ? await db
+          .select({ id: participantAccounts.id, username: participantAccounts.username })
+          .from(participantAccounts)
+          .where(inArray(participantAccounts.id, accountIds))
+      : [];
+
+  const usernames = new Map(usernameRows.map((row) => [row.id, row.username]));
   const messages = await projectMessages(page.reverse(), usernames);
   return { messages, nextCursor };
 }

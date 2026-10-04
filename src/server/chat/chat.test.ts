@@ -71,3 +71,11 @@ describe("chat rate limiting", () => {
     expect(() => checkSendRateLimit("account-rate-test-1")).toThrow(ChatError);
   });
 });
+
+describe("admin chat transcript RBAC", () => {
+  it("requires chat:moderate to load admin transcript", () => {
+    expect(roleHasPermission("REVIEWER", "chat:moderate")).toBe(false);
+    expect(roleHasPermission("SUPPORT", "chat:moderate")).toBe(false);
+    expect(roleHasPermission("TOURNAMENT_ADMIN", "chat:moderate")).toBe(true);
+  });
+});

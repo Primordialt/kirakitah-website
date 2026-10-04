@@ -77,7 +77,8 @@ export type AdminAuditEventType =
   | "CHAT_MESSAGE_UNPINNED"
   | "CHAT_MEMBER_RESTRICTED"
   | "CHAT_MEMBER_UNRESTRICTED"
-  | "CHAT_ANNOUNCEMENT_CREATED";
+  | "CHAT_ANNOUNCEMENT_CREATED"
+  | "REGISTRATION_BULK_APPROVAL";
 
 /**
  * Append-only admin audit writer.
