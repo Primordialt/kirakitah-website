@@ -1,5 +1,11 @@
 import Link from "next/link";
+import { AdminBulkApproveControls } from "@/components/admin/AdminBulkApproveControls";
+import { AdminDashboardStatCard } from "@/components/admin/AdminDashboardStatCard";
 import { AdminShell, loadAdminSession } from "@/components/admin/AdminShell";
+import {
+  APPLICATIONS_QUEUE_STAT_CARDS,
+  applicationsQueueStatHref,
+} from "@/lib/admin/dashboard-stat-links";
 import {
   APPLICATION_STATUS_FILTERS,
   formatApplicationStatusLabel,
@@ -33,6 +39,8 @@ export async function ApplicationsQueuePage({
   params?: Promise<{ tournamentId?: string }>;
 }) {
   const session = await loadAdminSession("applications:list");
+  const canReviewIdentity = roleHasPermission(session.user.role, "identity:review");
+  const canReviewSocial = roleHasPermission(session.user.role, "social:review");
   const queryParams = await searchParams;
   const routeParams = params ? await params : undefined;
 
@@ -135,25 +143,67 @@ export async function ApplicationsQueuePage({
 
       {!unavailable ? (
         <section aria-label="Application counts" className="mt-6">
-          <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-            {[
-              { label: "Total", value: stats.totalApplications },
-              { label: "Received", value: stats.received },
-              { label: "Under review", value: stats.underReview },
-              { label: "Verified", value: stats.approved },
-              { label: "Rejected", value: stats.rejected },
-            ].map((item) => (
-              <li
-                key={item.label}
-                className="rounded-xl border border-border bg-surface p-4"
-              >
-                <p className="text-caption uppercase tracking-wide text-text-muted">
-                  {item.label}
-                </p>
-                <p className="mt-1 text-h3 text-text-primary">{item.value}</p>
+          <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+            {APPLICATIONS_QUEUE_STAT_CARDS.map((item) => (
+              <li key={item.label}>
+                <AdminDashboardStatCard
+                  href={applicationsQueueStatHref(
+                    item.filterKey,
+                    basePath,
+                    tournamentFromRoute ? undefined : eventId || undefined,
+                  )}
+                  label={item.label}
+                  value={
+                    item.filterKey === "totalApplications"
+                      ? stats.totalApplications
+                      : stats[item.filterKey]
+                  }
+                />
               </li>
             ))}
+            <li>
+              <AdminDashboardStatCard
+                href={`${basePath}${buildQuery({
+                  identityStatus: "pending_review",
+                  pageSize: String(pageSize),
+                  eventId: tournamentFromRoute ? undefined : eventId || undefined,
+                })}`}
+                label="Pending identity"
+                value={stats.pendingIdentityReviews}
+                hint="Identity queue"
+              />
+            </li>
+            <li>
+              <AdminDashboardStatCard
+                href={`${basePath}${buildQuery({
+                  socialFollowStatus: "pending_review",
+                  pageSize: String(pageSize),
+                  eventId: tournamentFromRoute ? undefined : eventId || undefined,
+                })}`}
+                label="Pending social"
+                value={stats.pendingSocialReviews}
+                hint="Social queue"
+              />
+            </li>
           </ul>
+          <div className="mt-4 flex flex-wrap gap-3">
+            {canReviewIdentity && identityStatus === "pending_review" ? (
+              <AdminBulkApproveControls
+                queue="identity_pending"
+                eventId={eventId || TOURNAMENT_EVENT_ID}
+                label="pending identity reviews in this view"
+                canApprove
+              />
+            ) : null}
+            {canReviewSocial && socialFollowStatus === "pending_review" ? (
+              <AdminBulkApproveControls
+                queue="social_pending"
+                eventId={eventId || TOURNAMENT_EVENT_ID}
+                label="pending social reviews in this view"
+                canApprove
+              />
+            ) : null}
+          </div>
         </section>
       ) : null}
 

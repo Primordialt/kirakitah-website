@@ -399,6 +399,7 @@ export const adminAuditEventTypeEnum = pgEnum("admin_audit_event_type", [
   "CHAT_MEMBER_RESTRICTED",
   "CHAT_MEMBER_UNRESTRICTED",
   "CHAT_ANNOUNCEMENT_CREATED",
+  "REGISTRATION_BULK_APPROVAL",
 ]);
 
 export const tournamentPhaseTypeEnum = pgEnum("tournament_phase_type", [

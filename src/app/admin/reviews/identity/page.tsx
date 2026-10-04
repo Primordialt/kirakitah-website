@@ -1,5 +1,7 @@
 import Link from "next/link";
+import { AdminBulkApproveControls } from "@/components/admin/AdminBulkApproveControls";
 import { AdminShell, loadAdminSession } from "@/components/admin/AdminShell";
+import { TOURNAMENT_EVENT_ID } from "@/config/competition";
 import { listPendingIdentityReviews } from "@/server/admin/registration/service";
 import { isRegistrationBackendConfigured } from "@/server/env";
 
@@ -36,6 +38,15 @@ export default async function AdminIdentityReviewsPage({
       <p className="mt-2 text-body text-text-secondary">
         Manual NIN and passport review queue. No automated identity lookup.
       </p>
+
+      {!unavailable && result.total > 0 ? (
+        <AdminBulkApproveControls
+          queue="identity_pending"
+          eventId={TOURNAMENT_EVENT_ID}
+          label="pending identity reviews"
+          canApprove
+        />
+      ) : null}
 
       {unavailable ? (
         <p className="mt-6 text-body-sm text-text-muted">

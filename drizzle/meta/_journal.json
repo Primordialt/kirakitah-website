@@ -197,6 +197,13 @@
       "when": 1722124800000,
       "tag": "0027_chatbox_community",
       "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1722211200000,
+      "tag": "0028_registration_bulk_approval_audit",
+      "breakpoints": true
     }
   ]
 }
