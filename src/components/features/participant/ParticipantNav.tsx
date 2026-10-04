@@ -12,7 +12,9 @@ export const PARTICIPANT_PORTAL_NAV = [
   { href: "/profile", label: "Profile" },
   { href: "/tournaments", label: "Tournaments" },
   { href: "/matches", label: "Fixtures" },
+  { href: "/arena", label: "Arena" },
   { href: "/chatbox", label: "Chatbox" },
+  { href: "/wallet", label: "Wallet" },
   { href: "/notifications", label: "Notifications" },
   { href: "/account", label: "Account" },
 ] as const;
