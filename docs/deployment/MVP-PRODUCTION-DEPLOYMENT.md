@@ -161,7 +161,7 @@ Expected:
 |-------|--------|
 | Name | KIRAKITAH GAMING 926 |
 | Game | eFootball Mobile |
-| Commencement | 2026-09-14 |
+| Commencement | 2026-11-01 |
 | Target players | 128 |
 | Qualification | 32 |
 | Prize | US$100 Grand Prize |

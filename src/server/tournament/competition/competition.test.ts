@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { KG926_EDITION_START_DATE } from "@/config/competition";
 import {
   canTransitionPhaseStatus,
   PHASE_TRANSITIONS,
@@ -107,7 +108,7 @@ describe("public projections", () => {
       edition: "926",
       format: "Online 1v1",
       status: "registration_open",
-      commencementDate: "2026-09-14",
+      commencementDate: KG926_EDITION_START_DATE,
       prizeInfo: "US$100 Grand Prize",
       targetParticipantCount: 128,
       qualificationTarget: 32,

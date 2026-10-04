@@ -138,7 +138,7 @@ FROM tournaments
 WHERE id = 'event-kg926';
 ```
 
-Expected: name `KIRAKITAH GAMING 926`, game `eFootball Mobile`, commencement `2026-09-14`,
+Expected: name `KIRAKITAH GAMING 926`, game `eFootball Mobile`, commencement `2026-11-01`,
 target `128`, qualification `32`, prize containing `US$100`, status `registration_open`.
 
 If this query cannot be run: report **KG926 live state = UNKNOWN** (do not invent open status).

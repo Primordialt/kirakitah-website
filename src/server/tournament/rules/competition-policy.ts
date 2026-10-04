@@ -6,6 +6,9 @@
  */
 
 import {
+  KG926_EDITION_START_DATE,
+} from "@/config/competition";
+import {
   DEFAULT_KG926_COMPETITION_RULES,
   KG926_COMPETITION_RULES_VERSION,
   parseCompetitionRules,
@@ -62,7 +65,7 @@ export interface Kg926CompetitionPolicy {
     name: "KIRAKITAH GAMING 926";
     game: "eFootball Mobile";
     format: "Online 1v1";
-    commencementDate: "2026-09-14";
+    commencementDate: typeof KG926_EDITION_START_DATE;
     prize: "US$100 Grand Prize";
     edition: "926";
   };
@@ -77,7 +80,7 @@ export const DEFAULT_KG926_COMPETITION_POLICY: Kg926CompetitionPolicy = {
     name: "KIRAKITAH GAMING 926",
     game: "eFootball Mobile",
     format: "Online 1v1",
-    commencementDate: "2026-09-14",
+    commencementDate: KG926_EDITION_START_DATE,
     prize: "US$100 Grand Prize",
     edition: "926",
   },

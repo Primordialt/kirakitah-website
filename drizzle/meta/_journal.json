@@ -183,6 +183,13 @@
       "when": 1721952000000,
       "tag": "0025_kg926_youtube_verification_deadline",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1722038400000,
+      "tag": "0026_kg926_edition_november_2026",
+      "breakpoints": true
     }
   ]
 }
