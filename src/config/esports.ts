@@ -1,4 +1,5 @@
 import type { FooterLink } from "@/config/navigation";
+import { KG926_EDITION_MONTH_YEAR_LABEL, KG926_EDITION_START_DISPLAY } from "@/config/competition";
 import { REQUIRED_SOCIAL_ACCOUNTS, officialSocialFooterLinks } from "@/config/social";
 
 export interface EsportsCta {
@@ -60,7 +61,7 @@ export const esportsStats: EsportsStat[] = [
 export const esportsIntro = {
   lead: "KIRAKITAH Gaming brings competitive players together for organised online gaming experiences designed to challenge, connect and celebrate talent.",
   detail:
-    "KIRAKITAH GAMING 926 is the inaugural KIRAKITAH Gaming championship — an eFootball Mobile championship for the September 2026 edition where skill, strategy and determination define who reaches the top.",
+    `KIRAKITAH GAMING 926 is the inaugural KIRAKITAH Gaming championship — an eFootball Mobile championship for the ${KG926_EDITION_MONTH_YEAR_LABEL} edition, commencing ${KG926_EDITION_START_DISPLAY}, where skill, strategy and determination define who reaches the top.`,
 } as const;
 
 export const esportsJourneySteps: EsportsJourneyStep[] = [
@@ -155,9 +156,9 @@ export const esportsWhyEnter = {
       description: "Put your gamer tag on the KIRAKITAH stage.",
     },
     {
-      title: "BE PART OF THE FIRST EDITION",
+      title: "JOIN THE NEW EDITION",
       description:
-        "Become one of the players who helped launch KIRAKITAH Gaming.",
+        `The ${KG926_EDITION_MONTH_YEAR_LABEL} edition begins ${KG926_EDITION_START_DISPLAY}. Be part of KIRAKITAH Gaming from day one.`,
     },
     {
       title: "COMPETE FOR US$100",
@@ -255,7 +256,7 @@ export const esportsFinalCta = {
 
 export const esportsRegisterHero = {
   headline: "YOUR GAME. YOUR SKILL. YOUR SHOT.",
-  copy: "Register for KIRAKITAH GAMING 926 — the inaugural eFootball Mobile championship.",
+  copy: `Register for KIRAKITAH GAMING 926 — the inaugural eFootball Mobile championship. The new edition begins ${KG926_EDITION_START_DISPLAY}.`,
 } as const;
 
 export const registrationCountries = [

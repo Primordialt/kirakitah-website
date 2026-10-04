@@ -28,7 +28,7 @@ Do **not** invent unresolved gameplay rules. Do **not** silently create `kg926-v
 | Competition name | KIRAKITAH GAMING 926 |
 | Game | eFootball Mobile |
 | Format | Online 1v1 |
-| Commencement | 2026-09-14 |
+| Commencement | 2026-11-01 |
 | Prize | US$100 Grand Prize |
 | Qualification entrants | 128 |
 | Qualification pods | 32 × 4 |

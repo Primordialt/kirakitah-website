@@ -1,6 +1,8 @@
 import type { Tournament } from "@/domain/tournament";
 import {
   COMPETITION_NAME,
+  KG926_EDITION_START_DATE,
+  KG926_EDITION_START_ISO,
   TOURNAMENT_EVENT_ID,
   TOURNAMENT_SLUG,
 } from "@/config/competition";
@@ -16,8 +18,8 @@ export const mockTournaments: Tournament[] = [
       "The inaugural KIRAKITAH eFootball Mobile competition — an online 1v1 championship.",
     status: "registration-open",
     registrationState: "open",
-    startDate: "2026-09-14T00:00:00.000Z",
-    endDate: "2026-09-14T00:00:00.000Z",
+    startDate: KG926_EDITION_START_ISO,
+    endDate: KG926_EDITION_START_ISO,
     location: "Online",
     registrationOpen: true,
     rulesUrl: "/esports/rules",
@@ -29,7 +31,7 @@ export const mockTournaments: Tournament[] = [
     qualificationTarget: 32,
     championCount: 1,
     grandPrize: "US$100",
-    commencementDate: "2026-09-14",
+    commencementDate: KG926_EDITION_START_DATE,
     prizeInfo: "US$100 Grand Prize",
   },
 ];

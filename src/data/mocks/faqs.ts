@@ -1,4 +1,5 @@
 import type { FAQ } from "@/domain/faq";
+import { KG926_EDITION_START_DISPLAY } from "@/config/competition";
 
 export const mockFaqs: FAQ[] = [
   {
@@ -107,7 +108,7 @@ export const mockFaqs: FAQ[] = [
   {
     id: "faq-esports-010",
     question: "When does the tournament start?",
-    answer: "KIRAKITAH GAMING 926 commences on September 14, 2026.",
+    answer: `KIRAKITAH GAMING 926 commences on ${KG926_EDITION_START_DISPLAY}.`,
     category: "esports",
     order: 10,
   },

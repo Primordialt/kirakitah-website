@@ -49,7 +49,7 @@ Table: `tournaments`
 | `edition` | 926 |
 | `format` | Online 1v1 |
 | `status` | `registration_open` |
-| `commencement_date` | 2026-09-14 |
+| `commencement_date` | 2026-11-01 |
 | `target_participant_count` | 128 |
 | `qualification_target` | 32 |
 | `prize_info` | US$100 Grand Prize |

@@ -1,4 +1,5 @@
 import type { Story } from "@/domain/story";
+import { KG926_EDITION_START_DISPLAY } from "@/config/competition";
 
 export const mockStories: Story[] = [
   {
@@ -22,10 +23,10 @@ Today, KIRAKITAH Gaming is our most developed initiative — but it is one part 
     id: "story-002",
     slug: "kirakitah-gaming-926",
     title: "KIRAKITAH GAMING 926",
-    excerpt: "The first major KIRAKITAH competition begins September 14, 2026.",
+    excerpt: `The first major KIRAKITAH competition begins ${KG926_EDITION_START_DISPLAY}.`,
     content: `The first major KIRAKITAH competition is taking shape.
 
-The inaugural KIRAKITAH Gaming championship brings players together for an online eFootball Mobile competition beginning September 14, 2026.
+The inaugural KIRAKITAH Gaming championship brings players together for an online eFootball Mobile competition beginning ${KG926_EDITION_START_DISPLAY}.
 
 128 players. 32 qualifiers. 1 champion. US$100 grand prize.
 

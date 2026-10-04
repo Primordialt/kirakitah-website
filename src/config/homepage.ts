@@ -6,6 +6,7 @@ import {
   Sparkles,
   Users,
 } from "lucide-react";
+import { KG926_EDITION_COMMENCEMENT_SHORT } from "@/config/competition";
 
 export interface HomepageCta {
   label: string;
@@ -106,7 +107,7 @@ export const homepageFeaturedInitiative: FeaturedInitiativeData = {
   subtitle: "eFootball Mobile Championship",
   description:
     "The first major KIRAKITAH competition — an online eFootball Mobile championship where skill, strategy and determination define who reaches the top.",
-  commencement: "Commences September 14, 2026.",
+  commencement: KG926_EDITION_COMMENCEMENT_SHORT,
   stats: [
     { label: "Players", value: "128" },
     { label: "Qualifiers", value: "32" },

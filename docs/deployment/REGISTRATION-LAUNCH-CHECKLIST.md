@@ -1,6 +1,6 @@
 # Registration launch checklist — KIRAKITAH GAMING 926
 
-Competition: **KIRAKITAH GAMING 926** (not “2026”). Commencement: **14 September 2026**.  
+Competition: **KIRAKITAH GAMING 926** (not “2026”). Commencement: **1 November 2026**.  
 Identity: **manual review only**.
 
 Only check a box after a human verifies it in the real Production environment.

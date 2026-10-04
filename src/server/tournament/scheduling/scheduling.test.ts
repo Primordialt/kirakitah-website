@@ -16,6 +16,7 @@ import {
 } from "@/server/tournament/scheduling/scheduling-service";
 import { roleHasPermission } from "@/server/admin/authorization/permissions";
 import { CompetitionOperationsError } from "@/server/tournament/competition/errors";
+import { KG926_EDITION_START_DATE } from "@/config/competition";
 import { KG926_COMPETITION_RULES_VERSION } from "@/server/tournament/competition/competition-rules";
 import { assertNoSensitivePublicFields } from "@/server/tournament/competition/public-projections";
 
@@ -26,7 +27,7 @@ describe("KG926 competition policy (FINALIZED vs PENDING)", () => {
     expect(policy.competition.name).toBe("KIRAKITAH GAMING 926");
     expect(policy.competition.game).toBe("eFootball Mobile");
     expect(policy.competition.format).toBe("Online 1v1");
-    expect(policy.competition.commencementDate).toBe("2026-09-14");
+    expect(policy.competition.commencementDate).toBe(KG926_EDITION_START_DATE);
     expect(policy.competition.prize).toContain("US$100");
   });
 

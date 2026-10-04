@@ -1,6 +1,7 @@
 import type { Event } from "@/domain/event";
 import {
   COMPETITION_NAME,
+  KG926_EDITION_START_ISO,
   TOURNAMENT_EVENT_ID,
   TOURNAMENT_SLUG,
 } from "@/config/competition";
@@ -14,8 +15,8 @@ export const mockEvents: Event[] = [
     description:
       "The inaugural KIRAKITAH Gaming eFootball Mobile championship.",
     status: "registration-open",
-    startDate: "2026-09-14T00:00:00.000Z",
-    endDate: "2026-09-14T00:00:00.000Z",
+    startDate: KG926_EDITION_START_ISO,
+    endDate: KG926_EDITION_START_ISO,
     location: "Online",
     registrationOpen: true,
     rulesUrl: "/esports/rules",
