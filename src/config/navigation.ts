@@ -25,8 +25,16 @@ export const desktopNavigation: NavigationItem[] = primaryNavigation.filter(
   (item) => item.href !== "/",
 );
 
+/** Public header auth shortcuts (login, register, participant portal). */
+export const headerAuthLinks = {
+  login: { label: "Log in", href: "/login" },
+  register: { label: "Sign up", href: "/register" },
+  account: { label: "My account", href: "/dashboard" },
+  fixtures: { label: "Fixtures", href: "/matches" },
+} as const;
+
 export const headerCta = {
-  label: "JOIN KIRAKITAH",
+  label: "Sign up",
   href: "/register",
   alternateLabel: "EXPLORE KIRAKITAH",
 } as const;
@@ -69,7 +77,10 @@ export const footerColumns: FooterColumn[] = [
   {
     title: "Participate",
     links: [
-      { label: "Register", href: "/register" },
+      { label: "Log in", href: "/login" },
+      { label: "Sign up", href: "/register" },
+      { label: "Fixtures", href: "/matches" },
+      { label: "Competition", href: "/esports" },
       { label: "Tournament Rules", href: "/esports/rules" },
       { label: "FAQ", href: "/esports/faq" },
       { label: "Code of Conduct", href: "/code-of-conduct" },

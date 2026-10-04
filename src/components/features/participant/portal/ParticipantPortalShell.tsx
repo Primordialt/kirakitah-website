@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { LogoutButton } from "@/components/features/participant/LogoutButton";
 import {
   ParticipantPortalHeader,
   ParticipantNavLinks,
@@ -33,6 +34,17 @@ export function ParticipantPortalShell({
           <nav aria-label="Participant portal sidebar">
             <ParticipantNavLinks orientation="vertical" />
           </nav>
+          <div className="mt-6 border-t border-border pt-4">
+            <LogoutButton />
+          </div>
+          <p className="mt-6 text-body-sm text-text-muted">
+            <Link
+              href="/esports"
+              className="font-medium text-accent underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus"
+            >
+              Competition info
+            </Link>
+          </p>
         </aside>
         <main id="main-content" className="min-w-0 flex-1">
           {children}

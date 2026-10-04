@@ -1,5 +1,5 @@
 import { Header } from "@/components/shared/header/Header";
-import { desktopNavigation, headerCta } from "@/config/navigation";
+import { desktopNavigation, headerAuthLinks } from "@/config/navigation";
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
@@ -36,10 +36,13 @@ describe("Header", () => {
     }
   });
 
-  it("renders the global CTA", () => {
+  it("renders prominent login and sign up actions", () => {
     render(<Header />);
     expect(
-      screen.getAllByRole("link", { name: headerCta.label }).length,
+      screen.getAllByRole("link", { name: headerAuthLinks.login.label }).length,
+    ).toBeGreaterThan(0);
+    expect(
+      screen.getAllByRole("link", { name: headerAuthLinks.register.label }).length,
     ).toBeGreaterThan(0);
   });
 

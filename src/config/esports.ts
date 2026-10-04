@@ -43,7 +43,7 @@ export const esportsHero = {
   eyebrow: "KIRAKITAH GAMING 926",
   headline: "YOUR GAME. YOUR SKILL. YOUR SHOT.",
   supportingCopy:
-    "The inaugural KIRAKITAH Gaming competition brings players together for an online eFootball Mobile championship built around competition, skill and the chance to become the first KIRAKITAH champion.",
+    "The next major KIRAKITAH Gaming competition brings players together for an online eFootball Mobile championship built around competition, skill and the chance to become the first KIRAKITAH champion.",
   primaryCta: { label: "REGISTER NOW", href: "/register" } satisfies EsportsCta,
   secondaryCta: {
     label: "VIEW TOURNAMENT DETAILS",
@@ -61,7 +61,7 @@ export const esportsStats: EsportsStat[] = [
 export const esportsIntro = {
   lead: "KIRAKITAH Gaming brings competitive players together for organised online gaming experiences designed to challenge, connect and celebrate talent.",
   detail:
-    `KIRAKITAH GAMING 926 is the inaugural KIRAKITAH Gaming championship — an eFootball Mobile championship for the ${KG926_EDITION_MONTH_YEAR_LABEL} edition, commencing ${KG926_EDITION_START_DISPLAY}, where skill, strategy and determination define who reaches the top.`,
+    `KIRAKITAH GAMING 926 is the next major KIRAKITAH Gaming championship — an eFootball Mobile championship for the ${KG926_EDITION_MONTH_YEAR_LABEL} edition, commencing ${KG926_EDITION_START_DISPLAY}, where skill, strategy and determination define who reaches the top.`,
 } as const;
 
 export const esportsJourneySteps: EsportsJourneyStep[] = [
@@ -162,7 +162,7 @@ export const esportsWhyEnter = {
     },
     {
       title: "COMPETE FOR US$100",
-      description: "One champion takes home the inaugural Grand Prize.",
+      description: "One champion takes home the US$100 Grand Prize.",
     },
     {
       title: "GET SEEN",
@@ -256,7 +256,7 @@ export const esportsFinalCta = {
 
 export const esportsRegisterHero = {
   headline: "YOUR GAME. YOUR SKILL. YOUR SHOT.",
-  copy: `Register for KIRAKITAH GAMING 926 — the inaugural eFootball Mobile championship. The new edition begins ${KG926_EDITION_START_DISPLAY}.`,
+  copy: `Register for KIRAKITAH GAMING 926 — the next major eFootball Mobile championship. The new edition begins ${KG926_EDITION_START_DISPLAY}.`,
 } as const;
 
 export const registrationCountries = [

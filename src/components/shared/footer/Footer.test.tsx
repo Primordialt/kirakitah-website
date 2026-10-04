@@ -38,7 +38,7 @@ describe("Footer", () => {
       expect(href).not.toBe("null");
     }
 
-    expect(screen.getByRole("link", { name: "Register" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "Sign up" })).toHaveAttribute(
       "href",
       "/register",
     );

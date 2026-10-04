@@ -14,7 +14,7 @@ export const mockInitiatives: Initiative[] = [
     description:
       "KIRAKITAH Gaming is the competitive side of the KIRAKITAH ecosystem, bringing players together through organised gaming experiences, tournaments and challenges.",
     body: [
-      "The inaugural KIRAKITAH Gaming competition is an eFootball Mobile championship designed to give players an opportunity to compete, be recognised and experience organised online competition.",
+      "The next major KIRAKITAH Gaming competition is an eFootball Mobile championship designed to give players an opportunity to compete, be recognised and experience organised online competition.",
     ],
     status: "active",
     category: "competition",

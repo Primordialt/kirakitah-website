@@ -13,7 +13,7 @@ export const mockEvents: Event[] = [
     initiativeId: "init-gaming",
     name: COMPETITION_NAME,
     description:
-      "The inaugural KIRAKITAH Gaming eFootball Mobile championship.",
+      "The next major KIRAKITAH Gaming eFootball Mobile championship.",
     status: "registration-open",
     startDate: KG926_EDITION_START_ISO,
     endDate: KG926_EDITION_START_ISO,

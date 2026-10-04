@@ -1,17 +1,24 @@
 "use client";
 
 import { cn } from "@/lib/cn";
-import { headerCta, primaryNavigation } from "@/config/navigation";
-import { Button } from "@/components/ui";
+import { primaryNavigation } from "@/config/navigation";
+import type { SiteHeaderAuthState } from "@/config/site-header-auth";
+import { unauthenticatedSiteHeaderAuth } from "@/config/site-header-auth";
+import { HeaderAuthActions } from "./HeaderAuthActions";
 import { NavLink } from "./NavLink";
 import { useEffect, useRef } from "react";
 
 export interface MobileNavigationProps {
   isOpen: boolean;
   onClose: () => void;
+  auth?: SiteHeaderAuthState;
 }
 
-export function MobileNavigation({ isOpen, onClose }: MobileNavigationProps) {
+export function MobileNavigation({
+  isOpen,
+  onClose,
+  auth = unauthenticatedSiteHeaderAuth,
+}: MobileNavigationProps) {
   const panelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -62,21 +69,31 @@ export function MobileNavigation({ isOpen, onClose }: MobileNavigationProps) {
         aria-label="Mobile navigation"
         hidden={!isOpen}
         className={cn(
-          "fixed inset-x-0 top-[var(--header-height)] z-50 lg:hidden",
+          "fixed inset-x-0 top-[var(--header-height)] z-50 max-h-[calc(100dvh-var(--header-height))] overflow-y-auto lg:hidden",
           "border-b border-border bg-surface-elevated shadow-lg",
           "motion-safe:transition-transform motion-safe:duration-[var(--duration-standard)] motion-safe:ease-[var(--ease-out)]",
           isOpen ? "translate-y-0" : "-translate-y-2 pointer-events-none opacity-0",
         )}
       >
         <nav aria-label="Mobile primary" className="container-content py-6">
-          <ul className="flex flex-col gap-1">
+          <div className="rounded-xl border border-border bg-surface p-4">
+            <p className="mb-3 text-caption font-semibold uppercase tracking-wide text-text-muted">
+              Account
+            </p>
+            <HeaderAuthActions
+              auth={auth}
+              layout="mobile"
+              onNavigate={onClose}
+            />
+          </div>
+          <ul className="mt-6 flex flex-col gap-1">
             {primaryNavigation.map((item) => (
               <li key={item.href}>
                 <NavLink
                   href={item.href}
                   external={item.external}
                   onClick={onClose}
-                  className="block rounded-lg px-3 py-3 text-h4"
+                  className="block min-h-11 rounded-lg px-3 py-3 text-h4"
                   activeClassName="bg-surface-muted text-text-primary no-underline border-l-2 border-brand-primary pl-[calc(0.75rem-2px)]"
                 >
                   {item.label}
@@ -84,15 +101,6 @@ export function MobileNavigation({ isOpen, onClose }: MobileNavigationProps) {
               </li>
             ))}
           </ul>
-          <div className="mt-6 border-t border-border pt-6">
-            <Button
-              href={headerCta.href}
-              className="w-full"
-              onClick={onClose}
-            >
-              {headerCta.label}
-            </Button>
-          </div>
         </nav>
       </div>
     </>

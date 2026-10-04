@@ -106,7 +106,7 @@ export const homepageFeaturedInitiative: FeaturedInitiativeData = {
   title: "KIRAKITAH GAMING 926",
   subtitle: "eFootball Mobile Championship",
   description:
-    "The first major KIRAKITAH competition — an online eFootball Mobile championship where skill, strategy and determination define who reaches the top.",
+    "The next major KIRAKITAH competition — an online eFootball Mobile championship where skill, strategy and determination define who reaches the top.",
   commencement: KG926_EDITION_COMMENCEMENT_SHORT,
   stats: [
     { label: "Players", value: "128" },

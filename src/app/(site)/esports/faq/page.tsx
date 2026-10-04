@@ -42,7 +42,7 @@ export default async function EsportsFaqPage() {
         </p>
         <h1 className="mt-3 text-h1 text-text-primary">FAQ</h1>
         <p className="mt-4 text-body-lg text-text-secondary">
-          Answers to common questions about the inaugural KIRAKITAH Gaming
+          Answers to common questions about the next major KIRAKITAH Gaming
           championship.
         </p>
       </div>
