@@ -21,6 +21,13 @@ vi.mock("next/navigation", () => ({
   usePathname: () => "/dashboard",
 }));
 
+vi.mock("@/lib/participant/api", () => ({
+  participantFetch: vi.fn(async () => ({
+    response: { ok: true } as Response,
+    payload: { unreadCount: 0 },
+  })),
+}));
+
 describe("ParticipantNavLinks", () => {
   it("renders semantic navigation with keyboard-reachable links", () => {
     render(
