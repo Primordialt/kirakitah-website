@@ -46,6 +46,10 @@ export const ADMIN_PERMISSIONS = [
   "participant:delete",
   "profile:reopen_verified",
   "qualification:reassign_position",
+  "chat:manage",
+  "chat:lock",
+  "chat:announce",
+  "chat:moderate",
 ] as const;
 
 export type AdminPermission = (typeof ADMIN_PERMISSIONS)[number];
@@ -87,6 +91,10 @@ const ROLE_PERMISSIONS: Record<AdminRole, readonly AdminPermission[]> = {
     "participant:delete",
     "profile:reopen_verified",
     "qualification:reassign_position",
+    "chat:manage",
+    "chat:lock",
+    "chat:announce",
+    "chat:moderate",
   ],
   TOURNAMENT_ADMIN: [
     "dashboard:view",
@@ -113,6 +121,9 @@ const ROLE_PERMISSIONS: Record<AdminRole, readonly AdminPermission[]> = {
     "tournament:match_schedule",
     "tournament:policy_view",
     "tournament:eligibility_config_view",
+    "chat:announce",
+    "chat:moderate",
+    "chat:lock",
   ],
   REVIEWER: [
     "dashboard:view",

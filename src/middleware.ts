@@ -88,6 +88,8 @@ export function middleware(request: NextRequest) {
     pathname.startsWith("/account/") ||
     pathname === "/matches" ||
     pathname.startsWith("/matches/") ||
+    pathname === "/chatbox" ||
+    pathname.startsWith("/chatbox/") ||
     pathname === "/notifications" ||
     pathname.startsWith("/notifications/") ||
     pathname === "/tournaments" ||
@@ -133,6 +135,8 @@ export const config = {
     "/account",
     "/matches/:path*",
     "/matches",
+    "/chatbox/:path*",
+    "/chatbox",
     "/notifications/:path*",
     "/notifications",
     "/tournaments/:path*",

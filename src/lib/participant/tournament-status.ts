@@ -270,6 +270,24 @@ export function getNotificationPresentation(eventType: string): {
         description: "You have been assigned to a qualification pod.",
         href: "/tournaments/event-kg926",
       };
+    case "CHAT_MENTION":
+      return {
+        title: "You were mentioned in Chatbox",
+        description: "Someone mentioned you in the KIRAKITAH Community chat.",
+        href: "/chatbox",
+      };
+    case "CHAT_REPLY":
+      return {
+        title: "Reply in Chatbox",
+        description: "Someone replied to your message in the Chatbox.",
+        href: "/chatbox",
+      };
+    case "CHAT_ANNOUNCEMENT":
+      return {
+        title: "Admin announcement",
+        description: "There is a new announcement in the KIRAKITAH Chatbox.",
+        href: "/chatbox",
+      };
     default:
       return {
         title: eventType.replace(/_/g, " "),
@@ -287,6 +305,9 @@ export const PARTICIPANT_VISIBLE_AUDIT_EVENT_TYPES = [
   "PARTICIPANT_APPLICATION_SUBMITTED",
   "PARTICIPANT_SELECTED",
   "PARTICIPANT_QUALIFICATION_ASSIGNED",
+  "CHAT_MENTION",
+  "CHAT_REPLY",
+  "CHAT_ANNOUNCEMENT",
 ] as const;
 
 export const PLATFORM_LABELS: Record<string, string> = {
