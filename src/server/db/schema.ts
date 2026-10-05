@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 import {
   type AnyPgColumn,
+  bigint,
   boolean,
   date,
   index,
@@ -400,6 +401,9 @@ export const adminAuditEventTypeEnum = pgEnum("admin_audit_event_type", [
   "CHAT_MEMBER_UNRESTRICTED",
   "CHAT_ANNOUNCEMENT_CREATED",
   "REGISTRATION_BULK_APPROVAL",
+  "ARENA_ROUND_RESOLVED",
+  "ARENA_WALLET_ADJUSTMENT",
+  "ARENA_CONFIG_CHANGED",
 ]);
 
 export const tournamentPhaseTypeEnum = pgEnum("tournament_phase_type", [
@@ -1730,4 +1734,288 @@ export const chatMessageReads = pgTable(
       table.participantAccountId,
     ),
   ],
+);
+
+export const kkWalletLedgerTypeEnum = pgEnum("kk_wallet_ledger_type", [
+  "deposit",
+  "withdrawal",
+  "arena_entry",
+  "arena_prize",
+  "adjustment",
+  "refund",
+]);
+
+export const kkWalletExternalStatusEnum = pgEnum("kk_wallet_external_status", [
+  "pending",
+  "processing",
+  "completed",
+  "failed",
+  "cancelled",
+]);
+
+export const arenaKindEnum = pgEnum("arena_kind", ["quickfire", "typerush"]);
+
+export const arenaRoundStateEnum = pgEnum("arena_round_state", [
+  "waiting_for_players",
+  "countdown",
+  "active",
+  "resolving",
+  "disqualified",
+  "no_winner",
+  "completed",
+  "intermission",
+  "paused",
+]);
+
+export const arenaActivityKindEnum = pgEnum("arena_activity_kind", [
+  "joined",
+  "round_started",
+  "round_ended",
+  "winner",
+  "disqualified",
+  "no_winner",
+  "streak",
+]);
+
+export const kkWallets = pgTable(
+  "kk_wallets",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    participantAccountId: uuid("participant_account_id")
+      .notNull()
+      .references(() => participantAccounts.id, { onDelete: "cascade" }),
+    balanceMilli: bigint("balance_milli", { mode: "number" }).notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "string" })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true, mode: "string" })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [uniqueIndex("kk_wallets_participant_uidx").on(table.participantAccountId)],
+);
+
+export const kkWalletLedger = pgTable(
+  "kk_wallet_ledger",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    walletId: uuid("wallet_id")
+      .notNull()
+      .references(() => kkWallets.id, { onDelete: "cascade" }),
+    entryType: kkWalletLedgerTypeEnum("entry_type").notNull(),
+    amountMilli: bigint("amount_milli", { mode: "number" }).notNull(),
+    balanceBeforeMilli: bigint("balance_before_milli", { mode: "number" }).notNull(),
+    balanceAfterMilli: bigint("balance_after_milli", { mode: "number" }).notNull(),
+    idempotencyKey: text("idempotency_key"),
+    referenceType: text("reference_type"),
+    referenceId: uuid("reference_id"),
+    description: text("description").notNull(),
+    metadata: jsonb("metadata"),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "string" })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index("kk_wallet_ledger_wallet_created_idx").on(table.walletId, table.createdAt),
+  ],
+);
+
+export const kkWalletDeposits = pgTable("kk_wallet_deposits", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  walletId: uuid("wallet_id")
+    .notNull()
+    .references(() => kkWallets.id, { onDelete: "cascade" }),
+  amountMilli: bigint("amount_milli", { mode: "number" }).notNull(),
+  status: kkWalletExternalStatusEnum("status").notNull().default("pending"),
+  provider: text("provider"),
+  externalReference: text("external_reference"),
+  ledgerEntryId: uuid("ledger_entry_id"),
+  createdAt: timestamp("created_at", { withTimezone: true, mode: "string" }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true, mode: "string" }).notNull().defaultNow(),
+});
+
+export const kkWalletWithdrawals = pgTable("kk_wallet_withdrawals", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  walletId: uuid("wallet_id")
+    .notNull()
+    .references(() => kkWallets.id, { onDelete: "cascade" }),
+  amountMilli: bigint("amount_milli", { mode: "number" }).notNull(),
+  status: kkWalletExternalStatusEnum("status").notNull().default("pending"),
+  destinationHint: text("destination_hint"),
+  ledgerEntryId: uuid("ledger_entry_id"),
+  createdAt: timestamp("created_at", { withTimezone: true, mode: "string" }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true, mode: "string" }).notNull().defaultNow(),
+});
+
+export const arenas = pgTable(
+  "arenas",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    slug: text("slug").notNull(),
+    name: text("name").notNull(),
+    kind: arenaKindEnum("kind").notNull(),
+    description: text("description").notNull(),
+    enabled: boolean("enabled").notNull().default(false),
+    paused: boolean("paused").notNull().default(false),
+    entryFeeMilli: bigint("entry_fee_milli", { mode: "number" }).notNull().default(500),
+    prizeMilli: bigint("prize_milli", { mode: "number" }).notNull().default(3000),
+    minUniqueResponders: integer("min_unique_responders").notNull().default(10),
+    roundDurationSeconds: integer("round_duration_seconds").notNull().default(30),
+    intermissionSeconds: integer("intermission_seconds").notNull().default(10),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "string" }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true, mode: "string" }).notNull().defaultNow(),
+  },
+  (table) => [uniqueIndex("arenas_slug_uidx").on(table.slug)],
+);
+
+export const arenaQuickfireQuestions = pgTable("arena_quickfire_questions", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  question: text("question").notNull(),
+  optionA: text("option_a").notNull(),
+  optionB: text("option_b").notNull(),
+  optionC: text("option_c").notNull(),
+  optionD: text("option_d").notNull(),
+  correctOption: text("correct_option").notNull(),
+  explanation: text("explanation"),
+  category: text("category"),
+  difficulty: text("difficulty"),
+  active: boolean("active").notNull().default(true),
+  createdAt: timestamp("created_at", { withTimezone: true, mode: "string" }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true, mode: "string" }).notNull().defaultNow(),
+});
+
+export const arenaTyperushChallenges = pgTable("arena_typerush_challenges", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  challengeText: text("challenge_text").notNull(),
+  normalizedText: text("normalized_text").notNull(),
+  category: text("category"),
+  difficulty: text("difficulty"),
+  active: boolean("active").notNull().default(true),
+  createdAt: timestamp("created_at", { withTimezone: true, mode: "string" }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true, mode: "string" }).notNull().defaultNow(),
+});
+
+export const arenaRounds = pgTable(
+  "arena_rounds",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    arenaId: uuid("arena_id")
+      .notNull()
+      .references(() => arenas.id, { onDelete: "cascade" }),
+    roundNumber: integer("round_number").notNull(),
+    state: arenaRoundStateEnum("state").notNull().default("waiting_for_players"),
+    quickfireQuestionId: uuid("quickfire_question_id").references(
+      () => arenaQuickfireQuestions.id,
+      { onDelete: "set null" },
+    ),
+    typerushChallengeId: uuid("typerush_challenge_id").references(
+      () => arenaTyperushChallenges.id,
+      { onDelete: "set null" },
+    ),
+    startsAt: timestamp("starts_at", { withTimezone: true, mode: "string" }),
+    endsAt: timestamp("ends_at", { withTimezone: true, mode: "string" }),
+    resolvedAt: timestamp("resolved_at", { withTimezone: true, mode: "string" }),
+    winnerAccountId: uuid("winner_account_id").references(() => participantAccounts.id, {
+      onDelete: "set null",
+    }),
+    winnerResponseId: uuid("winner_response_id"),
+    uniqueResponderCount: integer("unique_responder_count"),
+    acceptedResponseCount: integer("accepted_response_count").notNull().default(0),
+    candidateWinnerResponseId: uuid("candidate_winner_response_id"),
+    totalKkCollectedMilli: bigint("total_kk_collected_milli", { mode: "number" })
+      .notNull()
+      .default(0),
+    disqualifyReason: text("disqualify_reason"),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "string" }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true, mode: "string" }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("arena_rounds_arena_round_uidx").on(table.arenaId, table.roundNumber),
+    index("arena_rounds_arena_state_idx").on(table.arenaId, table.state),
+  ],
+);
+
+export const arenaPresence = pgTable(
+  "arena_presence",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    arenaId: uuid("arena_id")
+      .notNull()
+      .references(() => arenas.id, { onDelete: "cascade" }),
+    participantAccountId: uuid("participant_account_id")
+      .notNull()
+      .references(() => participantAccounts.id, { onDelete: "cascade" }),
+    lastSeenAt: timestamp("last_seen_at", { withTimezone: true, mode: "string" })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("arena_presence_arena_account_uidx").on(table.arenaId, table.participantAccountId),
+    index("arena_presence_arena_seen_idx").on(table.arenaId, table.lastSeenAt),
+  ],
+);
+
+export const arenaResponses = pgTable(
+  "arena_responses",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    roundId: uuid("round_id")
+      .notNull()
+      .references(() => arenaRounds.id, { onDelete: "cascade" }),
+    participantAccountId: uuid("participant_account_id")
+      .notNull()
+      .references(() => participantAccounts.id, { onDelete: "cascade" }),
+    sequence: integer("sequence").notNull(),
+    payload: text("payload").notNull(),
+    isCorrect: boolean("is_correct").notNull(),
+    ledgerEntryId: uuid("ledger_entry_id")
+      .notNull()
+      .references(() => kkWalletLedger.id, { onDelete: "restrict" }),
+    receivedAt: timestamp("received_at", { withTimezone: true, mode: "string" })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index("arena_responses_round_received_idx").on(table.roundId, table.receivedAt),
+    index("arena_responses_round_account_idx").on(table.roundId, table.participantAccountId),
+  ],
+);
+
+export const arenaWinners = pgTable(
+  "arena_winners",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    roundId: uuid("round_id")
+      .notNull()
+      .references(() => arenaRounds.id, { onDelete: "cascade" }),
+    participantAccountId: uuid("participant_account_id")
+      .notNull()
+      .references(() => participantAccounts.id, { onDelete: "cascade" }),
+    responseId: uuid("response_id").notNull(),
+    prizeMilli: bigint("prize_milli", { mode: "number" }).notNull(),
+    prizeLedgerEntryId: uuid("prize_ledger_entry_id").notNull(),
+    winStreak: integer("win_streak").notNull().default(1),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "string" }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("arena_winners_round_id_unique").on(table.roundId),
+    uniqueIndex("arena_winners_response_id_unique").on(table.responseId),
+  ],
+);
+
+export const arenaActivity = pgTable(
+  "arena_activity",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    arenaId: uuid("arena_id")
+      .notNull()
+      .references(() => arenas.id, { onDelete: "cascade" }),
+    roundId: uuid("round_id"),
+    kind: arenaActivityKindEnum("kind").notNull(),
+    message: text("message").notNull(),
+    participantAccountId: uuid("participant_account_id"),
+    metadata: jsonb("metadata"),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "string" }).notNull().defaultNow(),
+  },
+  (table) => [index("arena_activity_arena_created_idx").on(table.arenaId, table.createdAt)],
 );

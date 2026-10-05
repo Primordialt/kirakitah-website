@@ -49,6 +49,7 @@ export function AdminShell({
     "tournament:view",
   );
   const canModerateChat = roleHasPermission(session.user.role, "chat:moderate");
+  const canViewArena = roleHasPermission(session.user.role, "arena:view");
 
   return (
     <div className="min-h-screen bg-background text-text-primary">
@@ -157,6 +158,14 @@ export function AdminShell({
                 href="/admin/chatbox"
               >
                 Chatbox
+              </Link>
+            ) : null}
+            {canViewArena ? (
+              <Link
+                className="hover:text-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-border-focus"
+                href="/admin/arena"
+              >
+                Arena
               </Link>
             ) : null}
             <AdminLogoutButton />

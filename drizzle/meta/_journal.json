@@ -204,6 +204,20 @@
       "when": 1722211200000,
       "tag": "0028_registration_bulk_approval_audit",
       "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1722297600000,
+      "tag": "0029_kirakitah_arena",
+      "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1722384000000,
+      "tag": "0030_arena_response_threshold",
+      "breakpoints": true
     }
   ]
 }

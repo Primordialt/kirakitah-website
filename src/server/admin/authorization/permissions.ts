@@ -50,6 +50,11 @@ export const ADMIN_PERMISSIONS = [
   "chat:lock",
   "chat:announce",
   "chat:moderate",
+  "arena:view",
+  "arena:manage",
+  "arena:questions",
+  "arena:wallet_review",
+  "arena:moderate",
 ] as const;
 
 export type AdminPermission = (typeof ADMIN_PERMISSIONS)[number];
@@ -95,6 +100,11 @@ const ROLE_PERMISSIONS: Record<AdminRole, readonly AdminPermission[]> = {
     "chat:lock",
     "chat:announce",
     "chat:moderate",
+    "arena:view",
+    "arena:manage",
+    "arena:questions",
+    "arena:wallet_review",
+    "arena:moderate",
   ],
   TOURNAMENT_ADMIN: [
     "dashboard:view",
@@ -124,6 +134,7 @@ const ROLE_PERMISSIONS: Record<AdminRole, readonly AdminPermission[]> = {
     "chat:announce",
     "chat:moderate",
     "chat:lock",
+    "arena:view",
   ],
   REVIEWER: [
     "dashboard:view",
