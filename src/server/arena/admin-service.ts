@@ -4,10 +4,10 @@ import { arenas } from "@/server/db/schema";
 import { recordAdminAuditEvent } from "@/server/admin/audit/record";
 import type { AdminRole } from "@/server/admin/authorization/permissions";
 import { ArenaError } from "@/server/arena/errors";
-import { listArenasDirectory } from "@/server/arena/engine";
+import { listAdminArenaDashboard } from "@/server/arena/engine";
 
 export async function adminListArenas() {
-  return listArenasDirectory();
+  return listAdminArenaDashboard();
 }
 
 export async function adminUpdateArena(input: {
@@ -17,6 +17,7 @@ export async function adminUpdateArena(input: {
   entryFeeMilli?: number;
   prizeMilli?: number;
   minUniqueResponders?: number;
+  minResponsesRequired?: number;
   roundDurationSeconds?: number;
   intermissionSeconds?: number;
   actorId: string;
@@ -41,11 +42,12 @@ export async function adminUpdateArena(input: {
     }
     patch.prizeMilli = input.prizeMilli;
   }
-  if (input.minUniqueResponders !== undefined) {
-    if (input.minUniqueResponders < 2 || input.minUniqueResponders > 100) {
-      throw new ArenaError("Minimum responders out of bounds.", "VALIDATION_ERROR", 400);
+  const minResponses = input.minResponsesRequired ?? input.minUniqueResponders;
+  if (minResponses !== undefined) {
+    if (minResponses < 2 || minResponses > 100) {
+      throw new ArenaError("Minimum responses out of bounds.", "VALIDATION_ERROR", 400);
     }
-    patch.minUniqueResponders = input.minUniqueResponders;
+    patch.minUniqueResponders = minResponses;
   }
   if (input.roundDurationSeconds !== undefined) {
     patch.roundDurationSeconds = Math.min(120, Math.max(10, input.roundDurationSeconds));

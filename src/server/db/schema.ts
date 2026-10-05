@@ -1858,7 +1858,7 @@ export const arenas = pgTable(
     enabled: boolean("enabled").notNull().default(false),
     paused: boolean("paused").notNull().default(false),
     entryFeeMilli: bigint("entry_fee_milli", { mode: "number" }).notNull().default(500),
-    prizeMilli: bigint("prize_milli", { mode: "number" }).notNull().default(6000),
+    prizeMilli: bigint("prize_milli", { mode: "number" }).notNull().default(3000),
     minUniqueResponders: integer("min_unique_responders").notNull().default(10),
     roundDurationSeconds: integer("round_duration_seconds").notNull().default(30),
     intermissionSeconds: integer("intermission_seconds").notNull().default(10),
@@ -1920,6 +1920,11 @@ export const arenaRounds = pgTable(
     }),
     winnerResponseId: uuid("winner_response_id"),
     uniqueResponderCount: integer("unique_responder_count"),
+    acceptedResponseCount: integer("accepted_response_count").notNull().default(0),
+    candidateWinnerResponseId: uuid("candidate_winner_response_id"),
+    totalKkCollectedMilli: bigint("total_kk_collected_milli", { mode: "number" })
+      .notNull()
+      .default(0),
     disqualifyReason: text("disqualify_reason"),
     createdAt: timestamp("created_at", { withTimezone: true, mode: "string" }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true, mode: "string" }).notNull().defaultNow(),

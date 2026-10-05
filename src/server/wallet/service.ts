@@ -92,7 +92,7 @@ export async function debitArenaEntry(input: {
 
   if (!wallet) {
     throw new WalletError(
-      "Not enough KK PTS to submit. Each response costs 0.5 KK.",
+      "Insufficient KK PTS. You need at least 0.5 KK to submit this response. Top up your wallet to continue.",
       "INSUFFICIENT_BALANCE",
       402,
     );
@@ -132,7 +132,7 @@ export async function debitArenaEntry(input: {
 
   if (!updated) {
     throw new WalletError(
-      "Not enough KK PTS to submit. Each response costs 0.5 KK.",
+      "Insufficient KK PTS. You need at least 0.5 KK to submit this response. Top up your wallet to continue.",
       "INSUFFICIENT_BALANCE",
       402,
     );

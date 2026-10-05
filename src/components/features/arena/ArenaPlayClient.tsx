@@ -4,6 +4,10 @@ import Link from "next/link";
 import { Button } from "@/components/ui";
 import { apiErrorMessage, participantFetch } from "@/lib/participant/api";
 import { useCallback, useEffect, useState } from "react";
+import {
+  ArenaChallengeShell,
+  TypeRushProtectedInput,
+} from "@/components/features/arena/ArenaChallengeProtection";
 
 type LiveState = {
   arena: {
@@ -12,7 +16,7 @@ type LiveState = {
     kind: string;
     entryFeeKk: string;
     prizeKk: string;
-    minUniqueResponders: number;
+    minResponsesRequired: number;
     enabled: boolean;
     paused: boolean;
   };
@@ -22,6 +26,10 @@ type LiveState = {
     state: string;
     secondsRemaining: number | null;
     disqualifyReason: string | null;
+    acceptedResponseCount: number;
+    responsesRemaining: number;
+    uniqueParticipantCount: number;
+    roundValidity: string;
   } | null;
   question: Record<string, string> | null;
   challenge: { text: string } | null;
@@ -76,7 +84,7 @@ export function ArenaPlayClient({ slug }: { slug: string }) {
     }
     setStatus(
       body.isCorrect
-        ? "Correct response recorded — waiting for round end."
+        ? "Correct response recorded — round resolves when timer ends."
         : "Entry accepted — 0.5 KK charged.",
     );
     setDraft("");
@@ -100,7 +108,8 @@ export function ArenaPlayClient({ slug }: { slug: string }) {
   }
 
   const round = live.round;
-  const waitingPlayers = live.playersPresent < live.arena.minUniqueResponders;
+  const minResponses = live.arena.minResponsesRequired;
+  const accepted = round?.acceptedResponseCount ?? 0;
 
   return (
     <div className="mx-auto max-w-2xl space-y-4">
@@ -114,10 +123,12 @@ export function ArenaPlayClient({ slug }: { slug: string }) {
         </p>
         <div className="mt-3 flex flex-wrap gap-4 text-body-sm">
           <span>
-            Players: <strong>{live.playersPresent}</strong> / {live.arena.minUniqueResponders}{" "}
-            minimum
+            Responses: <strong>{accepted}</strong> / {minResponses} required
           </span>
-          <span>Entry: {live.arena.entryFeeKk} KK</span>
+          <span>
+            Players in arena: <strong>{live.playersPresent}</strong>
+          </span>
+          <span>Entry: {live.arena.entryFeeKk} KK per response</span>
           <span>Prize: {live.arena.prizeKk} KK</span>
           <span>Balance: {live.wallet.balanceKk} KK</span>
         </div>
@@ -126,9 +137,17 @@ export function ArenaPlayClient({ slug }: { slug: string }) {
             {round.secondsRemaining}s
           </p>
         ) : null}
-        {waitingPlayers && round?.state === "waiting_for_players" ? (
+        {round?.state === "waiting_for_players" ? (
           <p className="mt-2 text-body-sm text-text-secondary" role="status">
-            Waiting for more players…
+            {live.playersPresent < 1
+              ? "Waiting for players…"
+              : "Round starting soon…"}
+          </p>
+        ) : null}
+        {round?.roundValidity === "waiting_for_minimum_responses" &&
+        round.state === "active" ? (
+          <p className="mt-2 text-body-sm text-text-secondary" role="status">
+            Waiting for minimum responses ({round.responsesRemaining} more needed to validate).
           </p>
         ) : null}
         {!live.arena.enabled || live.arena.paused ? (
@@ -138,13 +157,18 @@ export function ArenaPlayClient({ slug }: { slug: string }) {
         ) : null}
       </header>
 
+      <p className="text-caption text-text-muted">
+        Copy and paste are disabled in Arena. Play fair. Screenshots cannot be fully blocked in a
+        browser.
+      </p>
+
       {live.winnerAnnouncement ? (
         <div className="rounded-xl border border-brand-primary/40 bg-brand-primary/10 p-4">
           <p className="text-h4">🏆 Round winner!</p>
           <p className="mt-1 text-body-sm">
             @{live.winnerAnnouncement.username} · +{live.winnerAnnouncement.prizeKk} KK
             {live.winnerAnnouncement.streak > 1
-              ? ` · 🔥 streak ${live.winnerAnnouncement.streak}`
+              ? ` · 🔥 ${live.winnerAnnouncement.streak} wins in a row!`
               : ""}
           </p>
         </div>
@@ -152,8 +176,12 @@ export function ArenaPlayClient({ slug }: { slug: string }) {
 
       {round?.state === "disqualified" ? (
         <p className="rounded-lg border border-warning/40 bg-warning/10 p-3 text-body-sm" role="status">
-          ⚠️ Round disqualified — at least {live.arena.minUniqueResponders} unique participants
-          must submit a response. {round.disqualifyReason}
+          ⚠️ Round disqualified
+          <br />
+          {round.disqualifyReason ??
+            `At least ${minResponses} responses were required. Only ${accepted} were submitted.`}
+          <br />
+          No winner this round. Next round starts in 10 seconds.
         </p>
       ) : null}
 
@@ -164,7 +192,7 @@ export function ArenaPlayClient({ slug }: { slug: string }) {
       ) : null}
 
       {live.arena.kind === "quickfire" && live.question && round?.state === "active" ? (
-        <section className="rounded-xl border border-border bg-surface p-4">
+        <ArenaChallengeShell className="relative rounded-xl border border-border bg-surface p-4">
           <p className="text-body font-medium">{live.question.question}</p>
           <div className="mt-4 grid grid-cols-2 gap-2">
             {(["A", "B", "C", "D"] as const).map((key) => (
@@ -178,20 +206,24 @@ export function ArenaPlayClient({ slug }: { slug: string }) {
               </Button>
             ))}
           </div>
-        </section>
+        </ArenaChallengeShell>
       ) : null}
 
       {live.arena.kind === "typerush" && live.challenge && round?.state === "active" ? (
         <section className="rounded-xl border border-border bg-surface p-4">
-          <p className="text-caption text-text-muted">Type this exactly:</p>
-          <p className="mt-2 break-words text-body-sm font-medium">{live.challenge.text}</p>
+          <ArenaChallengeShell className="relative">
+            <p className="text-caption text-text-muted">Type this exactly:</p>
+            <p className="mt-2 break-words text-body-sm font-medium">{live.challenge.text}</p>
+          </ArenaChallengeShell>
           <label className="mt-4 block text-body-sm">
             Your attempt
-            <textarea
+            <TypeRushProtectedInput
               value={draft}
-              onChange={(e) => setDraft(e.target.value)}
-              rows={3}
-              className="mt-1 w-full min-w-0 rounded-lg border border-border bg-background px-3 py-2"
+              onValueChange={setDraft}
+              disabled={submitting}
+              onPasteRejected={() =>
+                setStatus("Please type the challenge manually.")
+              }
             />
           </label>
           <Button

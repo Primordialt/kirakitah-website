@@ -30,6 +30,7 @@ export async function PATCH(request: Request) {
         entryFeeMilli?: number;
         prizeMilli?: number;
         minUniqueResponders?: number;
+        minResponsesRequired?: number;
         roundDurationSeconds?: number;
         intermissionSeconds?: number;
       };
@@ -43,6 +44,7 @@ export async function PATCH(request: Request) {
         entryFeeMilli: body.entryFeeMilli,
         prizeMilli: body.prizeMilli,
         minUniqueResponders: body.minUniqueResponders,
+        minResponsesRequired: body.minResponsesRequired,
         roundDurationSeconds: body.roundDurationSeconds,
         intermissionSeconds: body.intermissionSeconds,
         actorId: session.user.id,

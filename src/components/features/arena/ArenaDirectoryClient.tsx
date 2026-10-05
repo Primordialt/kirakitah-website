@@ -13,7 +13,7 @@ type ArenaCard = {
   paused: boolean;
   entryFeeKk: string;
   prizeKk: string;
-  minPlayers: number;
+  minResponsesRequired: number;
   playersPresent: number;
   roundState: string | null;
   roundNumber: number | null;
@@ -47,7 +47,10 @@ export function ArenaDirectoryClient() {
         <h1 className="text-h2 text-text-primary">Think fast. Type faster. Win KK.</h1>
         <p className="text-body-sm text-text-secondary">
           Competitive KK PTS arenas separate from KG926 tournament qualification. Legal/compliance
-          review required before enabling real-money deposits in Production.
+          review required before enabling real-money deposits in Production.{" "}
+          <Link href="/arena/rules" className="text-accent underline-offset-2 hover:underline">
+            How to play
+          </Link>
         </p>
         {walletKk !== null ? (
           <p className="rounded-lg border border-border bg-surface px-4 py-3 text-body-sm">
@@ -85,10 +88,14 @@ export function ArenaDirectoryClient() {
                   <dd className="font-semibold text-text-primary">{arena.prizeKk} KK</dd>
                 </div>
                 <div>
-                  <dt>Players</dt>
+                  <dt>Validate round</dt>
                   <dd className="font-semibold text-text-primary">
-                    {arena.playersPresent} / {arena.minPlayers} min
+                    {arena.minResponsesRequired} responses
                   </dd>
+                </div>
+                <div>
+                  <dt>In arena</dt>
+                  <dd className="font-semibold text-text-primary">{arena.playersPresent}</dd>
                 </div>
                 <div>
                   <dt>Status</dt>

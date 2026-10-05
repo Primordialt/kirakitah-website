@@ -1,9 +1,12 @@
 /** 1 KK = 1000 milli-KK (0.001 KK precision). */
 export const MILLI_PER_KK = 1000;
 
+/** Arena economics (milli-KK). 500 = 0.5 KK per accepted response. 3000 = 3 KK prize. */
 export const DEFAULT_ENTRY_FEE_MILLI = 500;
-export const DEFAULT_PRIZE_MILLI = 6000;
-export const DEFAULT_MIN_UNIQUE_RESPONDERS = 10;
+export const DEFAULT_PRIZE_MILLI = 3000;
+/** Minimum successfully charged responses required to validate a round. */
+export const DEFAULT_MIN_CHARGED_RESPONSES = 10;
+export const DEFAULT_MIN_UNIQUE_RESPONDERS = DEFAULT_MIN_CHARGED_RESPONSES;
 export const DEFAULT_INTERMISSION_SECONDS = 10;
 export const DEFAULT_ROUND_DURATION_SECONDS = 30;
 

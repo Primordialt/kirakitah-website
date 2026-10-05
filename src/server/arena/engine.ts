@@ -5,6 +5,7 @@ import {
   eq,
   gt,
   inArray,
+  isNull,
   ne,
   sql,
 } from "drizzle-orm";
@@ -22,6 +23,11 @@ import {
 } from "@/server/db/schema";
 import { gradeQuickfire, gradeTyperush } from "@/server/arena/validation";
 import { ArenaError } from "@/server/arena/errors";
+import { assertArenaSubmissionRateLimit } from "@/server/arena/rate-limit";
+import {
+  determineRoundOutcome,
+  formatDisqualifyMessage,
+} from "@/server/arena/round-resolution";
 import {
   creditArenaPrize,
   debitArenaEntry,
@@ -32,6 +38,11 @@ import { recordAdminAuditEvent } from "@/server/admin/audit/record";
 
 const PRESENCE_TTL_MS = 45_000;
 const COUNTDOWN_MS = 5_000;
+
+/** DB column `min_unique_responders` stores minimum accepted/charged responses per round. */
+export function minResponsesRequired(arena: typeof arenas.$inferSelect): number {
+  return arena.minUniqueResponders;
+}
 
 export async function getArenaBySlug(slug: string) {
   const db = getDb();
@@ -164,7 +175,7 @@ export async function tickArena(arenaSlug: string) {
   const players = await countActivePresence(arena.id);
 
   if (round.state === "waiting_for_players") {
-    if (players >= arena.minUniqueResponders) {
+    if (players >= 1) {
       await db
         .update(arenaRounds)
         .set({ state: "countdown", startsAt: nowIso, updatedAt: nowIso })
@@ -216,39 +227,32 @@ export async function tickArena(arenaSlug: string) {
   }
 }
 
-async function resolveRound(arena: typeof arenas.$inferSelect, roundId: string) {
+async function countRoundResponseStats(roundId: string) {
   const db = getDb();
-  const nowIso = new Date().toISOString();
-
-  const [round] = await db.select().from(arenaRounds).where(eq(arenaRounds.id, roundId)).limit(1);
-  if (!round || round.state !== "resolving") return;
-
+  const [totalRow] = await db
+    .select({ value: count() })
+    .from(arenaResponses)
+    .where(eq(arenaResponses.roundId, roundId));
   const [uniqueRow] = await db
     .select({ value: sql<number>`count(distinct ${arenaResponses.participantAccountId})` })
     .from(arenaResponses)
     .where(eq(arenaResponses.roundId, roundId));
-  const uniqueCount = Number(uniqueRow?.value ?? 0);
+  return {
+    acceptedResponseCount: Number(totalRow?.value ?? 0),
+    uniqueParticipantCount: Number(uniqueRow?.value ?? 0),
+  };
+}
 
-  if (uniqueCount < arena.minUniqueResponders) {
-    await db
-      .update(arenaRounds)
-      .set({
-        state: "disqualified",
-        uniqueResponderCount: uniqueCount,
-        disqualifyReason: "Fewer than 10 unique participants submitted responses.",
-        resolvedAt: nowIso,
-        updatedAt: nowIso,
-      })
-      .where(eq(arenaRounds.id, roundId));
-    await logActivity({
-      arenaId: arena.id,
-      roundId,
-      kind: "disqualified",
-      message: `Round #${round.roundNumber} disqualified — only ${uniqueCount} unique responders.`,
-    });
-    await scheduleIntermission(roundId, nowIso);
-    return;
-  }
+async function resolveRound(arena: typeof arenas.$inferSelect, roundId: string) {
+  const db = getDb();
+  const nowIso = new Date().toISOString();
+  const minRequired = minResponsesRequired(arena);
+
+  const [round] = await db.select().from(arenaRounds).where(eq(arenaRounds.id, roundId)).limit(1);
+  if (!round || round.state !== "resolving") return;
+
+  const { acceptedResponseCount, uniqueParticipantCount } =
+    await countRoundResponseStats(roundId);
 
   const [winningResponse] = await db
     .select()
@@ -257,12 +261,42 @@ async function resolveRound(arena: typeof arenas.$inferSelect, roundId: string) 
     .orderBy(arenaResponses.receivedAt, arenaResponses.sequence)
     .limit(1);
 
-  if (!winningResponse) {
+  const outcome = determineRoundOutcome({
+    acceptedResponseCount,
+    minResponsesRequired: minRequired,
+    hasCorrectResponse: Boolean(winningResponse),
+  });
+
+  if (outcome.kind === "disqualified") {
+    await db
+      .update(arenaRounds)
+      .set({
+        state: "disqualified",
+        uniqueResponderCount: uniqueParticipantCount,
+        acceptedResponseCount,
+        disqualifyReason: formatDisqualifyMessage(acceptedResponseCount, minRequired),
+        resolvedAt: nowIso,
+        updatedAt: nowIso,
+      })
+      .where(eq(arenaRounds.id, roundId));
+    await logActivity({
+      arenaId: arena.id,
+      roundId,
+      kind: "disqualified",
+      message: `Round #${round.roundNumber} disqualified — only ${acceptedResponseCount} responses (need ${minRequired}).`,
+      metadata: { acceptedResponseCount, uniqueParticipantCount },
+    });
+    await scheduleIntermission(roundId, nowIso);
+    return;
+  }
+
+  if (outcome.kind === "no_winner") {
     await db
       .update(arenaRounds)
       .set({
         state: "no_winner",
-        uniqueResponderCount: uniqueCount,
+        uniqueResponderCount: uniqueParticipantCount,
+        acceptedResponseCount,
         resolvedAt: nowIso,
         updatedAt: nowIso,
       })
@@ -272,10 +306,13 @@ async function resolveRound(arena: typeof arenas.$inferSelect, roundId: string) 
       roundId,
       kind: "no_winner",
       message: `Round #${round.roundNumber} ended with no correct answer.`,
+      metadata: { acceptedResponseCount, uniqueParticipantCount },
     });
     await scheduleIntermission(roundId, nowIso);
     return;
   }
+
+  if (!winningResponse) return;
 
   await db.transaction(async (tx) => {
     const prizeLedgerId = await creditArenaPrize({
@@ -314,7 +351,8 @@ async function resolveRound(arena: typeof arenas.$inferSelect, roundId: string) 
         state: "completed",
         winnerAccountId: winningResponse.participantAccountId,
         winnerResponseId: winningResponse.id,
-        uniqueResponderCount: uniqueCount,
+        uniqueResponderCount: uniqueParticipantCount,
+        acceptedResponseCount,
         resolvedAt: nowIso,
         updatedAt: nowIso,
       })
@@ -397,6 +435,8 @@ export async function submitArenaResponse(input: {
   if (!arena.enabled) throw new ArenaError("Arena is offline.", "ARENA_DISABLED", 503);
   if (arena.paused) throw new ArenaError("Arena is paused.", "ARENA_PAUSED", 503);
 
+  assertArenaSubmissionRateLimit(input.participantAccountId);
+
   await tickArena(input.arenaSlug);
 
   const db = getDb();
@@ -472,6 +512,24 @@ export async function submitArenaResponse(input: {
         ledgerEntryId: ledgerId,
       })
       .returning();
+
+    await tx
+      .update(arenaRounds)
+      .set({
+        acceptedResponseCount: sql`${arenaRounds.acceptedResponseCount} + 1`,
+        totalKkCollectedMilli: sql`${arenaRounds.totalKkCollectedMilli} + ${arena.entryFeeMilli}`,
+        updatedAt: new Date().toISOString(),
+      })
+      .where(eq(arenaRounds.id, round.id));
+
+    if (isCorrect) {
+      await tx
+        .update(arenaRounds)
+        .set({ candidateWinnerResponseId: response!.id })
+        .where(
+          and(eq(arenaRounds.id, round.id), isNull(arenaRounds.candidateWinnerResponseId)),
+        );
+    }
 
     return { response: response!, balanceAfterMilli, isCorrect };
   });
@@ -560,6 +618,26 @@ export async function getArenaLiveState(arenaSlug: string, participantAccountId?
     await touchPresence(arena.id, participantAccountId);
   }
 
+  const minRequired = minResponsesRequired(arena);
+  let responseStats = { acceptedResponseCount: 0, uniqueParticipantCount: 0 };
+  let candidateWinnerUsername: string | null = null;
+
+  if (round) {
+    responseStats = await countRoundResponseStats(round.id);
+    if (round.candidateWinnerResponseId) {
+      const [candidate] = await db
+        .select({ username: participantAccounts.username })
+        .from(arenaResponses)
+        .innerJoin(
+          participantAccounts,
+          eq(arenaResponses.participantAccountId, participantAccounts.id),
+        )
+        .where(eq(arenaResponses.id, round.candidateWinnerResponseId))
+        .limit(1);
+      candidateWinnerUsername = candidate?.username ?? null;
+    }
+  }
+
   const secondsRemaining =
     round?.endsAt && round.state === "active"
       ? Math.max(0, Math.ceil((Date.parse(round.endsAt) - Date.now()) / 1000))
@@ -575,7 +653,7 @@ export async function getArenaLiveState(arenaSlug: string, participantAccountId?
       paused: arena.paused,
       entryFeeKk: milliToKkDisplay(arena.entryFeeMilli),
       prizeKk: milliToKkDisplay(arena.prizeMilli),
-      minUniqueResponders: arena.minUniqueResponders,
+      minResponsesRequired: minRequired,
     },
     playersPresent: players,
     round: round
@@ -585,7 +663,15 @@ export async function getArenaLiveState(arenaSlug: string, participantAccountId?
           state: round.state,
           secondsRemaining,
           disqualifyReason: round.disqualifyReason,
-          uniqueResponderCount: round.uniqueResponderCount,
+          acceptedResponseCount: responseStats.acceptedResponseCount,
+          responsesRemaining: Math.max(0, minRequired - responseStats.acceptedResponseCount),
+          uniqueParticipantCount: responseStats.uniqueParticipantCount,
+          candidateWinnerUsername,
+          totalKkCollectedKk: milliToKkDisplay(round.totalKkCollectedMilli ?? 0),
+          roundValidity:
+            responseStats.acceptedResponseCount >= minRequired
+              ? "minimum_responses_met"
+              : "waiting_for_minimum_responses",
         }
       : null,
     question,
@@ -611,7 +697,7 @@ export async function listArenasDirectory() {
         paused: arena.paused,
         entryFeeKk: milliToKkDisplay(arena.entryFeeMilli),
         prizeKk: milliToKkDisplay(arena.prizeMilli),
-        minPlayers: arena.minUniqueResponders,
+        minResponsesRequired: minResponsesRequired(arena),
         playersPresent: players,
         roundState: round?.state ?? null,
         roundNumber: round?.roundNumber ?? null,
@@ -619,4 +705,108 @@ export async function listArenasDirectory() {
     }),
   );
   return enriched;
+}
+
+export async function getAdminArenaOperationalData(slug: string) {
+  const arena = await getArenaBySlug(slug);
+  const db = getDb();
+  const round = await getCurrentRound(arena.id);
+  const minRequired = minResponsesRequired(arena);
+  const players = await countActivePresence(arena.id);
+
+  let liveRound: Record<string, unknown> | null = null;
+  if (round) {
+    const stats = await countRoundResponseStats(round.id);
+    let candidateWinnerUsername: string | null = null;
+    if (round.candidateWinnerResponseId) {
+      const [candidate] = await db
+        .select({ username: participantAccounts.username })
+        .from(arenaResponses)
+        .innerJoin(
+          participantAccounts,
+          eq(arenaResponses.participantAccountId, participantAccounts.id),
+        )
+        .where(eq(arenaResponses.id, round.candidateWinnerResponseId))
+        .limit(1);
+      candidateWinnerUsername = candidate?.username ?? null;
+    }
+    const secondsRemaining =
+      round.endsAt && round.state === "active"
+        ? Math.max(0, Math.ceil((Date.parse(round.endsAt) - Date.now()) / 1000))
+        : null;
+
+    liveRound = {
+      roundNumber: round.roundNumber,
+      state: round.state,
+      secondsRemaining,
+      acceptedResponseCount: stats.acceptedResponseCount,
+      responsesRemaining: Math.max(0, minRequired - stats.acceptedResponseCount),
+      uniqueParticipantCount: stats.uniqueParticipantCount,
+      candidateWinnerUsername,
+      totalKkCollectedKk: milliToKkDisplay(round.totalKkCollectedMilli ?? 0),
+      prizeAwardedKk:
+        round.state === "completed" ? milliToKkDisplay(arena.prizeMilli) : "0",
+      roundValidity:
+        stats.acceptedResponseCount >= minRequired
+          ? "minimum_responses_met"
+          : "waiting_for_minimum_responses",
+      disqualifyReason: round.disqualifyReason,
+    };
+  }
+
+  const historyRows = await db
+    .select({
+      roundNumber: arenaRounds.roundNumber,
+      state: arenaRounds.state,
+      acceptedResponseCount: arenaRounds.acceptedResponseCount,
+      uniqueResponderCount: arenaRounds.uniqueResponderCount,
+      totalKkCollectedMilli: arenaRounds.totalKkCollectedMilli,
+      winnerAccountId: arenaRounds.winnerAccountId,
+      disqualifyReason: arenaRounds.disqualifyReason,
+      startsAt: arenaRounds.startsAt,
+      resolvedAt: arenaRounds.resolvedAt,
+    })
+    .from(arenaRounds)
+    .where(eq(arenaRounds.arenaId, arena.id))
+    .orderBy(desc(arenaRounds.roundNumber))
+    .limit(25);
+
+  const history = await Promise.all(
+    historyRows.map(async (row) => {
+      let winnerUsername: string | null = null;
+      if (row.winnerAccountId) {
+        const [account] = await db
+          .select({ username: participantAccounts.username })
+          .from(participantAccounts)
+          .where(eq(participantAccounts.id, row.winnerAccountId))
+          .limit(1);
+        winnerUsername = account?.username ?? null;
+      }
+      return {
+        ...row,
+        totalKkCollectedKk: milliToKkDisplay(row.totalKkCollectedMilli ?? 0),
+        kkAwardedKk: row.state === "completed" ? milliToKkDisplay(arena.prizeMilli) : "0",
+        winnerUsername,
+      };
+    }),
+  );
+
+  return {
+    slug: arena.slug,
+    name: arena.name,
+    enabled: arena.enabled,
+    paused: arena.paused,
+    entryFeeKk: milliToKkDisplay(arena.entryFeeMilli),
+    prizeKk: milliToKkDisplay(arena.prizeMilli),
+    minResponsesRequired: minRequired,
+    playersPresent: players,
+    liveRound,
+    roundHistory: history,
+  };
+}
+
+export async function listAdminArenaDashboard() {
+  const db = getDb();
+  const rows = await db.select({ slug: arenas.slug }).from(arenas).orderBy(arenas.slug);
+  return Promise.all(rows.map((row) => getAdminArenaOperationalData(row.slug)));
 }
