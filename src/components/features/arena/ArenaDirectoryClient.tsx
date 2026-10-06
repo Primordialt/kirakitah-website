@@ -13,11 +13,13 @@ type ArenaCard = {
   paused: boolean;
   entryFeeKk: string;
   prizeKk: string;
-  minResponsesRequired: number;
-  playersPresent: number;
-  roundState: string | null;
-  roundNumber: number | null;
 };
+
+function arenaStatusLabel(arena: Pick<ArenaCard, "enabled" | "paused">): string {
+  if (!arena.enabled) return "Offline";
+  if (arena.paused) return "Paused";
+  return "Active";
+}
 
 export function ArenaDirectoryClient() {
   const [arenas, setArenas] = useState<ArenaCard[]>([]);
@@ -46,17 +48,16 @@ export function ArenaDirectoryClient() {
         </p>
         <h1 className="text-h2 text-text-primary">Think fast. Type faster. Win KK.</h1>
         <p className="text-body-sm text-text-secondary">
-          Competitive KK PTS arenas separate from KG926 tournament qualification. Legal/compliance
-          review required before enabling real-money deposits in Production.{" "}
+          Fastest-finger competitions.{" "}
           <Link href="/arena/rules" className="text-accent underline-offset-2 hover:underline">
             How to play
           </Link>
         </p>
         {walletKk !== null ? (
           <p className="rounded-lg border border-border bg-surface px-4 py-3 text-body-sm">
-            Wallet: <strong>{walletKk} KK</strong> (≈ {walletKk} USDT) ·{" "}
+            Balance: <strong>{walletKk} KK</strong> ·{" "}
             <Link href="/wallet" className="text-accent underline-offset-2 hover:underline">
-              Manage wallet
+              Wallet
             </Link>
           </p>
         ) : null}
@@ -68,59 +69,46 @@ export function ArenaDirectoryClient() {
         </p>
       ) : (
         <ul className="grid gap-4 sm:grid-cols-2">
-          {arenas.map((arena) => (
-            <li
-              key={arena.slug}
-              className="flex min-w-0 flex-col rounded-xl border border-border bg-surface p-4"
-            >
-              <h2 className="text-h4 text-text-primary">
-                {arena.kind === "quickfire" ? "🧠 " : "⌨️ "}
-                {arena.name}
-              </h2>
-              <p className="mt-2 text-body-sm text-text-secondary">{arena.description}</p>
-              <dl className="mt-4 grid grid-cols-2 gap-2 text-caption text-text-muted">
-                <div>
-                  <dt>Entry</dt>
-                  <dd className="font-semibold text-text-primary">{arena.entryFeeKk} KK</dd>
-                </div>
-                <div>
-                  <dt>Win</dt>
-                  <dd className="font-semibold text-text-primary">{arena.prizeKk} KK</dd>
-                </div>
-                <div>
-                  <dt>Validate round</dt>
-                  <dd className="font-semibold text-text-primary">
-                    {arena.minResponsesRequired} responses
-                  </dd>
-                </div>
-                <div>
-                  <dt>In arena</dt>
-                  <dd className="font-semibold text-text-primary">{arena.playersPresent}</dd>
-                </div>
-                <div>
-                  <dt>Status</dt>
-                  <dd className="font-semibold text-text-primary">
-                    {!arena.enabled
-                      ? "Offline"
-                      : arena.paused
-                        ? "Paused"
-                        : arena.roundState ?? "Waiting"}
-                  </dd>
-                </div>
-              </dl>
-              <Link
-                href={`/arena/${arena.slug}`}
-                className={`mt-4 inline-flex min-h-11 w-full items-center justify-center rounded-lg px-4 text-button ${
-                  arena.enabled && !arena.paused
-                    ? "bg-brand-primary text-white"
-                    : "border border-border bg-surface-muted text-text-secondary pointer-events-none opacity-60"
-                }`}
-                aria-disabled={!arena.enabled}
+          {arenas.map((arena) => {
+            const open = arena.enabled && !arena.paused;
+            return (
+              <li
+                key={arena.slug}
+                className="flex min-w-0 flex-col rounded-xl border border-border bg-surface p-4"
               >
-                Enter arena
-              </Link>
-            </li>
-          ))}
+                <h2 className="text-h4 text-text-primary">
+                  {arena.kind === "quickfire" ? "🧠 " : "⌨️ "}
+                  {arena.name}
+                </h2>
+                <p className="mt-2 text-body-sm text-text-secondary">{arena.description}</p>
+                <dl className="mt-4 grid grid-cols-3 gap-2 text-caption text-text-muted">
+                  <div>
+                    <dt>Entry</dt>
+                    <dd className="font-semibold text-text-primary">{arena.entryFeeKk} KK</dd>
+                  </div>
+                  <div>
+                    <dt>Win</dt>
+                    <dd className="font-semibold text-text-primary">{arena.prizeKk} KK</dd>
+                  </div>
+                  <div>
+                    <dt>Status</dt>
+                    <dd className="font-semibold text-text-primary">{arenaStatusLabel(arena)}</dd>
+                  </div>
+                </dl>
+                <Link
+                  href={`/arena/${arena.slug}`}
+                  className={`mt-4 inline-flex min-h-11 w-full items-center justify-center rounded-lg px-4 text-button ${
+                    open
+                      ? "bg-brand-primary text-white"
+                      : "pointer-events-none border border-border bg-surface-muted text-text-secondary opacity-60"
+                  }`}
+                  aria-disabled={!open}
+                >
+                  Enter arena
+                </Link>
+              </li>
+            );
+          })}
         </ul>
       )}
     </div>
