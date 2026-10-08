@@ -30,6 +30,19 @@ type HistoryRow = {
   resolvedAt: string | null;
 };
 
+type ContentPool = {
+  totalCount: number;
+  activeCount: number;
+  poolLow: boolean;
+  warning: string | null;
+  recentlyUsed: Array<{
+    id: string;
+    label: string;
+    lastRoundNumber: number | null;
+    usageCount: number;
+  }>;
+};
+
 type ArenaRow = {
   slug: string;
   name: string;
@@ -41,6 +54,7 @@ type ArenaRow = {
   playersPresent: number;
   liveRound: LiveRound | null;
   roundHistory: HistoryRow[];
+  contentPool?: ContentPool;
 };
 
 export function AdminArenaPanel() {
@@ -82,6 +96,20 @@ export function AdminArenaPanel() {
             {arena.playersPresent} in arena · min {arena.minResponsesRequired} charged responses ·
             entry {arena.entryFeeKk} KK · prize {arena.prizeKk} KK
           </p>
+          {arena.contentPool?.warning ? (
+            <p className="mt-3 rounded-lg border border-warning/40 bg-warning/10 p-3 text-body-sm" role="status">
+              {arena.contentPool.warning}
+            </p>
+          ) : null}
+          {arena.contentPool ? (
+            <p className="mt-3 text-caption text-text-muted">
+              Questions/challenges: {arena.contentPool.activeCount} active / {arena.contentPool.totalCount}{" "}
+              total
+              {arena.contentPool.recentlyUsed[0]
+                ? ` · last used round #${arena.contentPool.recentlyUsed[0].lastRoundNumber} (${arena.contentPool.recentlyUsed[0].usageCount} uses)`
+                : ""}
+            </p>
+          ) : null}
           {arena.liveRound ? (
             <dl className="mt-4 grid gap-2 rounded-lg border border-border bg-surface-muted p-3 text-body-sm sm:grid-cols-2">
               <div>

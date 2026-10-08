@@ -29,6 +29,10 @@ import {
   formatDisqualifyMessage,
 } from "@/server/arena/round-resolution";
 import {
+  selectArenaChallenge,
+  summarizeChallengeUsage,
+} from "@/server/arena/challenge-selection";
+import {
   creditArenaPrize,
   debitArenaEntry,
   getOrCreateWallet,
@@ -95,8 +99,80 @@ async function getCurrentRound(arenaId: string) {
   return round ?? null;
 }
 
+function isUniqueViolation(error: unknown): boolean {
+  const seen = new Set<unknown>();
+  let current: unknown = error;
+  while (current && typeof current === "object" && !seen.has(current)) {
+    seen.add(current);
+    if ("code" in current && (current as { code?: string }).code === "23505") return true;
+    current = "cause" in current ? (current as { cause?: unknown }).cause : undefined;
+  }
+  return false;
+}
+
+async function loadChallengePool(arena: typeof arenas.$inferSelect) {
+  const db = getDb();
+  if (arena.kind === "quickfire") {
+    const [pool, history] = await Promise.all([
+      db
+        .select({ id: arenaQuickfireQuestions.id })
+        .from(arenaQuickfireQuestions)
+        .where(eq(arenaQuickfireQuestions.active, true)),
+      db
+        .select({
+          challengeId: arenaRounds.quickfireQuestionId,
+          roundNumber: arenaRounds.roundNumber,
+        })
+        .from(arenaRounds)
+        .where(eq(arenaRounds.arenaId, arena.id))
+        .orderBy(desc(arenaRounds.roundNumber))
+        .limit(300),
+    ]);
+    return {
+      poolIds: pool.map((row) => row.id),
+      history: history.flatMap((row) =>
+        row.challengeId ? [{ challengeId: row.challengeId, roundNumber: row.roundNumber }] : [],
+      ),
+    };
+  }
+
+  const [pool, history] = await Promise.all([
+    db
+      .select({ id: arenaTyperushChallenges.id })
+      .from(arenaTyperushChallenges)
+      .where(eq(arenaTyperushChallenges.active, true)),
+    db
+      .select({
+        challengeId: arenaRounds.typerushChallengeId,
+        roundNumber: arenaRounds.roundNumber,
+      })
+      .from(arenaRounds)
+      .where(eq(arenaRounds.arenaId, arena.id))
+      .orderBy(desc(arenaRounds.roundNumber))
+      .limit(300),
+  ]);
+  return {
+    poolIds: pool.map((row) => row.id),
+    history: history.flatMap((row) =>
+      row.challengeId ? [{ challengeId: row.challengeId, roundNumber: row.roundNumber }] : [],
+    ),
+  };
+}
+
 async function createNextRound(arena: typeof arenas.$inferSelect) {
   const db = getDb();
+  const { poolIds, history } = await loadChallengePool(arena);
+  if (poolIds.length === 0) {
+    throw new ArenaError(
+      arena.kind === "quickfire"
+        ? "No active Quickfire questions."
+        : "No active TypeRush challenges.",
+      "CONFIGURATION_UNAVAILABLE",
+      503,
+    );
+  }
+
+  const selection = selectArenaChallenge({ poolIds, history });
   const [last] = await db
     .select({ roundNumber: arenaRounds.roundNumber })
     .from(arenaRounds)
@@ -105,40 +181,43 @@ async function createNextRound(arena: typeof arenas.$inferSelect) {
     .limit(1);
   const roundNumber = (last?.roundNumber ?? 0) + 1;
 
-  let quickfireQuestionId: string | null = null;
-  let typerushChallengeId: string | null = null;
+  try {
+    const [round] = await db
+      .insert(arenaRounds)
+      .values({
+        arenaId: arena.id,
+        roundNumber,
+        state: "waiting_for_players",
+        quickfireQuestionId: arena.kind === "quickfire" ? selection.challengeId : null,
+        typerushChallengeId: arena.kind === "typerush" ? selection.challengeId : null,
+      })
+      .returning();
 
-  if (arena.kind === "quickfire") {
-    const [q] = await db
-      .select({ id: arenaQuickfireQuestions.id })
-      .from(arenaQuickfireQuestions)
-      .where(eq(arenaQuickfireQuestions.active, true))
-      .orderBy(sql`random()`)
+    if (selection.poolLow || selection.repeatedImmediately) {
+      console.warn(
+        JSON.stringify({
+          event: "arena_challenge_pool",
+          arenaSlug: arena.slug,
+          kind: arena.kind,
+          activeCount: poolIds.length,
+          poolLow: selection.poolLow,
+          repeatedImmediately: selection.repeatedImmediately,
+          roundNumber,
+        }),
+      );
+    }
+
+    return round!;
+  } catch (error) {
+    if (!isUniqueViolation(error)) throw error;
+    const [existing] = await db
+      .select()
+      .from(arenaRounds)
+      .where(and(eq(arenaRounds.arenaId, arena.id), eq(arenaRounds.roundNumber, roundNumber)))
       .limit(1);
-    if (!q) throw new ArenaError("No active Quickfire questions.", "CONFIGURATION_UNAVAILABLE", 503);
-    quickfireQuestionId = q.id;
-  } else {
-    const [c] = await db
-      .select({ id: arenaTyperushChallenges.id })
-      .from(arenaTyperushChallenges)
-      .where(eq(arenaTyperushChallenges.active, true))
-      .orderBy(sql`random()`)
-      .limit(1);
-    if (!c) throw new ArenaError("No active TypeRush challenges.", "CONFIGURATION_UNAVAILABLE", 503);
-    typerushChallengeId = c.id;
+    if (existing) return existing;
+    throw error;
   }
-
-  const [round] = await db
-    .insert(arenaRounds)
-    .values({
-      arenaId: arena.id,
-      roundNumber,
-      state: "waiting_for_players",
-      quickfireQuestionId,
-      typerushChallengeId,
-    })
-    .returning();
-  return round!;
 }
 
 async function logActivity(input: {
@@ -707,6 +786,59 @@ export async function listArenasDirectory() {
   return enriched;
 }
 
+async function loadAdminContentPool(arena: typeof arenas.$inferSelect) {
+  const db = getDb();
+  if (arena.kind === "quickfire") {
+    const [pool, history] = await Promise.all([
+      db
+        .select({
+          id: arenaQuickfireQuestions.id,
+          label: arenaQuickfireQuestions.question,
+          active: arenaQuickfireQuestions.active,
+        })
+        .from(arenaQuickfireQuestions),
+      db
+        .select({
+          challengeId: arenaRounds.quickfireQuestionId,
+          roundNumber: arenaRounds.roundNumber,
+        })
+        .from(arenaRounds)
+        .where(eq(arenaRounds.arenaId, arena.id)),
+    ]);
+    return summarizeChallengeUsage({
+      kind: "quickfire",
+      pool,
+      history: history.flatMap((row) =>
+        row.challengeId ? [{ challengeId: row.challengeId, roundNumber: row.roundNumber }] : [],
+      ),
+    });
+  }
+
+  const [pool, history] = await Promise.all([
+    db
+      .select({
+        id: arenaTyperushChallenges.id,
+        label: arenaTyperushChallenges.challengeText,
+        active: arenaTyperushChallenges.active,
+      })
+      .from(arenaTyperushChallenges),
+    db
+      .select({
+        challengeId: arenaRounds.typerushChallengeId,
+        roundNumber: arenaRounds.roundNumber,
+      })
+      .from(arenaRounds)
+      .where(eq(arenaRounds.arenaId, arena.id)),
+  ]);
+  return summarizeChallengeUsage({
+    kind: "typerush",
+    pool,
+    history: history.flatMap((row) =>
+      row.challengeId ? [{ challengeId: row.challengeId, roundNumber: row.roundNumber }] : [],
+    ),
+  });
+}
+
 export async function getAdminArenaOperationalData(slug: string) {
   const arena = await getArenaBySlug(slug);
   const db = getDb();
@@ -802,6 +934,7 @@ export async function getAdminArenaOperationalData(slug: string) {
     playersPresent: players,
     liveRound,
     roundHistory: history,
+    contentPool: await loadAdminContentPool(arena),
   };
 }
 

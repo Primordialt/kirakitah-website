@@ -12,13 +12,20 @@ type ArenaCard = {
   enabled: boolean;
   paused: boolean;
   entryFeeKk: string;
-  prizeKk: string;
+  roundState?: string | null;
 };
 
-function arenaStatusLabel(arena: Pick<ArenaCard, "enabled" | "paused">): string {
+function arenaStatusLabel(arena: Pick<ArenaCard, "enabled" | "paused" | "roundState">): string {
   if (!arena.enabled) return "Offline";
   if (arena.paused) return "Paused";
-  return "Active";
+  if (
+    arena.roundState === "active" ||
+    arena.roundState === "countdown" ||
+    arena.roundState === "resolving"
+  ) {
+    return "Active";
+  }
+  return "Waiting";
 }
 
 export function ArenaDirectoryClient() {
@@ -46,7 +53,7 @@ export function ArenaDirectoryClient() {
         <p className="text-caption font-semibold uppercase tracking-wide text-brand-primary">
           KIRAKITAH Arena
         </p>
-        <h1 className="text-h2 text-text-primary">Think fast. Type faster. Win KK.</h1>
+        <h1 className="text-h2 text-text-primary">Think fast. Type faster.</h1>
         <p className="text-body-sm text-text-secondary">
           Fastest-finger competitions.{" "}
           <Link href="/arena/rules" className="text-accent underline-offset-2 hover:underline">
@@ -81,14 +88,10 @@ export function ArenaDirectoryClient() {
                   {arena.name}
                 </h2>
                 <p className="mt-2 text-body-sm text-text-secondary">{arena.description}</p>
-                <dl className="mt-4 grid grid-cols-3 gap-2 text-caption text-text-muted">
+                <dl className="mt-4 grid grid-cols-2 gap-2 text-caption text-text-muted">
                   <div>
                     <dt>Entry</dt>
                     <dd className="font-semibold text-text-primary">{arena.entryFeeKk} KK</dd>
-                  </div>
-                  <div>
-                    <dt>Win</dt>
-                    <dd className="font-semibold text-text-primary">{arena.prizeKk} KK</dd>
                   </div>
                   <div>
                     <dt>Status</dt>

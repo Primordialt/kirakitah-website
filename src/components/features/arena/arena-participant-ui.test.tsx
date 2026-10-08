@@ -50,7 +50,7 @@ describe("Arena participant UI", () => {
     vi.mocked(participantFetch).mockReset();
   });
 
-  it("shows entry, win, and status without internal thresholds", async () => {
+  it("shows entry and status without the prize or internal thresholds", async () => {
     vi.mocked(participantFetch).mockImplementation((async (input) => {
       if (String(input) === "/api/participant/wallet") {
         return {
@@ -85,20 +85,18 @@ describe("Arena participant UI", () => {
     expect(await screen.findByRole("heading", { name: /KIRAKITAH QUICKFIRE/i })).toBeInTheDocument();
     expect(screen.getByText("Entry")).toBeInTheDocument();
     expect(screen.getByText("0.5 KK")).toBeInTheDocument();
-    expect(screen.getByText("Win")).toBeInTheDocument();
-    expect(screen.getByText("3 KK")).toBeInTheDocument();
-    expect(screen.getByText("Active")).toBeInTheDocument();
+    expect(screen.getByText("Status")).toBeInTheDocument();
+    expect(screen.getByText("Waiting")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Enter arena/i })).toHaveAttribute(
       "href",
       "/arena/quickfire",
     );
 
-    const text = document.body.textContent ?? "";
-    for (const phrase of forbidden) {
+    const card = screen.getByRole("heading", { name: /KIRAKITAH QUICKFIRE/i }).closest("li");
+    const text = card?.textContent ?? "";
+    for (const phrase of ["Win", "3 KK", "Prize", "10 responses", "Players in arena"]) {
       expect(text).not.toContain(phrase);
     }
-    expect(text).not.toContain("17");
-    expect(text).not.toContain("waiting_for_players");
   });
 
   it("hides activity, player counts, and validation copy on the game screen", async () => {
