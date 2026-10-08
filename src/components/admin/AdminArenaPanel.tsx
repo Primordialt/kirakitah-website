@@ -3,31 +3,33 @@
 import { Button } from "@/components/ui";
 import { useEffect, useState } from "react";
 
+type Economics = {
+  chargedEntries: number;
+  entryPriceKk: string;
+  grossPoolKk: string;
+  currentPrizeKk?: string;
+  finalPrizeKk: string | null;
+  platformRemainderKk: string;
+  winnerUsername: string | null;
+  winningResponseId: string | null;
+  settlementLedgerId: string | null;
+  settlementStatus: string;
+  invalidReason: string | null;
+};
+
 type LiveRound = {
   roundNumber: number;
   state: string;
   secondsRemaining: number | null;
-  acceptedResponseCount: number;
-  responsesRemaining: number;
-  uniqueParticipantCount: number;
-  candidateWinnerUsername: string | null;
-  totalKkCollectedKk: string;
-  prizeAwardedKk: string;
-  roundValidity: string;
-  disqualifyReason: string | null;
+  economics?: Economics;
 };
 
 type HistoryRow = {
   roundNumber: number;
   state: string;
-  acceptedResponseCount: number;
-  uniqueResponderCount: number | null;
-  totalKkCollectedKk: string;
-  kkAwardedKk: string;
-  winnerUsername: string | null;
-  disqualifyReason: string | null;
   startsAt: string | null;
   resolvedAt: string | null;
+  economics?: Economics;
 };
 
 type ContentPool = {
@@ -48,9 +50,6 @@ type ArenaRow = {
   name: string;
   enabled: boolean;
   paused: boolean;
-  entryFeeKk: string;
-  prizeKk: string;
-  minResponsesRequired: number;
   playersPresent: number;
   liveRound: LiveRound | null;
   roundHistory: HistoryRow[];
@@ -92,10 +91,7 @@ export function AdminArenaPanel() {
           className="rounded-xl border border-border bg-surface p-4"
         >
           <h2 className="text-h4">{arena.name}</h2>
-          <p className="mt-1 text-body-sm text-text-muted">
-            {arena.playersPresent} in arena · min {arena.minResponsesRequired} charged responses ·
-            entry {arena.entryFeeKk} KK · prize {arena.prizeKk} KK
-          </p>
+          <p className="mt-1 text-body-sm text-text-muted">{arena.playersPresent} in arena</p>
           {arena.contentPool?.warning ? (
             <p className="mt-3 rounded-lg border border-warning/40 bg-warning/10 p-3 text-body-sm" role="status">
               {arena.contentPool.warning}
@@ -117,19 +113,6 @@ export function AdminArenaPanel() {
                 <dd className="font-semibold">#{arena.liveRound.roundNumber}</dd>
               </div>
               <div>
-                <dt className="text-text-muted">Responses</dt>
-                <dd className="font-semibold">
-                  {arena.liveRound.acceptedResponseCount} / {arena.minResponsesRequired}
-                  {arena.liveRound.responsesRemaining > 0
-                    ? ` (${arena.liveRound.responsesRemaining} remaining)`
-                    : ""}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-text-muted">Unique participants</dt>
-                <dd className="font-semibold">{arena.liveRound.uniqueParticipantCount}</dd>
-              </div>
-              <div>
                 <dt className="text-text-muted">Time left</dt>
                 <dd className="font-semibold">
                   {arena.liveRound.secondsRemaining !== null
@@ -137,26 +120,72 @@ export function AdminArenaPanel() {
                     : "—"}
                 </dd>
               </div>
-              <div>
-                <dt className="text-text-muted">KK collected</dt>
-                <dd className="font-semibold">{arena.liveRound.totalKkCollectedKk} KK</dd>
-              </div>
-              <div>
-                <dt className="text-text-muted">Winner candidate</dt>
-                <dd className="font-semibold">
-                  {arena.liveRound.candidateWinnerUsername
-                    ? `@${arena.liveRound.candidateWinnerUsername}`
-                    : "—"}
-                </dd>
-              </div>
               <div className="sm:col-span-2">
                 <dt className="text-text-muted">Status</dt>
-                <dd className="font-semibold uppercase">
-                  {arena.liveRound.roundValidity === "waiting_for_minimum_responses"
-                    ? "WAITING FOR MINIMUM RESPONSES"
-                    : arena.liveRound.state.replace(/_/g, " ")}
-                </dd>
+                <dd className="font-semibold uppercase">{arena.liveRound.state.replace(/_/g, " ")}</dd>
               </div>
+              {arena.liveRound.economics ? (
+                <>
+                  <div>
+                    <dt className="text-text-muted">Charged entries</dt>
+                    <dd className="font-semibold">{arena.liveRound.economics.chargedEntries}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-text-muted">Entry price</dt>
+                    <dd className="font-semibold">{arena.liveRound.economics.entryPriceKk} KK</dd>
+                  </div>
+                  <div>
+                    <dt className="text-text-muted">Gross pool</dt>
+                    <dd className="font-semibold">{arena.liveRound.economics.grossPoolKk} KK</dd>
+                  </div>
+                  <div>
+                    <dt className="text-text-muted">Current prize</dt>
+                    <dd className="font-semibold">{arena.liveRound.economics.currentPrizeKk} KK</dd>
+                  </div>
+                  <div>
+                    <dt className="text-text-muted">Final prize</dt>
+                    <dd className="font-semibold">
+                      {arena.liveRound.economics.finalPrizeKk === null
+                        ? "—"
+                        : `${arena.liveRound.economics.finalPrizeKk} KK`}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-text-muted">Platform remainder</dt>
+                    <dd className="font-semibold">{arena.liveRound.economics.platformRemainderKk} KK</dd>
+                  </div>
+                  <div>
+                    <dt className="text-text-muted">Winner</dt>
+                    <dd className="font-semibold">
+                      {arena.liveRound.economics.winnerUsername
+                        ? `@${arena.liveRound.economics.winnerUsername}`
+                        : "—"}
+                    </dd>
+                  </div>
+                  <div className="sm:col-span-2">
+                    <dt className="text-text-muted">Winning response</dt>
+                    <dd className="break-all font-semibold">
+                      {arena.liveRound.economics.winningResponseId ?? "—"}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-text-muted">Settlement</dt>
+                    <dd className="font-semibold">{arena.liveRound.economics.settlementStatus}</dd>
+                  </div>
+                  <div className="sm:col-span-2">
+                    <dt className="text-text-muted">Settlement transaction</dt>
+                    <dd className="break-all font-semibold">
+                      {arena.liveRound.economics.settlementLedgerId ?? "—"}
+                    </dd>
+                  </div>
+                  {arena.liveRound.economics.invalidReason ? (
+                    <div className="sm:col-span-2">
+                      <dt className="text-text-muted">Invalid reason</dt>
+                      <dd className="font-semibold">{arena.liveRound.economics.invalidReason}</dd>
+                    </div>
+                  ) : null}
+                </>
+              ) : null}
             </dl>
           ) : null}
           <div className="mt-3 flex flex-wrap gap-2">
@@ -181,11 +210,16 @@ export function AdminArenaPanel() {
                   <tr className="text-left text-text-muted">
                     <th className="py-1 pr-2">#</th>
                     <th className="py-1 pr-2">Status</th>
-                    <th className="py-1 pr-2">Responses</th>
-                    <th className="py-1 pr-2">Unique</th>
-                    <th className="py-1 pr-2">Collected</th>
-                    <th className="py-1 pr-2">Awarded</th>
-                    <th className="py-1 pr-2">Winner</th>
+                    {arena.roundHistory.some((row) => row.economics) ? (
+                      <>
+                        <th className="py-1 pr-2">Entries</th>
+                        <th className="py-1 pr-2">Pool</th>
+                        <th className="py-1 pr-2">Prize</th>
+                        <th className="py-1 pr-2">Remainder</th>
+                        <th className="py-1 pr-2">Winner</th>
+                        <th className="py-1 pr-2">Settlement</th>
+                      </>
+                    ) : null}
                   </tr>
                 </thead>
                 <tbody>
@@ -193,11 +227,18 @@ export function AdminArenaPanel() {
                     <tr key={row.roundNumber} className="border-t border-border">
                       <td className="py-1 pr-2">{row.roundNumber}</td>
                       <td className="py-1 pr-2">{row.state}</td>
-                      <td className="py-1 pr-2">{row.acceptedResponseCount}</td>
-                      <td className="py-1 pr-2">{row.uniqueResponderCount ?? "—"}</td>
-                      <td className="py-1 pr-2">{row.totalKkCollectedKk}</td>
-                      <td className="py-1 pr-2">{row.kkAwardedKk}</td>
-                      <td className="py-1 pr-2">{row.winnerUsername ? `@${row.winnerUsername}` : "—"}</td>
+                      {row.economics ? (
+                        <>
+                          <td className="py-1 pr-2">{row.economics.chargedEntries}</td>
+                          <td className="py-1 pr-2">{row.economics.grossPoolKk}</td>
+                          <td className="py-1 pr-2">{row.economics.finalPrizeKk ?? "—"}</td>
+                          <td className="py-1 pr-2">{row.economics.platformRemainderKk}</td>
+                          <td className="py-1 pr-2">
+                            {row.economics.winnerUsername ? `@${row.economics.winnerUsername}` : "—"}
+                          </td>
+                          <td className="py-1 pr-2">{row.economics.settlementStatus}</td>
+                        </>
+                      ) : null}
                     </tr>
                   ))}
                 </tbody>
@@ -212,9 +253,7 @@ export function AdminArenaPanel() {
         </p>
       ) : null}
       <p className="text-caption text-text-muted">
-        Unique participant counts are for fraud monitoring only. Round validity requires{" "}
-        {arenas[0]?.minResponsesRequired ?? 10} charged responses. Production activation still
-        requires compliance and payment integration review.
+        Round money detail is visible to super admins only.
       </p>
     </div>
   );

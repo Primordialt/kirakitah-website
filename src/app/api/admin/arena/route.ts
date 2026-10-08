@@ -3,13 +3,15 @@ import { adminListArenas, adminUpdateArena } from "@/server/arena/admin-service"
 import { isArenaError } from "@/server/arena/errors";
 import { apiError } from "@/server/errors";
 import { arenaErrorCode } from "@/server/arena/api-errors";
+import { roleHasPermission } from "@/server/admin/authorization/permissions";
 
 export const runtime = "nodejs";
 
 export async function GET(request: Request) {
-  return withAdminApi(request, "arena:view", async (_session, requestId) => {
+  return withAdminApi(request, "arena:view", async (session, requestId) => {
     try {
-      const arenas = await adminListArenas();
+      const includeEconomics = roleHasPermission(session.user.role, "arena:economics");
+      const arenas = await adminListArenas(includeEconomics);
       return adminJson({ success: true, arenas, requestId }, 200, requestId);
     } catch (error) {
       if (isArenaError(error)) {

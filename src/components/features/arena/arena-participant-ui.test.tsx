@@ -83,6 +83,7 @@ describe("Arena participant UI", () => {
     render(<ArenaDirectoryClient />);
 
     expect(await screen.findByRole("heading", { name: /KIRAKITAH QUICKFIRE/i })).toBeInTheDocument();
+    expect(screen.getByText("Think fast. Answer faster.")).toBeInTheDocument();
     expect(screen.getByText("Entry")).toBeInTheDocument();
     expect(screen.getByText("0.5 KK")).toBeInTheDocument();
     expect(screen.getByText("Status")).toBeInTheDocument();
@@ -94,7 +95,15 @@ describe("Arena participant UI", () => {
 
     const card = screen.getByRole("heading", { name: /KIRAKITAH QUICKFIRE/i }).closest("li");
     const text = card?.textContent ?? "";
-    for (const phrase of ["Win", "3 KK", "Prize", "10 responses", "Players in arena"]) {
+    for (const phrase of [
+      "Win",
+      "3 KK",
+      "Prize",
+      "Current prize",
+      "Pool",
+      "10 responses",
+      "Players in arena",
+    ]) {
       expect(text).not.toContain(phrase);
     }
   });
@@ -133,6 +142,7 @@ describe("Arena participant UI", () => {
         },
         challenge: null,
         winnerAnnouncement: null,
+        lastRound: { outcome: "ended" },
         activity: [
           { message: "Round #4 disqualified — only 0 responses (need 10).", kind: "disqualified" },
         ],
@@ -146,8 +156,10 @@ describe("Arena participant UI", () => {
     expect(screen.getByText("Round #4")).toBeInTheDocument();
     expect(screen.getByRole("timer")).toHaveTextContent("00:08");
     expect(screen.getByText(/12\.50 KK/)).toBeInTheDocument();
-    expect(screen.getByText("Round ended. Get ready for the next one.")).toBeInTheDocument();
+    expect(screen.getByText("LAST ROUND: ROUND ENDED")).toBeInTheDocument();
+    expect(screen.getByText("READY TO MAKE YOUR MOVE?")).toBeInTheDocument();
     expect(screen.queryByText(/Red Planet/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/10 responses are required/)).not.toBeInTheDocument();
 
     const text = document.body.textContent ?? "";
     for (const phrase of forbidden) {
@@ -155,6 +167,9 @@ describe("Arena participant UI", () => {
     }
     expect(text).not.toContain("Players in arena");
     expect(text).not.toContain("per response");
+    expect(text).not.toContain("Gross pool");
+    expect(text).not.toContain("Platform remainder");
+    expect(text).not.toContain("Current prize");
   });
 
   it("announces a winner without response counts", async () => {
@@ -171,16 +186,62 @@ describe("Arena participant UI", () => {
         round: { number: 5, state: "intermission", secondsRemaining: null, disqualifyReason: null },
         question: null,
         challenge: null,
-        winnerAnnouncement: { username: "alex", prizeKk: "3", streak: 2 },
+        winnerAnnouncement: { username: "alex", prizeKk: "6", streak: 2 },
+        lastRound: { outcome: "winner", username: "alex", prizeKk: "6" },
         wallet: { balanceKk: "9" },
       },
     } as never);
 
     render(<ArenaPlayClient slug="quickfire" />);
 
-    expect(await screen.findByText(/@alex wins Round #5/)).toBeInTheDocument();
-    expect(screen.getByText(/2 wins in a row/)).toBeInTheDocument();
-    expect(screen.getByText(/3 KK won/)).toBeInTheDocument();
+    expect(await screen.findByText(/@alex wins again!/)).toBeInTheDocument();
+    expect(screen.getByText("2 WINS IN A ROW")).toBeInTheDocument();
+    expect(screen.getByText("🏆 +6 KK")).toBeInTheDocument();
+    expect(screen.getByText("🏆 LAST ROUND WINNER: @alex — 6 KK")).toBeInTheDocument();
     expect(document.body.textContent).not.toContain("Activity");
+    expect(document.body.textContent).not.toContain("60%");
+  });
+
+  it("shows the previous winner prize from the server without the live pool", async () => {
+    vi.mocked(participantFetch).mockResolvedValue({
+      response: { ok: true } as Response,
+      payload: {
+        arena: {
+          slug: "quickfire",
+          name: "KIRAKITAH QUICKFIRE",
+          kind: "quickfire",
+          enabled: true,
+          paused: false,
+        },
+        round: { number: 8, state: "active", secondsRemaining: 12 },
+        question: {
+          question: "Which planet is known as the Red Planet?",
+          optionA: "Venus",
+          optionB: "Mars",
+          optionC: "Jupiter",
+          optionD: "Mercury",
+        },
+        challenge: null,
+        winnerAnnouncement: null,
+        lastRound: { outcome: "winner", username: "nova", prizeKk: "60" },
+        grossPoolKk: "100",
+        chargedEntries: 200,
+        currentPrizeKk: "60",
+        wallet: { balanceKk: "4" },
+      },
+    } as never);
+
+    render(<ArenaPlayClient slug="quickfire" />);
+
+    expect(await screen.findByText("🏆 LAST ROUND WINNER: @nova — 60 KK")).toBeInTheDocument();
+    expect(screen.getByText("YOUR MOMENT IS NOW.")).toBeInTheDocument();
+    expect(screen.getByRole("timer")).toHaveTextContent("00:12");
+    expect(screen.getByText(/Red Planet/)).toBeInTheDocument();
+    const text = document.body.textContent ?? "";
+    expect(text).not.toContain("Gross pool");
+    expect(text).not.toContain("charged");
+    expect(text).not.toContain("Current prize");
+    expect(text).not.toContain("platform");
+    expect(text).not.toContain("100");
   });
 });

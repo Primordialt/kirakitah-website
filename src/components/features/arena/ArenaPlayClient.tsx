@@ -9,6 +9,33 @@ import {
   TypeRushProtectedInput,
 } from "@/components/features/arena/ArenaChallengeProtection";
 
+const ARENA_MOTIVATION = [
+  "MAKE IT BIG IN ONE TAP.",
+  "THINK FAST. WIN BIG.",
+  "YOUR NEXT WIN COULD BE BIG.",
+  "ONE TAP. ONE WIN. BIG REWARD.",
+  "READY TO MAKE YOUR MOVE?",
+  "THE NEXT BIG WIN COULD BE YOURS.",
+  "BE QUICK. BE SHARP. TAKE THE WIN.",
+  "PLAY FAST. PLAY SMART.",
+  "YOUR MOMENT IS NOW.",
+  "STEP IN. TAKE YOUR SHOT.",
+  "CAN YOU BE FIRST?",
+  "ONE ROUND. ONE WINNER.",
+  "HOW FAST CAN YOU BE?",
+];
+
+export function arenaMotivation(roundNumber: number): string {
+  const index = Math.abs(roundNumber) % ARENA_MOTIVATION.length;
+  return ARENA_MOTIVATION[index] ?? ARENA_MOTIVATION[0]!;
+}
+
+type LastRound =
+  | { outcome: "winner"; username: string; prizeKk: string }
+  | { outcome: "no_winner" }
+  | { outcome: "ended" }
+  | null;
+
 type LiveState = {
   arena: {
     slug: string;
@@ -21,7 +48,6 @@ type LiveState = {
     number: number;
     state: string;
     secondsRemaining: number | null;
-    disqualifyReason: string | null;
   } | null;
   question: Record<string, string> | null;
   challenge: { text: string } | null;
@@ -29,8 +55,8 @@ type LiveState = {
     username: string;
     prizeKk: string;
     streak: number;
-    roundNumber?: number;
   } | null;
+  lastRound: LastRound;
   wallet: { balanceKk: string };
 };
 
@@ -119,6 +145,9 @@ export function ArenaPlayClient({ slug }: { slug: string }) {
       </Link>
       <header className="rounded-xl border border-border bg-surface p-4 text-center sm:text-left">
         <h1 className="text-h3">{live.arena.name}</h1>
+        <p className="mt-1 text-body-sm font-semibold tracking-wide text-brand-primary">
+          {arenaMotivation(round?.number ?? 1)}
+        </p>
         <p className="mt-1 text-body-sm text-text-muted">Round #{round?.number ?? "—"}</p>
         <p className="mt-1 text-body-sm text-text-secondary">
           Balance <strong>{live.wallet.balanceKk} KK</strong>
@@ -141,28 +170,36 @@ export function ArenaPlayClient({ slug }: { slug: string }) {
 
       {winner ? (
         <div className="rounded-xl border border-brand-primary/40 bg-brand-primary/10 p-4" role="status">
-          <p className="text-h4">
-            {winner.streak > 1 ? "🔥" : "🎉"} @{winner.username} wins Round #{round?.number ?? ""}!
-          </p>
-          <p className="mt-2 text-body-sm">
-            {winner.streak > 1
-              ? `That's ${winner.streak} wins in a row! Congratulations — ${winner.prizeKk} KK won.`
-              : `Congratulations! ${winner.prizeKk} KK won.`}
-          </p>
+          {winner.streak > 1 ? (
+            <>
+              <p className="text-h4">🔥 @{winner.username} wins again!</p>
+              <p className="mt-2 text-body-sm font-semibold">{winner.streak} WINS IN A ROW</p>
+            </>
+          ) : (
+            <p className="text-h4">🎉 @{winner.username} WINS!</p>
+          )}
+          <p className="mt-2 text-body font-semibold">🏆 +{winner.prizeKk} KK</p>
+          {winner.streak > 1 ? null : <p className="mt-2 text-body-sm">Congratulations!</p>}
         </div>
       ) : null}
 
-      {!winner && round?.disqualifyReason ? (
-        <p className="rounded-lg border border-border bg-surface-muted p-3 text-body-sm" role="status">
-          Round ended. Get ready for the next one.
+      {live.lastRound?.outcome === "winner" ? (
+        <p className="rounded-lg border border-brand-primary/30 bg-surface p-3 text-body-sm" role="status">
+          🏆 LAST ROUND WINNER: @{live.lastRound.username} — {live.lastRound.prizeKk} KK
         </p>
-      ) : null}
-
-      {!winner && !round?.disqualifyReason && (round?.state === "no_winner" || round?.state === "intermission") ? (
+      ) : live.lastRound?.outcome === "no_winner" ? (
         <p className="rounded-lg border border-border bg-surface-muted p-3 text-body-sm" role="status">
-          Round over. No winner this time.
+          LAST ROUND: NO WINNER
         </p>
-      ) : null}
+      ) : live.lastRound?.outcome === "ended" ? (
+        <p className="rounded-lg border border-border bg-surface-muted p-3 text-body-sm" role="status">
+          LAST ROUND: ROUND ENDED
+        </p>
+      ) : (
+        <p className="rounded-lg border border-border bg-surface-muted p-3 text-body-sm" role="status">
+          THE ARENA IS LIVE.
+        </p>
+      )}
 
       {(round?.state === "countdown" || round?.state === "waiting_for_players") && !closed ? (
         <p className="text-center text-body-sm text-text-secondary" role="status">

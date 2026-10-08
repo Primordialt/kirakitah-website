@@ -42,6 +42,13 @@ describe("Arena RBAC", () => {
     expect(roleHasPermission("REVIEWER", "arena:view")).toBe(false);
   });
 
+  it("keeps Arena economics on SUPER_ADMIN only", () => {
+    expect(roleHasPermission("SUPER_ADMIN", "arena:economics")).toBe(true);
+    expect(roleHasPermission("TOURNAMENT_ADMIN", "arena:economics")).toBe(false);
+    expect(roleHasPermission("REVIEWER", "arena:economics")).toBe(false);
+    expect(roleHasPermission("SUPPORT", "arena:economics")).toBe(false);
+  });
+
   it("grants tournament admin view only", () => {
     expect(roleHasPermission("TOURNAMENT_ADMIN", "arena:view")).toBe(true);
     expect(roleHasPermission("TOURNAMENT_ADMIN", "arena:manage")).toBe(false);
