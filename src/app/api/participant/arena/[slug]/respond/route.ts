@@ -10,6 +10,7 @@ import {
 } from "@/server/participant";
 import { API_SECURITY_HEADERS } from "@/server/security/api";
 import { getOrCreateRequestId, requestIdHeaders } from "@/server/security/request-id";
+import { readArenaSubmission } from "@/server/arena/projections";
 
 export const runtime = "nodejs";
 
@@ -21,8 +22,17 @@ export async function POST(
   const { slug } = await context.params;
   try {
     const session = await requireParticipantApiSession(request);
-    const body = (await request.json()) as { payload?: string; clientRequestId?: string };
-    if (typeof body.payload !== "string") {
+    const body = (await request.json()) as {
+      payload?: unknown;
+      clientRequestId?: unknown;
+      prizeMilli?: unknown;
+      prizeKk?: unknown;
+      poolMilli?: unknown;
+      chargedEntries?: unknown;
+      payoutMilli?: unknown;
+    };
+    const submission = readArenaSubmission(body);
+    if (submission.payload === null) {
       return NextResponse.json(apiError("VALIDATION_ERROR", "Response payload required."), {
         status: 400,
         headers: { ...API_SECURITY_HEADERS, ...requestIdHeaders(requestId) },
@@ -31,8 +41,8 @@ export async function POST(
     const result = await submitArenaResponse({
       arenaSlug: slug,
       participantAccountId: session.user.id,
-      payload: body.payload,
-      clientRequestId: body.clientRequestId,
+      payload: submission.payload,
+      clientRequestId: submission.clientRequestId,
     });
     return NextResponse.json(
       { success: true, ...result, requestId },

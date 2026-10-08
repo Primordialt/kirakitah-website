@@ -6,6 +6,7 @@ import {
   gt,
   inArray,
   isNull,
+  lt,
   ne,
   sql,
 } from "drizzle-orm";
@@ -27,7 +28,9 @@ import { assertArenaSubmissionRateLimit } from "@/server/arena/rate-limit";
 import {
   determineRoundOutcome,
   formatDisqualifyMessage,
+  selectFirstCorrectResponse,
 } from "@/server/arena/round-resolution";
+import { gateArenaEconomics, projectParticipantArenaLive } from "@/server/arena/projections";
 import {
   selectArenaChallenge,
   summarizeChallengeUsage,
@@ -37,7 +40,12 @@ import {
   debitArenaEntry,
   getOrCreateWallet,
 } from "@/server/wallet/service";
-import { milliToKkDisplay } from "@/server/wallet/money";
+import {
+  milliToKkDisplay,
+  calculateArenaPrize,
+  isArenaPrizePayable,
+  arenaPrizeIdempotencyKey,
+} from "@/server/wallet/money";
 import { recordAdminAuditEvent } from "@/server/admin/audit/record";
 
 const PRESENCE_TTL_MS = 45_000;
@@ -393,12 +401,76 @@ async function resolveRound(arena: typeof arenas.$inferSelect, roundId: string) 
 
   if (!winningResponse) return;
 
+  let settled = false;
   await db.transaction(async (tx) => {
+    const [locked] = await tx
+      .select()
+      .from(arenaRounds)
+      .where(eq(arenaRounds.id, roundId))
+      .limit(1)
+      .for("update");
+    if (!locked) return;
+    if (locked.state !== "resolving") {
+      settled = true;
+      return;
+    }
+
+    const [totalRow] = await tx
+      .select({ value: count() })
+      .from(arenaResponses)
+      .where(eq(arenaResponses.roundId, roundId));
+    const finalCount = Number(totalRow?.value ?? 0);
+    const correctRows = await tx
+      .select()
+      .from(arenaResponses)
+      .where(and(eq(arenaResponses.roundId, roundId), eq(arenaResponses.isCorrect, true)))
+      .orderBy(arenaResponses.receivedAt, arenaResponses.sequence);
+    const finalWinner = selectFirstCorrectResponse(correctRows);
+    const finalOutcome = determineRoundOutcome({
+      acceptedResponseCount: finalCount,
+      minResponsesRequired: minRequired,
+      hasCorrectResponse: Boolean(finalWinner),
+    });
+
+    if (finalOutcome.kind !== "winner" || !finalWinner) {
+      await tx
+        .update(arenaRounds)
+        .set({
+          state: finalOutcome.kind === "disqualified" ? "disqualified" : "no_winner",
+          uniqueResponderCount: uniqueParticipantCount,
+          acceptedResponseCount: finalCount,
+          disqualifyReason:
+            finalOutcome.kind === "disqualified"
+              ? formatDisqualifyMessage(finalCount, minRequired)
+              : null,
+          resolvedAt: nowIso,
+          updatedAt: nowIso,
+        })
+        .where(and(eq(arenaRounds.id, roundId), eq(arenaRounds.state, "resolving")));
+      settled = true;
+      return;
+    }
+
+    if (
+      !isArenaPrizePayable({
+        chargedEntries: finalCount,
+        minChargedEntries: minRequired,
+        entryFeeMilli: arena.entryFeeMilli,
+      })
+    ) {
+      throw new Error("Arena prize exceeds the charged pool");
+    }
+
+    const prize = calculateArenaPrize({
+      chargedEntries: finalCount,
+      entryFeeMilli: arena.entryFeeMilli,
+    });
+
     const prizeLedgerId = await creditArenaPrize({
       tx: tx as unknown as ReturnType<typeof getDb>,
-      participantAccountId: winningResponse.participantAccountId,
-      amountMilli: arena.prizeMilli,
-      idempotencyKey: `arena-prize:${roundId}`,
+      participantAccountId: finalWinner.participantAccountId,
+      amountMilli: prize.prizeMilli,
+      idempotencyKey: arenaPrizeIdempotencyKey(roundId),
       roundId,
       description: `${arena.name} Round #${round.roundNumber} win`,
     });
@@ -406,32 +478,35 @@ async function resolveRound(arena: typeof arenas.$inferSelect, roundId: string) 
     const streak = await computeWinStreak(
       tx as unknown as ReturnType<typeof getDb>,
       arena.id,
-      winningResponse.participantAccountId,
+      finalWinner.participantAccountId,
     );
 
     const [claimed] = await tx
       .insert(arenaWinners)
       .values({
         roundId,
-        participantAccountId: winningResponse.participantAccountId,
-        responseId: winningResponse.id,
-        prizeMilli: arena.prizeMilli,
+        participantAccountId: finalWinner.participantAccountId,
+        responseId: finalWinner.id,
+        prizeMilli: prize.prizeMilli,
         prizeLedgerEntryId: prizeLedgerId,
         winStreak: streak,
       })
       .onConflictDoNothing()
       .returning({ id: arenaWinners.id });
 
-    if (!claimed) return;
+    if (!claimed) {
+      settled = true;
+      return;
+    }
 
     await tx
       .update(arenaRounds)
       .set({
         state: "completed",
-        winnerAccountId: winningResponse.participantAccountId,
-        winnerResponseId: winningResponse.id,
+        winnerAccountId: finalWinner.participantAccountId,
+        winnerResponseId: finalWinner.id,
         uniqueResponderCount: uniqueParticipantCount,
-        acceptedResponseCount,
+        acceptedResponseCount: finalCount,
         resolvedAt: nowIso,
         updatedAt: nowIso,
       })
@@ -440,23 +515,36 @@ async function resolveRound(arena: typeof arenas.$inferSelect, roundId: string) 
     const [account] = await tx
       .select({ username: participantAccounts.username })
       .from(participantAccounts)
-      .where(eq(participantAccounts.id, winningResponse.participantAccountId))
+      .where(eq(participantAccounts.id, finalWinner.participantAccountId))
       .limit(1);
 
     await tx.insert(arenaActivity).values({
       arenaId: arena.id,
       roundId,
       kind: "winner",
-      message: `@${account?.username ?? "player"} won Round #${round.roundNumber} (+${milliToKkDisplay(arena.prizeMilli)} KK)`,
-      participantAccountId: winningResponse.participantAccountId,
-      metadata: { streak, prizeMilli: arena.prizeMilli },
+      message: `@${account?.username ?? "player"} won Round #${round.roundNumber} (+${milliToKkDisplay(prize.prizeMilli)} KK)`,
+      participantAccountId: finalWinner.participantAccountId,
+      metadata: {
+        streak,
+        prizeMilli: prize.prizeMilli,
+        chargedEntries: finalCount,
+        poolMilli: prize.poolMilli,
+      },
     });
+    settled = true;
   });
+
+  if (!settled) return;
 
   await db
     .update(arenaRounds)
-    .set({ state: "intermission", resolvedAt: nowIso, updatedAt: nowIso })
-    .where(eq(arenaRounds.id, roundId));
+    .set({ state: "intermission", updatedAt: nowIso })
+    .where(
+      and(
+        eq(arenaRounds.id, roundId),
+        inArray(arenaRounds.state, ["completed", "disqualified", "no_winner"]),
+      ),
+    );
 
   await recordAdminAuditEvent({
     eventType: "ARENA_ROUND_RESOLVED",
@@ -560,6 +648,19 @@ export async function submitArenaResponse(input: {
   await getOrCreateWallet(input.participantAccountId);
 
   const result = await db.transaction(async (tx) => {
+    const [lockedRound] = await tx
+      .select()
+      .from(arenaRounds)
+      .where(eq(arenaRounds.id, round.id))
+      .limit(1)
+      .for("update");
+    if (!lockedRound || lockedRound.state !== "active") {
+      throw new ArenaError("No active round accepting responses.", "ROUND_NOT_ACTIVE", 409);
+    }
+    if (lockedRound.endsAt && Date.parse(lockedRound.endsAt) <= Date.now()) {
+      throw new ArenaError("Round has ended.", "ROUND_EXPIRED", 409);
+    }
+
     const [countRow] = await tx
       .select({ value: count() })
       .from(arenaResponses)
@@ -627,7 +728,6 @@ export async function getArenaLiveState(arenaSlug: string, participantAccountId?
   const arena = await getArenaBySlug(arenaSlug);
   const db = getDb();
   const round = await getCurrentRound(arena.id);
-  const players = await countActivePresence(arena.id);
 
   let question: Record<string, string> | null = null;
   let challenge: { text: string } | null = null;
@@ -676,45 +776,14 @@ export async function getArenaLiveState(arenaSlug: string, participantAccountId?
         .limit(1);
       winnerView = {
         username: account?.username ?? "player",
-        prizeKk: milliToKkDisplay(winner?.prizeMilli ?? arena.prizeMilli),
+        prizeKk: milliToKkDisplay(winner?.prizeMilli ?? 0),
         streak: winner?.winStreak ?? 1,
       };
     }
   }
 
-  const activity = await db
-    .select({
-      message: arenaActivity.message,
-      createdAt: arenaActivity.createdAt,
-      kind: arenaActivity.kind,
-    })
-    .from(arenaActivity)
-    .where(eq(arenaActivity.arenaId, arena.id))
-    .orderBy(desc(arenaActivity.createdAt))
-    .limit(20);
-
   if (participantAccountId) {
     await touchPresence(arena.id, participantAccountId);
-  }
-
-  const minRequired = minResponsesRequired(arena);
-  let responseStats = { acceptedResponseCount: 0, uniqueParticipantCount: 0 };
-  let candidateWinnerUsername: string | null = null;
-
-  if (round) {
-    responseStats = await countRoundResponseStats(round.id);
-    if (round.candidateWinnerResponseId) {
-      const [candidate] = await db
-        .select({ username: participantAccounts.username })
-        .from(arenaResponses)
-        .innerJoin(
-          participantAccounts,
-          eq(arenaResponses.participantAccountId, participantAccounts.id),
-        )
-        .where(eq(arenaResponses.id, round.candidateWinnerResponseId))
-        .limit(1);
-      candidateWinnerUsername = candidate?.username ?? null;
-    }
   }
 
   const secondsRemaining =
@@ -722,42 +791,80 @@ export async function getArenaLiveState(arenaSlug: string, participantAccountId?
       ? Math.max(0, Math.ceil((Date.parse(round.endsAt) - Date.now()) / 1000))
       : null;
 
-  return {
+  const lastRound = await loadParticipantLastRound(arena.id, round);
+
+  return projectParticipantArenaLive({
     arena: {
       slug: arena.slug,
       name: arena.name,
       kind: arena.kind,
-      description: arena.description,
       enabled: arena.enabled,
       paused: arena.paused,
-      entryFeeKk: milliToKkDisplay(arena.entryFeeMilli),
-      prizeKk: milliToKkDisplay(arena.prizeMilli),
-      minResponsesRequired: minRequired,
     },
-    playersPresent: players,
     round: round
       ? {
-          id: round.id,
           number: round.roundNumber,
           state: round.state,
           secondsRemaining,
-          disqualifyReason: round.disqualifyReason,
-          acceptedResponseCount: responseStats.acceptedResponseCount,
-          responsesRemaining: Math.max(0, minRequired - responseStats.acceptedResponseCount),
-          uniqueParticipantCount: responseStats.uniqueParticipantCount,
-          candidateWinnerUsername,
-          totalKkCollectedKk: milliToKkDisplay(round.totalKkCollectedMilli ?? 0),
-          roundValidity:
-            responseStats.acceptedResponseCount >= minRequired
-              ? "minimum_responses_met"
-              : "waiting_for_minimum_responses",
         }
       : null,
     question,
     challenge,
-    winnerAnnouncement: winnerView,
-    activity: activity.reverse(),
-  };
+    winnerAnnouncement: winnerView
+      ? {
+          username: String(winnerView.username),
+          prizeKk: String(winnerView.prizeKk),
+          streak: Number(winnerView.streak),
+        }
+      : null,
+    lastRound,
+  });
+}
+
+const SETTLED_ROUND_STATES = ["intermission", "completed", "no_winner", "disqualified"] as const;
+
+async function loadParticipantLastRound(
+  arenaId: string,
+  current: typeof arenaRounds.$inferSelect | null,
+) {
+  const db = getDb();
+  const currentSettled =
+    current !== null &&
+    SETTLED_ROUND_STATES.includes(current.state as (typeof SETTLED_ROUND_STATES)[number]);
+  let source = currentSettled ? current : null;
+  if (!source) {
+    const filters = [eq(arenaRounds.arenaId, arenaId), inArray(arenaRounds.state, [...SETTLED_ROUND_STATES])];
+    if (current) filters.push(lt(arenaRounds.roundNumber, current.roundNumber));
+    const [previous] = await db
+      .select()
+      .from(arenaRounds)
+      .where(and(...filters))
+      .orderBy(desc(arenaRounds.roundNumber))
+      .limit(1);
+    source = previous ?? null;
+  }
+  if (!source) return null;
+  if (source.winnerAccountId) {
+    const [account] = await db
+      .select({ username: participantAccounts.username })
+      .from(participantAccounts)
+      .where(eq(participantAccounts.id, source.winnerAccountId))
+      .limit(1);
+    const [winner] = await db
+      .select({ prizeMilli: arenaWinners.prizeMilli })
+      .from(arenaWinners)
+      .where(eq(arenaWinners.roundId, source.id))
+      .limit(1);
+    return {
+      outcome: "winner" as const,
+      username: account?.username ?? "player",
+      prizeKk: milliToKkDisplay(winner?.prizeMilli ?? 0),
+    };
+  }
+  if (source.disqualifyReason || source.state === "disqualified") {
+    return { outcome: "ended" as const };
+  }
+  return { outcome: "no_winner" as const };
 }
 
 export async function listArenasDirectory() {
@@ -765,7 +872,6 @@ export async function listArenasDirectory() {
   const rows = await db.select().from(arenas).orderBy(arenas.slug);
   const enriched = await Promise.all(
     rows.map(async (arena) => {
-      const players = await countActivePresence(arena.id);
       const round = await getCurrentRound(arena.id);
       return {
         slug: arena.slug,
@@ -775,9 +881,6 @@ export async function listArenasDirectory() {
         enabled: arena.enabled,
         paused: arena.paused,
         entryFeeKk: milliToKkDisplay(arena.entryFeeMilli),
-        prizeKk: milliToKkDisplay(arena.prizeMilli),
-        minResponsesRequired: minResponsesRequired(arena),
-        playersPresent: players,
         roundState: round?.state ?? null,
         roundNumber: round?.roundNumber ?? null,
       };
@@ -839,7 +942,7 @@ async function loadAdminContentPool(arena: typeof arenas.$inferSelect) {
   });
 }
 
-export async function getAdminArenaOperationalData(slug: string) {
+export async function getAdminArenaOperationalData(slug: string, includeEconomics: boolean) {
   const arena = await getArenaBySlug(slug);
   const db = getDb();
   const round = await getCurrentRound(arena.id);
@@ -848,52 +951,75 @@ export async function getAdminArenaOperationalData(slug: string) {
 
   let liveRound: Record<string, unknown> | null = null;
   if (round) {
-    const stats = await countRoundResponseStats(round.id);
-    let candidateWinnerUsername: string | null = null;
-    if (round.candidateWinnerResponseId) {
-      const [candidate] = await db
-        .select({ username: participantAccounts.username })
-        .from(arenaResponses)
-        .innerJoin(
-          participantAccounts,
-          eq(arenaResponses.participantAccountId, participantAccounts.id),
-        )
-        .where(eq(arenaResponses.id, round.candidateWinnerResponseId))
-        .limit(1);
-      candidateWinnerUsername = candidate?.username ?? null;
-    }
     const secondsRemaining =
       round.endsAt && round.state === "active"
         ? Math.max(0, Math.ceil((Date.parse(round.endsAt) - Date.now()) / 1000))
         : null;
-
-    liveRound = {
+    const liveBase = {
       roundNumber: round.roundNumber,
       state: round.state,
       secondsRemaining,
-      acceptedResponseCount: stats.acceptedResponseCount,
-      responsesRemaining: Math.max(0, minRequired - stats.acceptedResponseCount),
-      uniqueParticipantCount: stats.uniqueParticipantCount,
-      candidateWinnerUsername,
-      totalKkCollectedKk: milliToKkDisplay(round.totalKkCollectedMilli ?? 0),
-      prizeAwardedKk:
-        round.state === "completed" ? milliToKkDisplay(arena.prizeMilli) : "0",
-      roundValidity:
-        stats.acceptedResponseCount >= minRequired
-          ? "minimum_responses_met"
-          : "waiting_for_minimum_responses",
-      disqualifyReason: round.disqualifyReason,
     };
+    if (!includeEconomics) {
+      liveRound = liveBase;
+    } else {
+      const stats = await countRoundResponseStats(round.id);
+      const [winner] = await db
+        .select({
+          prizeMilli: arenaWinners.prizeMilli,
+          responseId: arenaWinners.responseId,
+          ledgerId: arenaWinners.prizeLedgerEntryId,
+          username: participantAccounts.username,
+        })
+        .from(arenaWinners)
+        .innerJoin(
+          participantAccounts,
+          eq(arenaWinners.participantAccountId, participantAccounts.id),
+        )
+        .where(eq(arenaWinners.roundId, round.id))
+        .limit(1);
+      const quote = calculateArenaPrize({
+        chargedEntries: stats.acceptedResponseCount,
+        entryFeeMilli: arena.entryFeeMilli,
+      });
+      const settledRound = Boolean(winner);
+      const payableMilli =
+        stats.acceptedResponseCount >= minRequired && !round.disqualifyReason
+          ? quote.prizeMilli
+          : 0;
+      const finalPrizeMilli = settledRound ? winner!.prizeMilli : round.resolvedAt ? 0 : null;
+      liveRound = gateArenaEconomics(
+        {
+          ...liveBase,
+          economics: {
+            chargedEntries: stats.acceptedResponseCount,
+            entryPriceKk: milliToKkDisplay(arena.entryFeeMilli),
+            grossPoolKk: milliToKkDisplay(quote.poolMilli),
+            currentPrizeKk: milliToKkDisplay(payableMilli),
+            finalPrizeKk: finalPrizeMilli === null ? null : milliToKkDisplay(finalPrizeMilli),
+            platformRemainderKk: milliToKkDisplay(
+              quote.poolMilli - (finalPrizeMilli ?? payableMilli),
+            ),
+            winnerUsername: winner?.username ?? null,
+            winningResponseId: winner?.responseId ?? round.winnerResponseId,
+            settlementLedgerId: winner?.ledgerId ?? null,
+            settlementStatus: settledRound ? "completed" : round.resolvedAt ? "none" : "open",
+            invalidReason: round.disqualifyReason,
+          },
+        },
+        true,
+      );
+    }
   }
 
   const historyRows = await db
     .select({
+      id: arenaRounds.id,
       roundNumber: arenaRounds.roundNumber,
       state: arenaRounds.state,
       acceptedResponseCount: arenaRounds.acceptedResponseCount,
-      uniqueResponderCount: arenaRounds.uniqueResponderCount,
-      totalKkCollectedMilli: arenaRounds.totalKkCollectedMilli,
       winnerAccountId: arenaRounds.winnerAccountId,
+      winnerResponseId: arenaRounds.winnerResponseId,
       disqualifyReason: arenaRounds.disqualifyReason,
       startsAt: arenaRounds.startsAt,
       resolvedAt: arenaRounds.resolvedAt,
@@ -903,43 +1029,78 @@ export async function getAdminArenaOperationalData(slug: string) {
     .orderBy(desc(arenaRounds.roundNumber))
     .limit(25);
 
-  const history = await Promise.all(
-    historyRows.map(async (row) => {
-      let winnerUsername: string | null = null;
-      if (row.winnerAccountId) {
-        const [account] = await db
-          .select({ username: participantAccounts.username })
-          .from(participantAccounts)
-          .where(eq(participantAccounts.id, row.winnerAccountId))
-          .limit(1);
-        winnerUsername = account?.username ?? null;
-      }
-      return {
-        ...row,
-        totalKkCollectedKk: milliToKkDisplay(row.totalKkCollectedMilli ?? 0),
-        kkAwardedKk: row.state === "completed" ? milliToKkDisplay(arena.prizeMilli) : "0",
-        winnerUsername,
-      };
-    }),
-  );
+  const winnerRows =
+    includeEconomics && historyRows.length > 0
+      ? await db
+          .select({
+            roundId: arenaWinners.roundId,
+            prizeMilli: arenaWinners.prizeMilli,
+            responseId: arenaWinners.responseId,
+            ledgerId: arenaWinners.prizeLedgerEntryId,
+            username: participantAccounts.username,
+          })
+          .from(arenaWinners)
+          .innerJoin(
+            participantAccounts,
+            eq(arenaWinners.participantAccountId, participantAccounts.id),
+          )
+          .where(
+            inArray(
+              arenaWinners.roundId,
+              historyRows.map((row) => row.id),
+            ),
+          )
+      : [];
+  const winnerByRound = new Map(winnerRows.map((row) => [row.roundId, row]));
+
+  const roundHistory = historyRows.map((row) => {
+    const base = {
+      roundNumber: row.roundNumber,
+      state: row.state,
+      startsAt: row.startsAt,
+      resolvedAt: row.resolvedAt,
+    };
+    if (!includeEconomics) return gateArenaEconomics(base, false);
+    const winner = winnerByRound.get(row.id);
+    const quote = calculateArenaPrize({
+      chargedEntries: row.acceptedResponseCount,
+      entryFeeMilli: arena.entryFeeMilli,
+    });
+    const finalPrizeMilli = winner ? winner.prizeMilli : row.resolvedAt ? 0 : null;
+    return gateArenaEconomics(
+      {
+        ...base,
+        economics: {
+          chargedEntries: row.acceptedResponseCount,
+          entryPriceKk: milliToKkDisplay(arena.entryFeeMilli),
+          grossPoolKk: milliToKkDisplay(quote.poolMilli),
+          finalPrizeKk: finalPrizeMilli === null ? null : milliToKkDisplay(finalPrizeMilli),
+          platformRemainderKk: milliToKkDisplay(quote.poolMilli - (finalPrizeMilli ?? 0)),
+          winnerUsername: winner?.username ?? null,
+          winningResponseId: winner?.responseId ?? row.winnerResponseId,
+          settlementLedgerId: winner?.ledgerId ?? null,
+          settlementStatus: winner ? "completed" : row.resolvedAt ? "none" : "open",
+          invalidReason: row.disqualifyReason,
+        },
+      },
+      true,
+    );
+  });
 
   return {
     slug: arena.slug,
     name: arena.name,
     enabled: arena.enabled,
     paused: arena.paused,
-    entryFeeKk: milliToKkDisplay(arena.entryFeeMilli),
-    prizeKk: milliToKkDisplay(arena.prizeMilli),
-    minResponsesRequired: minRequired,
     playersPresent: players,
     liveRound,
-    roundHistory: history,
+    roundHistory,
     contentPool: await loadAdminContentPool(arena),
   };
 }
 
-export async function listAdminArenaDashboard() {
+export async function listAdminArenaDashboard(includeEconomics: boolean) {
   const db = getDb();
   const rows = await db.select({ slug: arenas.slug }).from(arenas).orderBy(arenas.slug);
-  return Promise.all(rows.map((row) => getAdminArenaOperationalData(row.slug)));
+  return Promise.all(rows.map((row) => getAdminArenaOperationalData(row.slug, includeEconomics)));
 }

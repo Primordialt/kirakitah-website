@@ -19,7 +19,7 @@ export default function ArenaRulesPage() {
         <li>TypeRush: type the line exactly, then submit.</li>
         <li>Each response costs the entry amount shown on the arena card.</li>
         <li>You can send more than one response. Each one costs the entry amount.</li>
-        <li>The winner of the round receives the win amount shown on the card.</li>
+        <li>One round. One winner.</li>
         <li>If nobody wins before the clock runs out, the round ends and the next one begins.</li>
       </ul>
     </article>

@@ -6,8 +6,8 @@ import type { AdminRole } from "@/server/admin/authorization/permissions";
 import { ArenaError } from "@/server/arena/errors";
 import { listAdminArenaDashboard } from "@/server/arena/engine";
 
-export async function adminListArenas() {
-  return listAdminArenaDashboard();
+export async function adminListArenas(includeEconomics: boolean) {
+  return listAdminArenaDashboard(includeEconomics);
 }
 
 export async function adminUpdateArena(input: {

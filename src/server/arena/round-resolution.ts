@@ -31,6 +31,25 @@ export function determineRoundOutcome(input: RoundResolveInput): RoundResolveOut
   };
 }
 
+export type RankedResponse = {
+  isCorrect: boolean;
+  receivedAt: string;
+  sequence: number;
+};
+
+/** First correct response by arrival time, then sequence. One winner only. */
+export function selectFirstCorrectResponse<T extends RankedResponse>(
+  rows: readonly T[],
+): T | null {
+  const correct = rows.filter((row) => row.isCorrect);
+  correct.sort((left, right) => {
+    if (left.receivedAt < right.receivedAt) return -1;
+    if (left.receivedAt > right.receivedAt) return 1;
+    return left.sequence - right.sequence;
+  });
+  return correct[0] ?? null;
+}
+
 export function formatDisqualifyMessage(
   acceptedResponseCount: number,
   minResponsesRequired: number,
