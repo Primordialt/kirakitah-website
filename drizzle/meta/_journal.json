@@ -218,6 +218,13 @@
       "when": 1722384000000,
       "tag": "0030_arena_response_threshold",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1722470400000,
+      "tag": "0031_arena_challenge_pool",
+      "breakpoints": true
     }
   ]
 }
