@@ -1,19 +1,20 @@
-import { and, desc, eq, gte, sql } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 import { getDb } from "@/server/db";
 import {
-  kkWalletDeposits,
   kkWalletLedger,
   kkWallets,
-  kkWalletWithdrawals,
 } from "@/server/db/schema";
 import { WalletError } from "@/server/wallet/errors";
-import { milliToKkDisplay, parseKkInput } from "@/server/wallet/money";
+import { milliToKkDisplay } from "@/server/wallet/money";
 
 type Db = ReturnType<typeof getDb>;
 
 export type WalletSummary = {
   balanceMilli: number;
   balanceKk: string;
+  availableMilli: number;
+  availableKk: string;
+  reservedKk: string;
   usdtEquivalent: string;
 };
 
@@ -45,11 +46,15 @@ export async function getOrCreateWallet(participantAccountId: string) {
 
 export async function getWalletSummary(participantAccountId: string): Promise<WalletSummary> {
   const wallet = await getOrCreateWallet(participantAccountId);
-  const kk = milliToKkDisplay(wallet.balanceMilli);
+  const availableMilli = wallet.balanceMilli - wallet.reservedMilli;
+  const availableKk = milliToKkDisplay(availableMilli);
   return {
     balanceMilli: wallet.balanceMilli,
-    balanceKk: kk,
-    usdtEquivalent: kk,
+    balanceKk: milliToKkDisplay(wallet.balanceMilli),
+    availableMilli,
+    availableKk,
+    reservedKk: milliToKkDisplay(wallet.reservedMilli),
+    usdtEquivalent: availableKk,
   };
 }
 
@@ -123,7 +128,7 @@ export async function debitArenaEntry(input: {
     .where(
       and(
         eq(kkWallets.id, wallet.id),
-        gte(kkWallets.balanceMilli, input.amountMilli),
+        sql`${kkWallets.balanceMilli} - ${kkWallets.reservedMilli} >= ${input.amountMilli}`,
       ),
     )
     .returning({
@@ -214,57 +219,4 @@ export async function creditArenaPrize(input: {
     .returning({ id: kkWalletLedger.id });
 
   return ledger!.id;
-}
-
-export async function requestDeposit(participantAccountId: string, amountKkInput: string) {
-  const amountMilli = parseKkInput(amountKkInput);
-  const wallet = await getOrCreateWallet(participantAccountId);
-  const db = getDb();
-  const [deposit] = await db
-    .insert(kkWalletDeposits)
-    .values({
-      walletId: wallet.id,
-      amountMilli,
-      status: "pending",
-      provider: null,
-    })
-    .returning();
-
-  return {
-    depositId: deposit!.id,
-    status: "pending" as const,
-    message:
-      "Top-up request recorded. KK PTS will be credited after payment provider verification. Deposits are not auto-credited in this release.",
-    amountKk: milliToKkDisplay(amountMilli),
-  };
-}
-
-export async function requestWithdrawal(
-  participantAccountId: string,
-  amountKkInput: string,
-  destinationHint?: string,
-) {
-  const amountMilli = parseKkInput(amountKkInput);
-  const wallet = await getOrCreateWallet(participantAccountId);
-  if (wallet.balanceMilli < amountMilli) {
-    throw new WalletError("Insufficient KK PTS for withdrawal.", "INSUFFICIENT_BALANCE", 402);
-  }
-  const db = getDb();
-  const [withdrawal] = await db
-    .insert(kkWalletWithdrawals)
-    .values({
-      walletId: wallet.id,
-      amountMilli,
-      status: "pending",
-      destinationHint: destinationHint?.trim() || null,
-    })
-    .returning();
-
-  return {
-    withdrawalId: withdrawal!.id,
-    status: "pending" as const,
-    message:
-      "Withdrawal request submitted for review. USDT payout requires operational payment integration.",
-    amountKk: milliToKkDisplay(amountMilli),
-  };
 }

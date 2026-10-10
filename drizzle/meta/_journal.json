@@ -225,6 +225,13 @@
       "when": 1722470400000,
       "tag": "0031_arena_challenge_pool",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1722556800000,
+      "tag": "0032_nowpayments_wallet",
+      "breakpoints": true
     }
   ]
 }

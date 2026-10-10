@@ -14,6 +14,10 @@ export const DEFAULT_MIN_UNIQUE_RESPONDERS = DEFAULT_MIN_CHARGED_RESPONSES;
 export const DEFAULT_INTERMISSION_SECONDS = 10;
 export const DEFAULT_ROUND_DURATION_SECONDS = 30;
 
+export function canSpend(balanceMilli: number, reservedMilli: number, amountMilli: number): boolean {
+  return amountMilli > 0 && balanceMilli - reservedMilli >= amountMilli;
+}
+
 export function milliToKkDisplay(milli: number): string {
   const whole = Math.floor(milli / MILLI_PER_KK);
   const frac = Math.abs(milli % MILLI_PER_KK);
