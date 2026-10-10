@@ -23,18 +23,29 @@ export async function POST(request: Request) {
   return withAdminApi(request, "wallet:finance", async (session, requestId) => {
     try {
       const body = (await request.json()) as {
-        action?: "reject" | "approve" | "adjust" | "refresh";
+        action?: "reject" | "approve" | "adjust" | "refresh" | "reconcile";
         withdrawalId?: string;
         verificationCode?: string;
+        providerPayoutId?: string;
+        providerBatchId?: string;
         username?: string;
         amountKk?: string;
         direction?: "credit" | "debit";
         reason?: string;
         clientRequestId?: string;
       };
-      if ((body.action === "reject" || body.action === "approve" || body.action === "refresh") && body.withdrawalId) {
-        if (body.action === "refresh") {
-          const result = await reconcileWithdrawal(body.withdrawalId);
+      if (
+        (body.action === "reject" || body.action === "approve" || body.action === "refresh" || body.action === "reconcile") &&
+        body.withdrawalId
+      ) {
+        if (body.action === "refresh" || body.action === "reconcile") {
+          const result = await reconcileWithdrawal({
+            withdrawalId: body.withdrawalId,
+            actorId: session.user.id,
+            actorRole: session.user.role,
+            providerPayoutId: body.providerPayoutId,
+            providerBatchId: body.providerBatchId,
+          });
           return adminJson({ success: true, ...result, requestId }, 200, requestId);
         }
         const result = await reviewWithdrawal({

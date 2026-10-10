@@ -243,3 +243,50 @@ export function decidePayoutUpdate(input: {
 export function withdrawalFinalizeIdempotencyKey(withdrawalId: string): string {
   return `nowpayments-withdrawal:${withdrawalId}`;
 }
+
+export type PayoutCandidate = {
+  payoutId: string;
+  batchId: string | null;
+  status: string;
+  currency: string | null;
+  amount: string | null;
+  address: string | null;
+  uniqueExternalId: string | null;
+  fee: string | null;
+};
+
+export type PayoutSelection =
+  | { kind: "matched"; payout: PayoutCandidate }
+  | { kind: "unresolved"; reason: "not_found" | "ambiguous" | "reference_mismatch" };
+
+/**
+ * Bind a provider payout to one withdrawal.
+ * A list scan matches only `unique_external_id`. Address and amount alone are not enough.
+ * An operator-supplied payout or batch id may match one unlabeled legacy payout.
+ */
+export function selectPayoutForWithdrawal(input: {
+  withdrawalId: string;
+  address: string;
+  amountDecimal: string;
+  candidates: PayoutCandidate[];
+  operatorPinned: boolean;
+}): PayoutSelection {
+  const compatible = input.candidates.filter((candidate) => {
+    if (!candidate.payoutId) return false;
+    if (candidate.currency?.toLowerCase() !== NOWPAYMENTS_PAY_CURRENCY) return false;
+    if (!candidate.amount || !candidate.address) return false;
+    if (compareDecimals(candidate.amount, input.amountDecimal) !== 0) return false;
+    return candidate.address === input.address;
+  });
+  const referenced = compatible.filter((candidate) => candidate.uniqueExternalId === input.withdrawalId);
+  if (referenced.length === 1) return { kind: "matched", payout: referenced[0] };
+  if (referenced.length > 1) return { kind: "unresolved", reason: "ambiguous" };
+  const foreign = compatible.filter(
+    (candidate) => candidate.uniqueExternalId != null && candidate.uniqueExternalId !== input.withdrawalId,
+  );
+  if (foreign.length > 0) return { kind: "unresolved", reason: "reference_mismatch" };
+  const unlabeled = compatible.filter((candidate) => candidate.uniqueExternalId == null);
+  if (input.operatorPinned && unlabeled.length === 1) return { kind: "matched", payout: unlabeled[0] };
+  if (unlabeled.length > 1) return { kind: "unresolved", reason: "ambiguous" };
+  return { kind: "unresolved", reason: "not_found" };
+}

@@ -2,7 +2,7 @@ import { createHmac } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import { roleHasPermission } from "@/server/admin/authorization/permissions";
 import { compareDecimals, usdtDecimalToMilli } from "@/server/payments/nowpayments/amounts";
-import { createNowPaymentsClient } from "@/server/payments/nowpayments/client";
+import { createNowPaymentsClient, resetNowPaymentsAuthCache } from "@/server/payments/nowpayments/client";
 import { readNowPaymentsConfig } from "@/server/payments/nowpayments/config";
 import {
   decideCreditedDepositFollowUp,
@@ -10,10 +10,13 @@ import {
   decidePayoutUpdate,
   depositCreditIdempotencyKey,
   depositMeetsMinimum,
+  selectPayoutForWithdrawal,
   shouldApplyPaymentStatus,
   withdrawalFinalizeIdempotencyKey,
   type ObservedPayment,
 } from "@/server/payments/nowpayments/policy";
+import { isDisposableWalletTestDatabase } from "@/server/payments/nowpayments/test-database";
+import { reconcileWithdrawal } from "@/server/payments/nowpayments/service";
 import { ipnEventKey, signIpnPayload, verifyIpnSignature } from "@/server/payments/nowpayments/signature";
 import { canSpend } from "@/server/wallet/money";
 
@@ -239,6 +242,56 @@ describe("NOWPayments payouts", () => {
     expect(withdrawalFinalizeIdempotencyKey("w1")).toBe("nowpayments-withdrawal:w1");
   });
 
+  it("matches a payout only by its withdrawal reference unless an operator pins one id", () => {
+    const address = `T${"1".repeat(33)}`;
+    const candidate = {
+      payoutId: "p1",
+      batchId: "b1",
+      status: "FINISHED",
+      currency: "usdttrc20",
+      amount: "10",
+      address,
+      uniqueExternalId: "withdrawal-1",
+      fee: "1",
+    };
+    expect(
+      selectPayoutForWithdrawal({
+        withdrawalId: "withdrawal-1",
+        address,
+        amountDecimal: "10",
+        candidates: [candidate, { ...candidate, payoutId: "p2", uniqueExternalId: "withdrawal-2" }],
+        operatorPinned: false,
+      }).kind,
+    ).toBe("matched");
+    expect(
+      selectPayoutForWithdrawal({
+        withdrawalId: "withdrawal-1",
+        address,
+        amountDecimal: "10",
+        candidates: [{ ...candidate, uniqueExternalId: null }],
+        operatorPinned: false,
+      }),
+    ).toEqual({ kind: "unresolved", reason: "not_found" });
+    expect(
+      selectPayoutForWithdrawal({
+        withdrawalId: "withdrawal-1",
+        address,
+        amountDecimal: "10",
+        candidates: [{ ...candidate, uniqueExternalId: "other" }],
+        operatorPinned: true,
+      }),
+    ).toEqual({ kind: "unresolved", reason: "reference_mismatch" });
+    expect(
+      selectPayoutForWithdrawal({
+        withdrawalId: "withdrawal-1",
+        address,
+        amountDecimal: "10",
+        candidates: [{ ...candidate, uniqueExternalId: null }],
+        operatorPinned: true,
+      }).kind,
+    ).toBe("matched");
+  });
+
   it("does not enable payouts from an API key alone", () => {
     const config = readNowPaymentsConfig({
       NOWPAYMENTS_API_KEY: "key",
@@ -308,6 +361,57 @@ describe("NOWPayments client", () => {
     expect(payment.paymentId).toBe("99");
   });
 
+  it("sends the withdrawal id as unique_external_id and lists payouts by batch id", async () => {
+    resetNowPaymentsAuthCache();
+    const calls: string[] = [];
+    const client = createNowPaymentsClient(
+      { ...config, email: "wallet@example.com", password: "not-a-real-password" },
+      async (input) => {
+        calls.push(`${input.method} ${input.url}`);
+        if (input.url.endsWith("/auth")) return { status: 200, raw: JSON.stringify({ token: "jwt-token" }) };
+        if (input.method === "POST") {
+          expect(input.body).toContain("\"unique_external_id\":\"11111111-1111-4111-8111-111111111111\"");
+          expect(input.body).not.toContain("not-a-real-password");
+          return {
+            status: 200,
+            raw: JSON.stringify({
+              id: "batch-1",
+              withdrawals: [{ id: "payout-1", batch_withdrawal_id: "batch-1", status: "CREATING", unique_external_id: "11111111-1111-4111-8111-111111111111" }],
+            }),
+          };
+        }
+        expect(input.url).toContain("/payout?batch_id=batch-1");
+        return {
+          status: 200,
+          raw: JSON.stringify({
+            payouts: [{
+              id: "payout-1",
+              batch_withdrawal_id: "batch-1",
+              status: "FINISHED",
+              currency: "usdttrc20",
+              amount: "10",
+              address: "T123",
+              unique_external_id: "11111111-1111-4111-8111-111111111111",
+              fee: "1",
+            }],
+          }),
+        };
+      },
+    );
+    const created = await client.createPayout({
+      address: "T123",
+      amountDecimal: "10",
+      ipnCallbackUrl: "https://example.com/api/webhooks/nowpayments",
+      uniqueExternalId: "11111111-1111-4111-8111-111111111111",
+    });
+    expect(created.payoutId).toBe("payout-1");
+    expect(created.batchId).toBe("batch-1");
+    const listed = await client.listPayouts({ batchId: "batch-1", limit: 20, page: 0 });
+    expect(listed[0]?.uniqueExternalId).toBe("11111111-1111-4111-8111-111111111111");
+    expect(listed[0]?.status).toBe("FINISHED");
+    expect(calls.some((call) => call.startsWith("GET ") && call.includes("/payout?"))).toBe(true);
+  });
+
   it("surfaces a provider failure without creating an address", async () => {
     const client = createNowPaymentsClient(config, async () => ({
       status: 500,
@@ -325,5 +429,38 @@ describe("wallet finance RBAC", () => {
     expect(roleHasPermission("TOURNAMENT_ADMIN", "wallet:finance")).toBe(false);
     expect(roleHasPermission("REVIEWER", "wallet:finance")).toBe(false);
     expect(roleHasPermission("SUPPORT", "wallet:finance")).toBe(false);
+  });
+
+  it("rejects payout reconciliation from every role except super admin", async () => {
+    await expect(
+      reconcileWithdrawal({
+        withdrawalId: "11111111-1111-4111-8111-111111111111",
+        actorId: "admin",
+        actorRole: "TOURNAMENT_ADMIN",
+      }),
+    ).rejects.toMatchObject({ status: 403 });
+    await expect(
+      reconcileWithdrawal({
+        withdrawalId: "11111111-1111-4111-8111-111111111111",
+        actorId: "admin",
+        actorRole: "REVIEWER",
+      }),
+    ).rejects.toMatchObject({ status: 403 });
+    await expect(
+      reconcileWithdrawal({
+        withdrawalId: "11111111-1111-4111-8111-111111111111",
+        actorId: "admin",
+        actorRole: "SUPPORT",
+      }),
+    ).rejects.toMatchObject({ status: 403 });
+  });
+});
+
+describe("disposable wallet database gate", () => {
+  it("skips hosted databases, including CI and Neon, unless the URL is local", () => {
+    expect(isDisposableWalletTestDatabase(undefined)).toBe(false);
+    expect(isDisposableWalletTestDatabase("postgres://postgres:postgres@127.0.0.1:54329/kirakitah_wallet_test")).toBe(true);
+    expect(isDisposableWalletTestDatabase("postgres://user:secret@ep-example.neon.tech/neondb")).toBe(false);
+    expect(isDisposableWalletTestDatabase("not a url")).toBe(false);
   });
 });

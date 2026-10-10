@@ -51,6 +51,8 @@ export function AdminWalletPanel() {
   const [username, setUsername] = useState("");
   const [amount, setAmount] = useState("");
   const [reason, setReason] = useState("");
+  const [providerPayoutId, setProviderPayoutId] = useState("");
+  const [providerBatchId, setProviderBatchId] = useState("");
 
   const load = async () => {
     const response = await fetch("/api/admin/wallet", { credentials: "include" });
@@ -78,14 +80,26 @@ export function AdminWalletPanel() {
     void load();
   }, []);
 
-  const refreshPayout = async (withdrawalId: string) => {
+  const refreshPayout = async (row: Withdrawal) => {
     const response = await fetch("/api/admin/wallet", {
       method: "POST",
       credentials: "include",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "refresh", withdrawalId }),
+      body: JSON.stringify({
+        action: "reconcile",
+        withdrawalId: row.id,
+        providerPayoutId: row.providerPayoutId ? undefined : providerPayoutId.trim() || undefined,
+        providerBatchId: row.providerBatchId ? undefined : providerBatchId.trim() || undefined,
+      }),
     });
-    setStatus(response.ok ? "Payout status checked." : "Payout status check failed.");
+    const payload = (await response.json().catch(() => null)) as { outcome?: string; reason?: string } | null;
+    if (!response.ok) {
+      setStatus("Payout reconciliation failed. Reserved KK was not released.");
+    } else if (payload?.outcome === "unresolved") {
+      setStatus("The provider payout is still unresolved. Reserved KK stays reserved.");
+    } else {
+      setStatus("Payout reconciliation checked the provider status.");
+    }
     if (response.ok) void load();
   };
 
@@ -157,6 +171,17 @@ export function AdminWalletPanel() {
 
       <section className="space-y-3">
         <h2 className="text-h4">Withdrawals</h2>
+        <p className="text-caption text-text-muted">
+          A payout stuck after a timeout stays reserved. Paste the payout id or batch id from the NOWPayments dashboard only when this page does not already show one. Reconciliation never creates a second payout.
+        </p>
+        <label className="block text-body-sm">
+          Provider payout id
+          <input value={providerPayoutId} onChange={(event) => setProviderPayoutId(event.target.value)} autoComplete="off" className="mt-1 h-11 w-full rounded-lg border border-border px-3" />
+        </label>
+        <label className="block text-body-sm">
+          Provider batch id
+          <input value={providerBatchId} onChange={(event) => setProviderBatchId(event.target.value)} autoComplete="off" className="mt-1 h-11 w-full rounded-lg border border-border px-3" />
+        </label>
         <label className="block text-body-sm">
           2FA code for payout approval
           <input value={code} onChange={(event) => setCode(event.target.value)} autoComplete="off" className="mt-1 h-11 w-full rounded-lg border border-border px-3" inputMode="numeric" />
@@ -169,7 +194,7 @@ export function AdminWalletPanel() {
             {row.failureReason ? <p>{row.failureReason}</p> : null}
             <div className="mt-2 flex gap-2">
               <Button variant="secondary" onClick={() => void review(row.id, "reject")}>Reject</Button>
-              <Button variant="secondary" onClick={() => void refreshPayout(row.id)}>Check payout</Button>
+              <Button variant="secondary" onClick={() => void refreshPayout(row)}>Reconcile payout</Button>
               <Button variant="primary" onClick={() => void review(row.id, "approve")}>Approve payout</Button>
             </div>
           </article>

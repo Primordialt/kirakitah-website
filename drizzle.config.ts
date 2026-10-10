@@ -3,8 +3,8 @@ import { defineConfig } from "drizzle-kit";
 /**
  * Drizzle Kit CLI configuration (generate / migrate).
  *
- * Runtime application queries use `@neondatabase/serverless` + `drizzle-orm/neon-http`
- * in `src/server/db/index.ts` and are unchanged by this file.
+ * Runtime application queries use `@neondatabase/serverless` `Pool` in
+ * `src/server/db/index.ts`. That driver can run the wallet and Arena transactions.
  *
  * Migrations use the `pg` (node-postgres) driver when `pg` is installed.
  * That avoids the Neon serverless WebSocket path that `drizzle-kit migrate`

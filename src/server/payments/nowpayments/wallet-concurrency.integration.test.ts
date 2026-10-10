@@ -1,8 +1,9 @@
 /**
  * Disposable PostgreSQL concurrency tests for wallet credits, reservations, and payout settlement.
  *
- * These tests do not run in the default `npm test` command unless a local database is provided.
- * They refuse any non-local URL so Production and hosted Neon credentials are never used.
+ * These tests do not run in the default `npm test` command, or in CI, unless
+ * `KK_TEST_DATABASE_URL` points at localhost, 127.0.0.1, or ::1.
+ * A skipped file is not a pass. Hosted Neon and Production URLs are refused.
  *
  * Setup:
  *   docker run --rm --name kirakitah-wallet-test \
@@ -27,21 +28,15 @@ import { readNowPaymentsConfig } from "@/server/payments/nowpayments/config";
 import {
   createUsdtWithdrawal,
   handleNowPaymentsIpn,
+  reconcileWithdrawal,
   resetWalletProviderRateLimitForTests,
 } from "@/server/payments/nowpayments/service";
+import { isDisposableWalletTestDatabase } from "@/server/payments/nowpayments/test-database";
 import { signIpnPayload } from "@/server/payments/nowpayments/signature";
 import { debitArenaEntry, getOrCreateWallet } from "@/server/wallet/service";
 
 const databaseUrl = process.env.KK_TEST_DATABASE_URL;
-const localDatabase = (() => {
-  if (!databaseUrl) return false;
-  try {
-    const host = new URL(databaseUrl).hostname;
-    return host === "localhost" || host === "127.0.0.1" || host === "::1";
-  } catch {
-    return false;
-  }
-})();
+const localDatabase = isDisposableWalletTestDatabase(databaseUrl);
 
 const secret = "wallet-integration-secret";
 const address = `T${"1".repeat(33)}`;
@@ -307,5 +302,74 @@ describe.skipIf(!localDatabase)("wallet postgres concurrency", () => {
     expect(after.balanceMilli).toBe(0);
     expect(after.reservedMilli).toBe(0);
     expect(ledgers.filter((row) => row.entryType === "withdrawal")).toHaveLength(1);
+  });
+
+  it("binds one ambiguous payout by its withdrawal reference and does not release a missing payout", async () => {
+    const accountId = await account();
+    const wallet = await getOrCreateWallet(accountId);
+    await getDb().update(kkWallets).set({ balanceMilli: 10_000, reservedMilli: 10_000 }).where(eq(kkWallets.id, wallet.id));
+    const withdrawalId = randomUUID();
+    await getDb().insert(kkWalletWithdrawals).values({
+      id: withdrawalId,
+      walletId: wallet.id,
+      amountMilli: 10_000,
+      status: "processing",
+      reviewState: "processing",
+      reservedMilli: 10_000,
+      destinationAddress: address,
+      network: "USDT TRC20",
+      providerStatus: "submitting",
+    });
+    const config = readNowPaymentsConfig({
+      NOWPAYMENTS_API_KEY: "test-key",
+      NOWPAYMENTS_IPN_SECRET: secret,
+      NOWPAYMENTS_IPN_CALLBACK_URL: "https://example.com/api/webhooks/nowpayments",
+      NOWPAYMENTS_AUTH_EMAIL: "wallet@example.com",
+      NOWPAYMENTS_AUTH_PASSWORD: "not-a-real-password",
+      NOWPAYMENTS_PAYOUTS_ENABLED: "true",
+    });
+    const missing = { async listPayouts() { return []; }, async getPayout() { throw new Error("not called"); } } as unknown as NowPaymentsClient;
+    const unresolved = await reconcileWithdrawal({
+      withdrawalId,
+      actorId: "integration-admin",
+      actorRole: "SUPER_ADMIN",
+      deps: { config, client: missing },
+    });
+    expect(unresolved.outcome).toBe("unresolved");
+    const stillHeld = await walletOf(accountId);
+    expect(stillHeld.balanceMilli).toBe(10_000);
+    expect(stillHeld.reservedMilli).toBe(10_000);
+
+    const found = {
+      async listPayouts() {
+        return [{
+          payoutId: "payout-1",
+          batchId: "batch-1",
+          status: "FINISHED",
+          currency: "usdttrc20",
+          amount: "10",
+          address,
+          uniqueExternalId: withdrawalId,
+          fee: "1",
+        }];
+      },
+      async getPayout() { throw new Error("not called"); },
+    } as unknown as NowPaymentsClient;
+    await Promise.all([
+      reconcileWithdrawal({ withdrawalId, actorId: "integration-admin", actorRole: "SUPER_ADMIN", deps: { config, client: found } }),
+      reconcileWithdrawal({ withdrawalId, actorId: "integration-admin", actorRole: "SUPER_ADMIN", deps: { config, client: found } }),
+    ]);
+    const after = await walletOf(accountId);
+    const ledgers = await getDb().select().from(kkWalletLedger).where(eq(kkWalletLedger.walletId, wallet.id));
+    expect(after.balanceMilli).toBe(0);
+    expect(after.reservedMilli).toBe(0);
+    expect(ledgers.filter((row) => row.entryType === "withdrawal")).toHaveLength(1);
+    const again = await reconcileWithdrawal({
+      withdrawalId,
+      actorId: "integration-admin",
+      actorRole: "SUPER_ADMIN",
+      deps: { config, client: found },
+    });
+    expect(again.outcome).toBe("ignored");
   });
 });

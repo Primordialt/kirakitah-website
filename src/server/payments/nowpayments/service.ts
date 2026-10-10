@@ -19,6 +19,7 @@ import {
   decideCreditedDepositFollowUp,
   decideDepositCredit,
   decidePayoutUpdate,
+  selectPayoutForWithdrawal,
   depositCreditIdempotencyKey,
   depositMeetsMinimum,
   depositReversalIdempotencyKey,
@@ -27,6 +28,7 @@ import {
   shouldApplyPaymentStatus,
   withdrawalFinalizeIdempotencyKey,
   type ObservedPayment,
+  type PayoutCandidate,
 } from "@/server/payments/nowpayments/policy";
 import { ipnEventKey, verifyIpnSignature } from "@/server/payments/nowpayments/signature";
 import { WalletError } from "@/server/wallet/errors";
@@ -858,6 +860,7 @@ async function finalizeWithdrawal(withdrawalId: string) {
         reviewState: "completed",
         status: "completed",
         providerStatus: "FINISHED",
+        failureReason: null,
         ledgerEntryId: ledger.id,
         reservedMilli: 0,
         updatedAt: now,
@@ -1103,6 +1106,7 @@ export async function reviewWithdrawal(input: {
       address: row.destinationAddress,
       amountDecimal: milliToUsdtDecimal(row.amountMilli),
       ipnCallbackUrl: config.ipnCallbackUrl,
+      uniqueExternalId: row.id,
     });
   } catch (error) {
     if (error instanceof NowPaymentsProviderError && error.status >= 400 && error.status < 500) {
@@ -1113,7 +1117,7 @@ export async function reviewWithdrawal(input: {
     }
     providerFailure(error);
   }
-  if (!payout!.batchId) {
+  if (!payout!.batchId && !payout!.payoutId) {
     await db
       .update(kkWalletWithdrawals)
       .set({ reviewState: "processing", providerStatus: "created_unparsed", updatedAt: new Date().toISOString() })
@@ -1131,7 +1135,9 @@ export async function reviewWithdrawal(input: {
       updatedAt: new Date().toISOString(),
     })
     .where(eq(kkWalletWithdrawals.id, row.id));
-  await nowpayments.verifyPayout(payout!.batchId, input.verificationCode);
+  if (payout!.batchId) {
+    await nowpayments.verifyPayout(payout!.batchId, input.verificationCode);
+  }
   await recordAdminAuditEvent({
     eventType: "ARENA_WALLET_ADJUSTMENT",
     actorId: input.actorId,
@@ -1141,22 +1147,143 @@ export async function reviewWithdrawal(input: {
   return { withdrawalId: row.id, reviewState: "processing" };
 }
 
-export async function reconcileWithdrawal(
-  withdrawalId: string,
-  deps?: { config?: NowPaymentsConfig; client?: NowPaymentsClient },
-) {
-  const db = getDb();
-  const [row] = await db.select().from(kkWalletWithdrawals).where(eq(kkWalletWithdrawals.id, withdrawalId)).limit(1);
-  if (!row?.providerPayoutId || !row.destinationAddress) {
-    throw new WalletError("This withdrawal has no provider payout to check.", "NOT_FOUND", 404);
+const PAYOUT_LIST_PAGE_SIZE = 100;
+const PAYOUT_LIST_PAGE_CAP = 5;
+
+function assertProviderReference(value: string | undefined, label: string) {
+  if (value == null || value === "") return;
+  if (!/^[A-Za-z0-9_-]{1,80}$/.test(value)) {
+    throw new WalletError(`Invalid ${label}.`, "VALIDATION_ERROR", 400);
   }
-  const config = deps?.config ?? readNowPaymentsConfig();
-  const nowpayments = clientFor(config, deps?.client);
-  const payout = await nowpayments.getPayout(row.providerPayoutId);
+}
+
+async function lookupPayoutCandidates(
+  nowpayments: NowPaymentsClient,
+  input: { payoutId?: string; batchId?: string },
+): Promise<{ candidates: PayoutCandidate[]; truncated: boolean }> {
+  if (input.payoutId) {
+    try {
+      const payout = await nowpayments.getPayout(input.payoutId);
+      return { candidates: [payout], truncated: false };
+    } catch (error) {
+      if (error instanceof NowPaymentsProviderError && error.status === 404) {
+        return { candidates: [], truncated: false };
+      }
+      throw error;
+    }
+  }
+  if (input.batchId) {
+    const page = await nowpayments.listPayouts({ batchId: input.batchId, limit: PAYOUT_LIST_PAGE_SIZE, page: 0 });
+    return { candidates: page, truncated: page.length >= PAYOUT_LIST_PAGE_SIZE };
+  }
+  const candidates: PayoutCandidate[] = [];
+  for (let page = 0; page < PAYOUT_LIST_PAGE_CAP; page += 1) {
+    const rows = await nowpayments.listPayouts({ limit: PAYOUT_LIST_PAGE_SIZE, page });
+    candidates.push(...rows);
+    if (rows.length < PAYOUT_LIST_PAGE_SIZE) return { candidates, truncated: false };
+  }
+  return { candidates, truncated: true };
+}
+
+export async function reconcileWithdrawal(input: {
+  withdrawalId: string;
+  actorId: string;
+  actorRole: AdminRole;
+  providerPayoutId?: string;
+  providerBatchId?: string;
+  deps?: { config?: NowPaymentsConfig; client?: NowPaymentsClient };
+}) {
+  assertSuperAdmin(input.actorRole);
+  assertProviderReference(input.providerPayoutId, "payout id");
+  assertProviderReference(input.providerBatchId, "batch id");
+  const db = getDb();
+  const [row] = await db.select().from(kkWalletWithdrawals).where(eq(kkWalletWithdrawals.id, input.withdrawalId)).limit(1);
+  if (!row?.destinationAddress) {
+    throw new WalletError("Withdrawal not found.", "NOT_FOUND", 404);
+  }
+  if (row.reviewState === "completed" || row.reviewState === "rejected" || row.reviewState === "failed") {
+    await recordAdminAuditEvent({
+      eventType: "ARENA_WALLET_ADJUSTMENT",
+      actorId: input.actorId,
+      actorRole: input.actorRole,
+      metadata: { withdrawalId: row.id, action: "payout_reconcile", outcome: "ignored", reviewState: row.reviewState },
+    });
+    return { withdrawalId: row.id, outcome: "ignored" as const, providerStatus: row.providerStatus };
+  }
+  if (
+    input.providerPayoutId &&
+    row.providerPayoutId &&
+    input.providerPayoutId !== row.providerPayoutId
+  ) {
+    throw new WalletError("This withdrawal is already bound to a different payout.", "CONFLICT", 409);
+  }
+  const payoutId = row.providerPayoutId ?? input.providerPayoutId;
+  const batchId = payoutId ? undefined : row.providerBatchId ?? input.providerBatchId;
+  const operatorPinned = Boolean(payoutId || batchId);
+  const config = input.deps?.config ?? readNowPaymentsConfig();
+  const nowpayments = clientFor(config, input.deps?.client);
+  let lookup: { candidates: PayoutCandidate[]; truncated: boolean };
+  try {
+    lookup = await lookupPayoutCandidates(nowpayments, { payoutId: payoutId ?? undefined, batchId: batchId ?? undefined });
+  } catch (error) {
+    providerFailure(error);
+  }
+  const selection = selectPayoutForWithdrawal({
+    withdrawalId: row.id,
+    address: row.destinationAddress,
+    amountDecimal: milliToUsdtDecimal(row.amountMilli),
+    candidates: lookup!.candidates,
+    operatorPinned,
+  });
+  if (selection.kind === "unresolved") {
+    const reason = lookup!.truncated && selection.reason === "not_found" ? "list_incomplete" : selection.reason;
+    await db
+      .update(kkWalletWithdrawals)
+      .set({ failureReason: reason, updatedAt: new Date().toISOString() })
+      .where(
+        and(
+          eq(kkWalletWithdrawals.id, row.id),
+          inArray(kkWalletWithdrawals.reviewState, [...OPEN_WITHDRAWAL_STATES]),
+        ),
+      );
+    await recordAdminAuditEvent({
+      eventType: "ARENA_WALLET_ADJUSTMENT",
+      actorId: input.actorId,
+      actorRole: input.actorRole,
+      metadata: {
+        withdrawalId: row.id,
+        action: "payout_reconcile",
+        outcome: "unresolved",
+        reason,
+        truncated: lookup!.truncated,
+      },
+    });
+    return { withdrawalId: row.id, outcome: "unresolved" as const, reason };
+  }
+  const payout = selection.payout;
+  const [bound] = await db
+    .update(kkWalletWithdrawals)
+    .set({
+      providerPayoutId: payout.payoutId,
+      providerBatchId: payout.batchId ?? row.providerBatchId,
+      providerStatus: payout.status,
+      providerFeeText: payout.fee,
+      updatedAt: new Date().toISOString(),
+    })
+    .where(
+      and(
+        eq(kkWalletWithdrawals.id, row.id),
+        or(isNull(kkWalletWithdrawals.providerPayoutId), eq(kkWalletWithdrawals.providerPayoutId, payout.payoutId)),
+      ),
+    )
+    .returning({ id: kkWalletWithdrawals.id });
+  if (!bound) {
+    throw new WalletError("This withdrawal is already bound to a different payout.", "CONFLICT", 409);
+  }
   const decision = decidePayoutUpdate({
     currentReviewState: row.reviewState,
     expected: {
-      payoutId: row.providerPayoutId,
+      payoutId: payout.payoutId,
       address: row.destinationAddress,
       amountDecimal: milliToUsdtDecimal(row.amountMilli),
     },
@@ -1167,7 +1294,13 @@ export async function reconcileWithdrawal(
   if (decision.kind === "processing") {
     await db
       .update(kkWalletWithdrawals)
-      .set({ reviewState: "processing", status: "processing", providerStatus: payout.status, updatedAt: new Date().toISOString() })
+      .set({
+        reviewState: "processing",
+        status: "processing",
+        providerStatus: payout.status,
+        failureReason: null,
+        updatedAt: new Date().toISOString(),
+      })
       .where(
         and(
           eq(kkWalletWithdrawals.id, row.id),
@@ -1175,7 +1308,31 @@ export async function reconcileWithdrawal(
         ),
       );
   }
-  return { withdrawalId: row.id, providerStatus: payout.status };
+  if (decision.kind === "review") {
+    await db
+      .update(kkWalletWithdrawals)
+      .set({ failureReason: decision.reason, providerStatus: payout.status, updatedAt: new Date().toISOString() })
+      .where(
+        and(
+          eq(kkWalletWithdrawals.id, row.id),
+          inArray(kkWalletWithdrawals.reviewState, [...OPEN_WITHDRAWAL_STATES]),
+        ),
+      );
+  }
+  await recordAdminAuditEvent({
+    eventType: "ARENA_WALLET_ADJUSTMENT",
+    actorId: input.actorId,
+    actorRole: input.actorRole,
+    metadata: {
+      withdrawalId: row.id,
+      action: "payout_reconcile",
+      outcome: decision.kind,
+      providerStatus: payout.status,
+      providerPayoutId: payout.payoutId,
+      providerBatchId: payout.batchId,
+    },
+  });
+  return { withdrawalId: row.id, outcome: decision.kind, providerStatus: payout.status };
 }
 
 export async function listAdminWalletOperations() {

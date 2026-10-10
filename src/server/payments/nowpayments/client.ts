@@ -45,6 +45,57 @@ function safeJson(raw: string): unknown {
   }
 }
 
+function decimalFieldNearId(raw: string, id: string, field: string): string | null {
+  const escaped = id.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const idPattern = new RegExp(`"id"\\s*:\\s*"?${escaped}"?`);
+  const index = raw.search(idPattern);
+  if (index < 0) return decimalField(raw, field);
+  return decimalField(raw.slice(index, index + 1200), field);
+}
+
+export type PayoutSnapshot = {
+  payoutId: string;
+  batchId: string | null;
+  status: string;
+  currency: string | null;
+  amount: string | null;
+  address: string | null;
+  uniqueExternalId: string | null;
+  fee: string | null;
+};
+
+/** Read payout objects from the shapes returned by GET /payout and GET /payout/{id}. */
+export function readPayoutSnapshots(raw: string): PayoutSnapshot[] {
+  const json = safeJson(raw);
+  const records: unknown[] = [];
+  if (Array.isArray(json)) {
+    records.push(...json);
+  } else {
+    const obj = asRecord(json);
+    if (Array.isArray(obj.payouts)) records.push(...obj.payouts);
+    else if (Array.isArray(obj.withdrawals)) records.push(...obj.withdrawals);
+    else if (obj.id != null || obj.payout_id != null) records.push(obj);
+  }
+  return records.flatMap((item) => {
+    const row = asRecord(item);
+    const payoutId = row.id == null ? (row.payout_id == null ? "" : String(row.payout_id)) : String(row.id);
+    if (!payoutId) return [];
+    const batch = row.batch_withdrawal_id ?? row.batch_id;
+    return [
+      {
+        payoutId,
+        batchId: batch == null ? null : String(batch),
+        status: typeof row.status === "string" ? row.status : typeof row.payout_status === "string" ? row.payout_status : "",
+        currency: typeof row.currency === "string" ? row.currency : null,
+        amount: decimalFieldNearId(raw, payoutId, "amount"),
+        address: typeof row.address === "string" ? row.address : null,
+        uniqueExternalId: typeof row.unique_external_id === "string" ? row.unique_external_id : null,
+        fee: decimalFieldNearId(raw, payoutId, "fee"),
+      },
+    ];
+  });
+}
+
 export function createNowPaymentsClient(
   config: NowPaymentsConfig,
   transport: NowPaymentsTransport,
@@ -201,10 +252,18 @@ export function createNowPaymentsClient(
       return { fee: decimalField(response.raw, "fee") };
     },
 
-    async createPayout(input: { address: string; amountDecimal: string; ipnCallbackUrl: string }) {
+    async createPayout(input: {
+      address: string;
+      amountDecimal: string;
+      ipnCallbackUrl: string;
+      uniqueExternalId: string;
+    }) {
       const token = await bearerToken();
       if (!/^(?:0|[1-9]\d*)(?:\.\d+)?$/.test(input.amountDecimal)) {
         throw new NowPaymentsProviderError("Invalid payout amount.", 400);
+      }
+      if (!/^[0-9a-f-]{36}$/i.test(input.uniqueExternalId)) {
+        throw new NowPaymentsProviderError("Invalid payout reference.", 400);
       }
       const response = await transport({
         method: "POST",
@@ -215,14 +274,15 @@ export function createNowPaymentsClient(
           "Content-Type": "application/json",
           Accept: "application/json",
         },
-        body: `{"withdrawals":[{"address":${JSON.stringify(input.address)},"currency":${JSON.stringify(config.payCurrency)},"amount":${input.amountDecimal},"ipn_callback_url":${JSON.stringify(input.ipnCallbackUrl)}}]}`,
+        body: `{"withdrawals":[{"address":${JSON.stringify(input.address)},"currency":${JSON.stringify(config.payCurrency)},"amount":${input.amountDecimal},"ipn_callback_url":${JSON.stringify(input.ipnCallbackUrl)},"unique_external_id":${JSON.stringify(input.uniqueExternalId)}}]}`,
       });
       if (response.status < 200 || response.status >= 300) {
         throw new NowPaymentsProviderError(safeProviderMessage(response.raw), response.status);
       }
       const json = asRecord(safeJson(response.raw));
-      const withdrawals = Array.isArray(json.withdrawals) ? json.withdrawals : [];
-      const first = asRecord(withdrawals[0]);
+      const withdrawals = Array.isArray(json.withdrawals) ? json.withdrawals.map((item) => asRecord(item)) : [];
+      const first =
+        withdrawals.find((item) => item.unique_external_id === input.uniqueExternalId) ?? asRecord(withdrawals[0]);
       const payoutId = first.id == null ? (json.id == null ? null : String(json.id)) : String(first.id);
       const batchId =
         first.batch_withdrawal_id == null
@@ -250,15 +310,26 @@ export function createNowPaymentsClient(
       const response = await request("GET", `/payout/${encodeURIComponent(payoutId)}`, {
         bearer: token,
       });
-      const json = asRecord(response.json);
-      return {
-        payoutId: json.id == null ? payoutId : String(json.id),
-        status: typeof json.status === "string" ? json.status : "",
-        currency: typeof json.currency === "string" ? json.currency : null,
-        amount: decimalField(response.raw, "amount"),
-        address: typeof json.address === "string" ? json.address : null,
-        fee: decimalField(response.raw, "fee"),
-      };
+      const payouts = readPayoutSnapshots(response.raw);
+      const payout = payouts.find((item) => item.payoutId === payoutId) ?? payouts[0];
+      if (!payout) {
+        throw new NowPaymentsProviderError("NOWPayments did not return a payout.", 502);
+      }
+      return payout;
+    },
+
+    /**
+     * GET /v1/payout. Official Node SDK query names: batch_id, limit, page.
+     * `unique_external_id` is not a list filter; callers match it in the result.
+     */
+    async listPayouts(query: { batchId?: string; limit?: number; page?: number }) {
+      const token = await bearerToken();
+      const search: Record<string, string> = {};
+      if (query.batchId) search.batch_id = query.batchId;
+      if (query.limit != null) search.limit = String(query.limit);
+      if (query.page != null) search.page = String(query.page);
+      const response = await request("GET", "/payout", { bearer: token, search });
+      return readPayoutSnapshots(response.raw);
     },
   };
 }
