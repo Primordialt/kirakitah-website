@@ -288,6 +288,24 @@ export function getNotificationPresentation(eventType: string): {
         description: "There is a new announcement in the KIRAKITAH Chatbox.",
         href: "/chatbox",
       };
+    case "WALLET_DEPOSIT_CREDITED":
+      return {
+        title: "KK credited",
+        description: "A verified USDT deposit was credited to your wallet.",
+        href: "/wallet",
+      };
+    case "WALLET_DEPOSIT_REVIEW":
+      return {
+        title: "Deposit needs review",
+        description: "A USDT deposit was received but was not credited automatically.",
+        href: "/wallet",
+      };
+    case "WALLET_WITHDRAWAL_UPDATE":
+      return {
+        title: "Withdrawal update",
+        description: "Your USDT withdrawal status changed.",
+        href: "/wallet",
+      };
     default:
       return {
         title: eventType.replace(/_/g, " "),
@@ -308,6 +326,9 @@ export const PARTICIPANT_VISIBLE_AUDIT_EVENT_TYPES = [
   "CHAT_MENTION",
   "CHAT_REPLY",
   "CHAT_ANNOUNCEMENT",
+  "WALLET_DEPOSIT_CREDITED",
+  "WALLET_DEPOSIT_REVIEW",
+  "WALLET_WITHDRAWAL_UPDATE",
 ] as const;
 
 export const PLATFORM_LABELS: Record<string, string> = {

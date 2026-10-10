@@ -30,11 +30,77 @@ Never paste real `DATABASE_URL` values into documentation, tickets, chat, or com
 | 17 | `drizzle/0017_participant_accounts.sql` | Participant accounts, profiles, sessions, audit + nullable application account link |
 | 18 | `drizzle/0018_participant_password_reset.sql` | Participant password reset tokens (hashed, single-use, 1h TTL) |
 
-Latest required for participant password reset + participant accounts + pre-registration email verification + prior stacks: **0018**.
+The journal `drizzle/meta/_journal.json` is the source of order. On `feature/nowpayments-usdt-wallet` the latest entry is idx **32**, tag `0032_nowpayments_wallet`. Migrations `0019` through `0031` are already in the journal ahead of `0032`. Treat `0032` as the next migration only after confirming Production’s `drizzle.__drizzle_migrations` hash stops at `0031_arena_challenge_pool`. Do not infer that from this file alone.
 
-Next sequential (not yet applied to Production): **0019** (`0019_gamer_tag_tournament_uniqueness`) — unique active `(event_id, lower(btrim(gamer_tag)))` for eFootball tournament uniqueness. Validate for existing duplicate gamer tags before applying; do not silently mutate applicants.
+`0018` is no longer the latest migration. The notes below it are historical.
 
-No duplicate migration numbers in the repository. Order is deterministic by numeric filename prefix.
+No duplicate migration numbers in the repository. Order is deterministic by numeric filename prefix and the journal.
+
+## NOWPayments wallet — migration 0032
+
+`drizzle/0032_nowpayments_wallet.sql` is additive. It adds `kk_wallets.reserved_milli` (default 0), checks that reserved KK is non-negative and not greater than the balance, provider columns on deposits and withdrawals, partial unique indexes, and `kk_payment_events`. It does not delete rows, rewrite `balance_milli`, or change enums.
+
+Deposits and payouts stay disabled unless `NOWPAYMENTS_DEPOSITS_ENABLED` and `NOWPAYMENTS_PAYOUTS_ENABLED` are explicitly `true` together with the server-only API key, IPN secret, and HTTPS callback. Payouts also need the payout email and password. Do not enable either flag in the same step as the migration.
+
+Rollback is a Neon branch restore or PITR. There is no down migration. Restoring a branch after KK has been credited or reserved will not unwind on-chain USDT.
+
+### Staging branch
+
+Use a dedicated Neon branch, not Production.
+
+1. In the Neon console, branch from the current Production database into a branch used only for this check. Do not copy the branch connection string into chat, git, or `.env` files that are committed.
+2. In a private shell, set `DATABASE_URL` to that branch’s **direct** (non-pooler) connection string and set `KK_STAGING_DATABASE_CONFIRM=dedicated-neon-branch`.
+3. Confirm the shell is not loading Production `.env.local`.
+4. Record integrity, then apply only this repository’s pending migrations:
+
+```bash
+node scripts/neon-staging-wallet-check.mjs
+node scripts/neon-staging-wallet-check.mjs --migrate
+```
+
+The script refuses to run without the confirm flag. It prints counts only. It does not print the connection string. `--migrate` runs `npm run db:migrate` against the shell `DATABASE_URL`.
+
+Compare before and after:
+
+- `kk_wallets` row count and sum of `balance_milli`
+- `kk_wallet_ledger` row count, sum of `amount_milli`, and rows whose balance moved backwards
+- tournament and Arena round counts
+- `reserved_milli` present and summed to 0 on existing wallets
+- constraints `kk_wallets_reserved_nonneg` and `kk_wallets_reserved_lte_balance`
+- indexes `kk_wallet_deposits_order_uidx`, `kk_wallet_deposits_provider_payment_uidx`, `kk_wallet_withdrawals_idempotency_uidx`, `kk_wallet_withdrawals_provider_payout_uidx`, `kk_payment_events_provider_key_uidx`
+
+The same script opens a Neon WebSocket transaction, commits a temporary probe table, rolls back a second insert, and rolls back a wallet `SELECT … FOR UPDATE`. Those statements must leave the wallet sum unchanged. This has not been executed from the agent session because the only local database URL is Production.
+
+Do not point this script at Production. Do not enable NOWPayments while validating the branch.
+
+### Payout reconciliation
+
+A withdrawal can remain `submitting` after a timeout, HTTP 5xx, or network failure, or `created_unparsed` when a success body has no payout id and no batch id. Reserved KK stays reserved. The app does not create another payout for that withdrawal.
+
+`POST /payout` sends `unique_external_id` set to the withdrawal id. That field is sent by NOWPayments’ official Node SDK (`src/client.js`, `payoutWithdrawalPayload`). The Zendesk parameter table lists `extra_id` as a memo/destination tag, so this app does not put the withdrawal id there.
+
+Lookup uses the official SDK routes:
+
+- `GET /v1/payout/{payout_id}` for one payout id
+- `GET /v1/payout` with `batch_id`, `limit`, and `page` to list payouts
+
+`unique_external_id` is not a list filter. A scan of at most 500 payouts matches only that id plus USDT TRC20 address and amount. An unlabeled legacy payout matches only when a super admin pastes the payout id or batch id from the NOWPayments dashboard. A missing or incomplete list is not evidence that the payout cannot complete, so the reservation is not released.
+
+Super admin uses **Reconcile payout** on `/admin/wallet`. Every result is an `ARENA_WALLET_ADJUSTMENT` audit row. The 2FA code is not stored. Reject stays blocked while a payout may exist. Release happens only after the provider status is `REJECTED` or `REJECTED_NOT_CHECKED` for the bound payout. `FINISHED` debits reserved KK once.
+
+If the dashboard and the API still cannot identify the payout, leave the KK reserved and escalate to NOWPayments support with the withdrawal id and the time of the approve action. Do not edit ledger rows and do not force the balance.
+
+### Before any real transfer
+
+- Staging comparison above shows unchanged balances and a successful WebSocket commit/rollback.
+- Migration `0032` is applied on Production only after that staging check.
+- Provider account has payouts enabled, IP whitelist, address whitelist, and 2FA.
+- Feature flags stay off until those checks pass.
+- An operator is available to reconcile `submitting` and `created_unparsed` withdrawals.
+
+### Local concurrency tests
+
+`npm test` skips `src/server/payments/nowpayments/wallet-concurrency.integration.test.ts` unless `KK_TEST_DATABASE_URL` is `localhost`, `127.0.0.1`, or `::1`. Vitest reports that file as skipped. A skipped file is not a pass. There is no GitHub Actions workflow in this repository, so CI does not run the file unless a workflow sets that local URL. `src/server/payments/nowpayments/nowpayments.test.ts` always checks the skip gate.
 
 ### Migration 0018 notes
 
