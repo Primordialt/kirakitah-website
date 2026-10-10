@@ -5,9 +5,11 @@ import { compareDecimals, usdtDecimalToMilli } from "@/server/payments/nowpaymen
 import { createNowPaymentsClient } from "@/server/payments/nowpayments/client";
 import { readNowPaymentsConfig } from "@/server/payments/nowpayments/config";
 import {
+  decideCreditedDepositFollowUp,
   decideDepositCredit,
   decidePayoutUpdate,
   depositCreditIdempotencyKey,
+  depositMeetsMinimum,
   shouldApplyPaymentStatus,
   withdrawalFinalizeIdempotencyKey,
   type ObservedPayment,
@@ -151,6 +153,52 @@ describe("NOWPayments deposit credit policy", () => {
         reconciled: observed({ paymentStatus: "confirming" }),
       }),
     ).toEqual({ kind: "review", reason: "reconciliation_mismatch" });
+  });
+
+  it("does not treat a non-USDT outcome as settled USDT", () => {
+    expect(
+      decideDepositCredit({
+        currentStatus: null,
+        expected,
+        observed: observed({ outcomeCurrency: "trx", outcomeAmount: "10" }),
+        reconciled: observed({ outcomeCurrency: "trx", outcomeAmount: "10" }),
+      }),
+    ).toEqual({ kind: "review", reason: "wrong_currency" });
+  });
+
+  it("credits the settled outcome amount, not a larger fiat price", () => {
+    const decision = decideDepositCredit({
+      currentStatus: "confirming",
+      expected,
+      observed: observed(),
+      reconciled: observed(),
+    });
+    expect(decision).toEqual({ kind: "credit", creditMilli: 10000 });
+  });
+
+  it("follows a refund after credit and ignores a stale waiting update", () => {
+    expect(shouldApplyPaymentStatus("finished", "refunded")).toBe(true);
+    expect(shouldApplyPaymentStatus("finished", "waiting")).toBe(false);
+    expect(
+      decideCreditedDepositFollowUp({
+        expectedPaymentId: "pay-1",
+        observed: observed({ paymentStatus: "refunded" }),
+        reconciled: observed({ paymentStatus: "refunded" }),
+      }),
+    ).toEqual({ kind: "reverse" });
+    expect(
+      decideCreditedDepositFollowUp({
+        expectedPaymentId: "pay-1",
+        observed: observed({ paymentStatus: "finished" }),
+        reconciled: observed({ paymentStatus: "failed" }),
+      }),
+    ).toEqual({ kind: "exception", reason: "payment_mismatch" });
+  });
+
+  it("compares the provider minimum with the estimated pay amount", () => {
+    expect(depositMeetsMinimum("9.5", "10")).toBe(false);
+    expect(depositMeetsMinimum("10", "10")).toBe(true);
+    expect(depositMeetsMinimum(null, "10")).toBe(null);
   });
 
   it("floors USDT to milli without rounding up", () => {

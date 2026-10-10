@@ -34,9 +34,17 @@ type Withdrawal = {
   network: string | null;
 };
 
+type Exception = {
+  id: string;
+  providerPaymentId: string | null;
+  orderId: string | null;
+  providerStatus: string | null;
+};
+
 export function AdminWalletPanel() {
   const [deposits, setDeposits] = useState<Deposit[]>([]);
   const [withdrawals, setWithdrawals] = useState<Withdrawal[]>([]);
+  const [exceptions, setExceptions] = useState<Exception[]>([]);
   const [flags, setFlags] = useState({ depositsEnabled: false, payoutsEnabled: false });
   const [status, setStatus] = useState<string | null>(null);
   const [code, setCode] = useState("");
@@ -53,11 +61,13 @@ export function AdminWalletPanel() {
     const payload = (await response.json()) as {
       deposits?: Deposit[];
       withdrawals?: Withdrawal[];
+      exceptions?: Exception[];
       depositsEnabled?: boolean;
       payoutsEnabled?: boolean;
     };
     setDeposits(payload.deposits ?? []);
     setWithdrawals(payload.withdrawals ?? []);
+    setExceptions(payload.exceptions ?? []);
     setFlags({
       depositsEnabled: payload.depositsEnabled === true,
       payoutsEnabled: payload.payoutsEnabled === true,
@@ -91,6 +101,7 @@ export function AdminWalletPanel() {
       }),
     });
     setStatus(response.ok ? "Withdrawal updated." : "Withdrawal update failed.");
+    if (action === "approve") setCode("");
     if (response.ok) void load();
   };
 
@@ -134,10 +145,21 @@ export function AdminWalletPanel() {
       </section>
 
       <section className="space-y-3">
+        <h2 className="text-h4">Reconciliation exceptions</h2>
+        {exceptions.length === 0 ? <p className="text-body-sm text-text-muted">None in the latest provider events.</p> : null}
+        {exceptions.map((row) => (
+          <article key={row.id} className="rounded-lg border border-border p-3 text-body-sm">
+            <p>Payment {row.providerPaymentId ?? "—"} · order {row.orderId ?? "—"}</p>
+            <p>Provider {row.providerStatus ?? "—"}</p>
+          </article>
+        ))}
+      </section>
+
+      <section className="space-y-3">
         <h2 className="text-h4">Withdrawals</h2>
         <label className="block text-body-sm">
           2FA code for payout approval
-          <input value={code} onChange={(event) => setCode(event.target.value)} className="mt-1 h-11 w-full rounded-lg border border-border px-3" inputMode="numeric" />
+          <input value={code} onChange={(event) => setCode(event.target.value)} autoComplete="off" className="mt-1 h-11 w-full rounded-lg border border-border px-3" inputMode="numeric" />
         </label>
         {withdrawals.map((row) => (
           <article key={row.id} className="rounded-lg border border-border p-3 text-body-sm">

@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
-import { and, desc, eq, inArray, sql } from "drizzle-orm";
-import { getDb } from "@/server/db";
+import { and, desc, eq, inArray, isNotNull, isNull, or, sql } from "drizzle-orm";
+import { getDb, type Db } from "@/server/db";
 import {
   kkPaymentEvents,
   kkWalletDeposits,
@@ -14,11 +14,14 @@ import type { AdminRole } from "@/server/admin/authorization/permissions";
 import { recordParticipantAuditEvent } from "@/server/participant/audit";
 import { createNowPaymentsClient, NowPaymentsProviderError, type NowPaymentsClient } from "@/server/payments/nowpayments/client";
 import { readNowPaymentsConfig, type NowPaymentsConfig } from "@/server/payments/nowpayments/config";
-import { compareDecimals, decimalField, milliToUsdtDecimal } from "@/server/payments/nowpayments/amounts";
+import { milliToUsdtDecimal } from "@/server/payments/nowpayments/amounts";
 import {
+  decideCreditedDepositFollowUp,
   decideDepositCredit,
   decidePayoutUpdate,
   depositCreditIdempotencyKey,
+  depositMeetsMinimum,
+  depositReversalIdempotencyKey,
   NOWPAYMENTS_NETWORK_LABEL,
   NOWPAYMENTS_PAY_CURRENCY,
   shouldApplyPaymentStatus,
@@ -35,7 +38,46 @@ const DEPOSIT_LIMIT = 5;
 const recentActions = new Map<string, number[]>();
 
 export const DEPOSIT_CREDIT_POLICY =
-  "1 settled USDT equals 1 KK. KK is credited only after NOWPayments reports the payment finished, the asset and network are USDT TRC20, and the USDT settled to KIRAKITAH matches the requested amount exactly. A smaller or larger settled amount, a repeated deposit, or a different asset is held for review and is not credited automatically. Provider and network fees are whatever NOWPayments includes in the amount it tells you to send. Returning to this page does not confirm a payment.";
+  "1 settled USDT equals 1 KK. The amount you enter is priced in USD and is not the on-chain amount. KK is credited only after NOWPayments reports the payment finished, both the paid asset and the settled balance currency are USDT TRC20, and the USDT credited to KIRAKITAH matches the requested amount exactly. A smaller or larger settled amount, a repeated deposit, or a different asset is held for review and is not credited automatically. Provider and network fees are whatever NOWPayments includes in the amount it tells you to send. Returning to this page does not confirm a payment.";
+
+const OPEN_WITHDRAWAL_STATES = ["pending_review", "approved", "processing"] as const;
+
+const PUBLIC_DEPOSIT_REVIEW: Record<string, string> = {
+  underpayment: "The settled USDT was less than the requested amount and is waiting for review.",
+  overpayment: "The settled USDT was more than the requested amount and is waiting for review.",
+  wrong_currency: "The payment was not USDT TRC20 and is waiting for review.",
+  order_mismatch: "The payment did not match this deposit and is waiting for review.",
+  payment_mismatch: "The payment did not match this deposit and is waiting for review.",
+  repeated_deposit: "A repeated deposit is waiting for review.",
+  missing_outcome: "The provider did not report the settled USDT amount. This deposit is waiting for review.",
+  not_finished: "The payment is not finished and is waiting for review.",
+  reconciliation_mismatch: "The payment could not be confirmed and is waiting for review.",
+  post_credit_refund_shortfall: "A refund was reported after KK was credited. Recovery is waiting for review.",
+  reversed: "The credited deposit was refunded and the KK was removed.",
+  post_credit_status_change: "The provider changed this payment after it was credited. It is waiting for review.",
+  unmatched_payment: "Another payment was reported for this deposit and is waiting for review.",
+  amount_out_of_range: "The amount could not be credited safely and is waiting for review.",
+};
+
+export function publicDepositReview(reason: string | null): string | null {
+  if (!reason) return null;
+  return PUBLIC_DEPOSIT_REVIEW[reason] ?? "This deposit is waiting for review.";
+}
+
+export function publicWithdrawalNote(reason: string | null): string | null {
+  if (!reason) return null;
+  if (reason === "Rejected by super admin") return "The withdrawal was rejected and the KK hold was released.";
+  if (reason === "REJECTED" || reason === "REJECTED_NOT_CHECKED") {
+    return "The payout was rejected and the KK hold was released.";
+  }
+  return "This withdrawal needs review.";
+}
+
+function assertSuperAdmin(actorRole: AdminRole) {
+  if (actorRole !== "SUPER_ADMIN") {
+    throw new WalletError("Only a super admin can perform this wallet action.", "FORBIDDEN", 403);
+  }
+}
 
 function assertRateLimit(key: string) {
   const now = Date.now();
@@ -133,15 +175,25 @@ export async function createUsdtDeposit(
   const priceAmount = milliToUsdtDecimal(amountMilli);
   const nowpayments = clientFor(config, deps?.client);
   let minimum: { minAmount: string | null; fiatEquivalent: string | null };
+  let estimatedPayAmount: string | null = null;
   try {
     minimum = await nowpayments.getMinimumPaymentAmount();
-    await nowpayments.getEstimate(priceAmount);
+    estimatedPayAmount = (await nowpayments.getEstimate(priceAmount)).estimatedAmount;
   } catch (error) {
     providerFailure(error);
   }
-  if (minimum!.minAmount && compareDecimals(priceAmount, minimum!.minAmount) === -1) {
+  const meetsMinimum = depositMeetsMinimum(estimatedPayAmount, minimum!.minAmount);
+  if (meetsMinimum === null) {
     throw new WalletError(
-      `NOWPayments minimum for this pair is ${minimum!.minAmount} ${NOWPAYMENTS_PAY_CURRENCY}.`,
+      "NOWPayments did not return a USDT TRC20 estimate for the minimum check.",
+      "CONFIGURATION_UNAVAILABLE",
+      503,
+    );
+  }
+  if (!meetsMinimum) {
+    const fiat = minimum!.fiatEquivalent ? ` (about ${minimum!.fiatEquivalent} USD)` : "";
+    throw new WalletError(
+      `NOWPayments minimum for this USDT TRC20 pair is ${minimum!.minAmount} ${NOWPAYMENTS_PAY_CURRENCY}${fiat}.`,
       "VALIDATION_ERROR",
       400,
     );
@@ -170,13 +222,6 @@ export async function createUsdtDeposit(
       orderId,
       description: "KIRAKITAH KK PTS deposit",
     });
-    if (payment.payCurrency.toLowerCase() !== NOWPAYMENTS_PAY_CURRENCY) {
-      throw new WalletError(
-        "NOWPayments returned an unexpected payment currency.",
-        "CONFIGURATION_UNAVAILABLE",
-        502,
-      );
-    }
     await db
       .update(kkWalletDeposits)
       .set({
@@ -190,6 +235,21 @@ export async function createUsdtDeposit(
         updatedAt: new Date().toISOString(),
       })
       .where(eq(kkWalletDeposits.id, deposit!.id));
+    if (payment.payCurrency.toLowerCase() !== NOWPAYMENTS_PAY_CURRENCY) {
+      await db
+        .update(kkWalletDeposits)
+        .set({
+          status: "processing",
+          reviewReason: "wrong_currency",
+          updatedAt: new Date().toISOString(),
+        })
+        .where(eq(kkWalletDeposits.id, deposit!.id));
+      throw new WalletError(
+        "NOWPayments returned an unexpected payment currency.",
+        "CONFIGURATION_UNAVAILABLE",
+        502,
+      );
+    }
     return {
       depositId: deposit!.id,
       orderId,
@@ -204,10 +264,17 @@ export async function createUsdtDeposit(
       message: DEPOSIT_CREDIT_POLICY,
     };
   } catch (error) {
-    await db
-      .update(kkWalletDeposits)
-      .set({ status: "failed", providerStatus: "create_failed", updatedAt: new Date().toISOString() })
-      .where(eq(kkWalletDeposits.id, deposit!.id));
+    const [saved] = await db
+      .select({ providerPaymentId: kkWalletDeposits.providerPaymentId })
+      .from(kkWalletDeposits)
+      .where(eq(kkWalletDeposits.id, deposit!.id))
+      .limit(1);
+    if (!saved?.providerPaymentId) {
+      await db
+        .update(kkWalletDeposits)
+        .set({ status: "failed", providerStatus: "create_failed", updatedAt: new Date().toISOString() })
+        .where(eq(kkWalletDeposits.id, deposit!.id));
+    }
     if (error instanceof WalletError) throw error;
     providerFailure(error);
   }
@@ -253,21 +320,158 @@ export async function listParticipantPayments(participantAccountId: string) {
     .limit(20);
   return {
     deposits: deposits.map((row) => ({
-      ...row,
+      id: row.id,
+      amountMilli: row.amountMilli,
+      status: row.status,
+      providerStatus: row.providerStatus,
+      payAddress: row.payAddress,
+      payAmountText: row.payAmountText,
+      payCurrency: row.payCurrency,
+      network: row.network,
+      reviewReason: publicDepositReview(row.reviewReason),
+      createdAt: row.createdAt,
       amountKk: milliToKkDisplay(row.amountMilli),
       creditedKk: row.creditedMilli == null ? null : milliToKkDisplay(row.creditedMilli),
     })),
     withdrawals: withdrawals.map((row) => ({
-      ...row,
+      id: row.id,
+      amountMilli: row.amountMilli,
+      status: row.status,
+      reviewState: row.reviewState,
+      destinationAddress: row.destinationAddress,
+      network: row.network,
+      providerStatus: row.providerStatus,
+      providerFeeText: row.providerFeeText,
+      failureReason: publicWithdrawalNote(row.failureReason),
+      createdAt: row.createdAt,
       amountKk: milliToKkDisplay(row.amountMilli),
     })),
   };
 }
 
+async function clawRefundShortfall(tx: Db, walletId: string): Promise<number> {
+  const deposits = await tx
+    .select()
+    .from(kkWalletDeposits)
+    .where(and(eq(kkWalletDeposits.walletId, walletId), eq(kkWalletDeposits.reviewReason, "post_credit_refund_shortfall")))
+    .for("update");
+  let clawedTotal = 0;
+  for (const deposit of deposits) {
+    if (!deposit.creditedMilli || deposit.creditedMilli <= 0 || !deposit.providerPaymentId) continue;
+    const prior = await tx
+      .select({ amountMilli: kkWalletLedger.amountMilli })
+      .from(kkWalletLedger)
+      .where(
+        and(
+          eq(kkWalletLedger.referenceId, deposit.id),
+          eq(kkWalletLedger.referenceType, "kk_wallet_deposit"),
+          eq(kkWalletLedger.entryType, "refund"),
+        ),
+      );
+    const clawed = prior.reduce((sum, row) => sum + Math.abs(row.amountMilli), 0);
+    const owed = deposit.creditedMilli - clawed;
+    if (owed <= 0) continue;
+    const [wallet] = await tx.select().from(kkWallets).where(eq(kkWallets.id, walletId)).limit(1).for("update");
+    if (!wallet || !Number.isSafeInteger(wallet.balanceMilli) || !Number.isSafeInteger(wallet.reservedMilli)) continue;
+    const available = wallet.balanceMilli - wallet.reservedMilli;
+    const claw = Math.min(Math.max(available, 0), owed);
+    if (claw <= 0) continue;
+    clawedTotal += claw;
+    const now = new Date().toISOString();
+    const [updated] = await tx
+      .update(kkWallets)
+      .set({ balanceMilli: sql`${kkWallets.balanceMilli} - ${claw}`, updatedAt: now })
+      .where(
+        and(
+          eq(kkWallets.id, wallet.id),
+          sql`${kkWallets.balanceMilli} - ${kkWallets.reservedMilli} >= ${claw}`,
+        ),
+      )
+      .returning({ balanceMilli: kkWallets.balanceMilli });
+    if (!updated) throw new Error("Deposit refund clawback lost a balance race");
+    const [ledger] = await tx
+      .insert(kkWalletLedger)
+      .values({
+        walletId: wallet.id,
+        entryType: "refund",
+        amountMilli: -claw,
+        balanceBeforeMilli: updated.balanceMilli + claw,
+        balanceAfterMilli: updated.balanceMilli,
+        idempotencyKey: depositReversalIdempotencyKey(deposit.providerPaymentId, clawed),
+        referenceType: "kk_wallet_deposit",
+        referenceId: deposit.id,
+        description: `USDT deposit refund clawback (${milliToKkDisplay(claw)} KK)`,
+        metadata: { providerPaymentId: deposit.providerPaymentId, shortfallMilli: owed - claw },
+      })
+      .onConflictDoNothing()
+      .returning({ id: kkWalletLedger.id });
+    if (!ledger) throw new Error("Deposit refund clawback ledger conflict");
+    const remaining = owed - claw;
+    await tx
+      .update(kkWalletDeposits)
+      .set({
+        reviewReason: remaining > 0 ? "post_credit_refund_shortfall" : "reversed",
+        status: remaining > 0 ? "processing" : "failed",
+        providerStatus: "refunded",
+        updatedAt: now,
+      })
+      .where(eq(kkWalletDeposits.id, deposit.id));
+  }
+  return clawedTotal;
+}
+
 async function applyObservedDeposit(depositId: string, observed: ObservedPayment, reconciled: ObservedPayment | null) {
   const db = getDb();
   const [deposit] = await db.select().from(kkWalletDeposits).where(eq(kkWalletDeposits.id, depositId)).limit(1);
-  if (!deposit || !deposit.orderId || !deposit.providerPaymentId || deposit.status === "completed") return;
+  if (!deposit || !deposit.orderId || !deposit.providerPaymentId) return;
+  if (deposit.ledgerEntryId || deposit.status === "completed") {
+    const followUp = decideCreditedDepositFollowUp({
+      expectedPaymentId: deposit.providerPaymentId,
+      observed,
+      reconciled,
+    });
+    if (followUp.kind === "reverse") {
+      const changed = await db.transaction(async (tx) => {
+        const [locked] = await tx
+          .select()
+          .from(kkWalletDeposits)
+          .where(eq(kkWalletDeposits.id, deposit.id))
+          .limit(1)
+          .for("update");
+        if (!locked || locked.reviewReason === "reversed") return false;
+        const flagged = locked.reviewReason !== "post_credit_refund_shortfall";
+        if (flagged) {
+          await tx
+            .update(kkWalletDeposits)
+            .set({
+              providerStatus: "refunded",
+              reviewReason: "post_credit_refund_shortfall",
+              updatedAt: new Date().toISOString(),
+            })
+            .where(eq(kkWalletDeposits.id, locked.id));
+        }
+        const clawed = await clawRefundShortfall(tx as unknown as Db, locked.walletId);
+        return flagged || clawed > 0;
+      });
+      if (!changed) return;
+      const [wallet] = await db
+        .select({ participantAccountId: kkWallets.participantAccountId })
+        .from(kkWallets)
+        .where(eq(kkWallets.id, deposit.walletId))
+        .limit(1);
+      if (wallet) await notifyDepositOutcome(wallet.participantAccountId, false);
+      await recordAdminAuditEvent({
+        eventType: "ARENA_WALLET_ADJUSTMENT",
+        metadata: { action: "deposit_refund", depositId: deposit.id, providerPaymentId: deposit.providerPaymentId },
+      });
+    } else if (followUp.kind === "exception" && deposit.reviewReason == null) {
+      await db
+        .update(kkWalletDeposits)
+        .set({ reviewReason: followUp.reason, providerStatus: observed.paymentStatus, updatedAt: new Date().toISOString() })
+        .where(and(eq(kkWalletDeposits.id, deposit.id), isNull(kkWalletDeposits.reviewReason)));
+    }
+    return;
+  }
   const decision = decideDepositCredit({
     currentStatus: deposit.providerStatus,
     expected: {
@@ -280,6 +484,7 @@ async function applyObservedDeposit(depositId: string, observed: ObservedPayment
   });
   if (decision.kind === "ignore_regression") return;
 
+  let appliedCredit = decision.kind === "credit";
   await db.transaction(async (tx) => {
     const [locked] = await tx
       .select()
@@ -287,14 +492,25 @@ async function applyObservedDeposit(depositId: string, observed: ObservedPayment
       .where(eq(kkWalletDeposits.id, depositId))
       .limit(1)
       .for("update");
-    if (!locked || locked.status === "completed" || locked.ledgerEntryId) return;
+    if (!locked || locked.status === "completed" || locked.ledgerEntryId) {
+      appliedCredit = false;
+      return;
+    }
     if (!shouldApplyPaymentStatus(locked.providerStatus, observed.paymentStatus) && decision.kind !== "credit") {
+      appliedCredit = false;
       return;
     }
     const now = new Date().toISOString();
     if (decision.kind === "credit") {
       const [wallet] = await tx.select().from(kkWallets).where(eq(kkWallets.id, locked.walletId)).limit(1).for("update");
-      if (!wallet) return;
+      if (!wallet || !Number.isSafeInteger(wallet.balanceMilli) || wallet.balanceMilli > Number.MAX_SAFE_INTEGER - decision.creditMilli) {
+        appliedCredit = false;
+        await tx
+          .update(kkWalletDeposits)
+          .set({ status: "processing", reviewReason: "amount_out_of_range", providerStatus: observed.paymentStatus, updatedAt: now })
+          .where(eq(kkWalletDeposits.id, locked.id));
+        return;
+      }
       const idempotencyKey = depositCreditIdempotencyKey(locked.providerPaymentId!);
       const [existing] = await tx
         .select({ id: kkWalletLedger.id })
@@ -311,7 +527,10 @@ async function applyObservedDeposit(depositId: string, observed: ObservedPayment
           })
           .where(eq(kkWallets.id, wallet.id))
           .returning({ balanceMilli: kkWallets.balanceMilli });
-        const balanceAfter = updated!.balanceMilli;
+        if (!updated || !Number.isSafeInteger(updated.balanceMilli)) {
+          throw new Error("Deposit credit balance is outside the safe integer range");
+        }
+        const balanceAfter = updated.balanceMilli;
         const [ledger] = await tx
           .insert(kkWalletLedger)
           .values({
@@ -325,8 +544,10 @@ async function applyObservedDeposit(depositId: string, observed: ObservedPayment
             referenceId: locked.id,
             description: `USDT TRC20 deposit credited (${milliToKkDisplay(decision.creditMilli)} KK)`,
           })
+          .onConflictDoNothing()
           .returning({ id: kkWalletLedger.id });
-        ledgerId = ledger!.id;
+        if (!ledger) throw new Error("Deposit credit ledger conflict");
+        ledgerId = ledger.id;
       }
       await tx
         .update(kkWalletDeposits)
@@ -345,6 +566,7 @@ async function applyObservedDeposit(depositId: string, observed: ObservedPayment
         .where(eq(kkWalletDeposits.id, locked.id));
       return;
     }
+    appliedCredit = false;
     const status =
       observed.paymentStatus === "failed" || observed.paymentStatus === "refunded"
         ? "failed"
@@ -367,13 +589,13 @@ async function applyObservedDeposit(depositId: string, observed: ObservedPayment
       })
       .where(eq(kkWalletDeposits.id, locked.id));
   });
-  if (decision.kind === "credit" || decision.kind === "review") {
+  if (appliedCredit || decision.kind === "review") {
     const [wallet] = await db
       .select({ participantAccountId: kkWallets.participantAccountId })
       .from(kkWallets)
       .where(eq(kkWallets.id, deposit.walletId))
       .limit(1);
-    if (wallet) await notifyDepositOutcome(wallet.participantAccountId, decision.kind === "credit");
+    if (wallet) await notifyDepositOutcome(wallet.participantAccountId, appliedCredit);
   }
 }
 
@@ -541,7 +763,7 @@ export async function createUsdtWithdrawal(
 
 async function releaseReservation(withdrawalId: string, reviewState: "rejected" | "failed", reason: string) {
   const db = getDb();
-  const accountId = await db.transaction(async (tx) => {
+  const accountId = await db.transaction(async (tx): Promise<string | null> => {
     const [row] = await tx
       .select()
       .from(kkWalletWithdrawals)
@@ -572,13 +794,16 @@ async function releaseReservation(withdrawalId: string, reviewState: "rejected" 
       .where(
         and(
           eq(kkWalletWithdrawals.id, row.id),
-          inArray(kkWalletWithdrawals.reviewState, ["pending_review", "approved", "processing"]),
+          inArray(kkWalletWithdrawals.reviewState, [...OPEN_WITHDRAWAL_STATES]),
         ),
       )
       .returning({ id: kkWalletWithdrawals.id });
-    return updated ? released.participantAccountId : null;
+    if (!updated) throw new Error("Withdrawal release did not apply");
+    await clawRefundShortfall(tx as unknown as Db, row.walletId);
+    return released.participantAccountId;
   });
   if (accountId) await notifyWithdrawalUpdate(accountId);
+  return accountId;
 }
 
 async function finalizeWithdrawal(withdrawalId: string) {
@@ -590,7 +815,9 @@ async function finalizeWithdrawal(withdrawalId: string) {
       .where(eq(kkWalletWithdrawals.id, withdrawalId))
       .limit(1)
       .for("update");
-    if (!row || row.reviewState === "completed" || row.ledgerEntryId) return null;
+    if (!row || row.ledgerEntryId || !OPEN_WITHDRAWAL_STATES.includes(row.reviewState as (typeof OPEN_WITHDRAWAL_STATES)[number])) {
+      return null;
+    }
     const now = new Date().toISOString();
     const [wallet] = await tx
       .update(kkWallets)
@@ -624,17 +851,25 @@ async function finalizeWithdrawal(withdrawalId: string) {
       })
       .onConflictDoNothing()
       .returning({ id: kkWalletLedger.id });
-    await tx
+    if (!ledger) throw new Error("Withdrawal settlement ledger conflict");
+    const [updated] = await tx
       .update(kkWalletWithdrawals)
       .set({
         reviewState: "completed",
         status: "completed",
         providerStatus: "FINISHED",
-        ledgerEntryId: ledger?.id ?? row.ledgerEntryId,
+        ledgerEntryId: ledger.id,
         reservedMilli: 0,
         updatedAt: now,
       })
-      .where(eq(kkWalletWithdrawals.id, row.id));
+      .where(
+        and(
+          eq(kkWalletWithdrawals.id, row.id),
+          inArray(kkWalletWithdrawals.reviewState, [...OPEN_WITHDRAWAL_STATES]),
+        ),
+      )
+      .returning({ id: kkWalletWithdrawals.id });
+    if (!updated) throw new Error("Withdrawal settlement did not apply");
     const [walletRow] = await tx
       .select({ participantAccountId: kkWallets.participantAccountId })
       .from(kkWallets)
@@ -664,11 +899,12 @@ export async function handleNowPaymentsIpn(
     return { status: 401 as const, body: { error: "invalid_signature" } };
   }
   const db = getDb();
-  const [event] = await db
+  const eventKey = ipnEventKey(rawBody);
+  const [inserted] = await db
     .insert(kkPaymentEvents)
     .values({
       provider: "nowpayments",
-      eventKey: ipnEventKey(rawBody),
+      eventKey,
       providerPaymentId: payload.payment_id == null ? (payload.id == null ? null : String(payload.id)) : String(payload.payment_id),
       orderId: typeof payload.order_id === "string" ? payload.order_id : null,
       providerStatus:
@@ -681,65 +917,92 @@ export async function handleNowPaymentsIpn(
     })
     .onConflictDoNothing()
     .returning({ id: kkPaymentEvents.id });
-  if (!event) return { status: 200 as const, body: { duplicate: true } };
+  const [event] = inserted
+    ? [inserted]
+    : await db
+        .select({ id: kkPaymentEvents.id, processedAt: kkPaymentEvents.processedAt })
+        .from(kkPaymentEvents)
+        .where(and(eq(kkPaymentEvents.provider, "nowpayments"), eq(kkPaymentEvents.eventKey, eventKey)))
+        .limit(1);
+  if (!event) return { status: 500 as const, body: { error: "event_unavailable" } };
+  if ("processedAt" in event && event.processedAt) return { status: 200 as const, body: { duplicate: true } };
 
-  if (payload.payment_id != null) {
-    const orderId = typeof payload.order_id === "string" ? payload.order_id : null;
-    const paymentId = String(payload.payment_id);
-    const [deposit] = await db
-      .select()
-      .from(kkWalletDeposits)
-      .where(orderId ? eq(kkWalletDeposits.orderId, orderId) : eq(kkWalletDeposits.providerPaymentId, paymentId))
-      .limit(1);
-    if (deposit?.providerPaymentId) {
-      const nowpayments = clientFor(config, deps?.client);
-      try {
+  try {
+    if (payload.payment_id != null) {
+      const orderId = typeof payload.order_id === "string" ? payload.order_id : null;
+      const paymentId = String(payload.payment_id);
+      const [deposit] = await db
+        .select()
+        .from(kkWalletDeposits)
+        .where(orderId ? eq(kkWalletDeposits.orderId, orderId) : eq(kkWalletDeposits.providerPaymentId, paymentId))
+        .limit(1);
+      if (deposit?.providerPaymentId && deposit.providerPaymentId !== paymentId) {
+        await db
+          .update(kkWalletDeposits)
+          .set({ reviewReason: "unmatched_payment", updatedAt: new Date().toISOString() })
+          .where(and(eq(kkWalletDeposits.id, deposit.id), isNull(kkWalletDeposits.reviewReason)));
+      } else if (deposit?.providerPaymentId) {
+        const nowpayments = clientFor(config, deps?.client);
         const reconciled = await nowpayments.getPayment(deposit.providerPaymentId);
         await applyObservedDeposit(deposit.id, observedFrom(reconciled), observedFrom(reconciled));
-      } catch (error) {
-        if (!(error instanceof NowPaymentsProviderError)) throw error;
       }
-    }
-  } else if (typeof payload.status === "string" && (payload.id != null || payload.batch_withdrawal_id != null)) {
-    const payoutId = payload.id == null ? null : String(payload.id);
-    if (payoutId) {
+    } else if (typeof payload.status === "string" && (payload.id != null || payload.batch_withdrawal_id != null)) {
+      const payoutId = payload.id == null ? null : String(payload.id);
+      const batchId = payload.batch_withdrawal_id == null ? null : String(payload.batch_withdrawal_id);
       const [withdrawal] = await db
         .select()
         .from(kkWalletWithdrawals)
-        .where(eq(kkWalletWithdrawals.providerPayoutId, payoutId))
+        .where(
+          payoutId && batchId
+            ? or(eq(kkWalletWithdrawals.providerPayoutId, payoutId), eq(kkWalletWithdrawals.providerBatchId, batchId))
+            : payoutId
+              ? eq(kkWalletWithdrawals.providerPayoutId, payoutId)
+              : eq(kkWalletWithdrawals.providerBatchId, batchId!),
+        )
         .limit(1);
-      if (withdrawal?.destinationAddress) {
+      if (withdrawal?.destinationAddress && withdrawal.providerPayoutId) {
+        const nowpayments = clientFor(config, deps?.client);
+        const payout = await nowpayments.getPayout(withdrawal.providerPayoutId);
         const decision = decidePayoutUpdate({
           currentReviewState: withdrawal.reviewState,
           expected: {
-            payoutId,
+            payoutId: withdrawal.providerPayoutId,
             address: withdrawal.destinationAddress,
             amountDecimal: milliToUsdtDecimal(withdrawal.amountMilli),
           },
-          observed: {
-            payoutId,
-            status: payload.status,
-            currency: typeof payload.currency === "string" ? payload.currency : null,
-            amount: decimalField(rawBody, "amount"),
-            address: typeof payload.address === "string" ? payload.address : null,
-          },
+          observed: payout,
         });
         if (decision.kind === "complete") await finalizeWithdrawal(withdrawal.id);
         if (decision.kind === "release") await releaseReservation(withdrawal.id, "failed", decision.reason);
         if (decision.kind === "processing") {
           await db
             .update(kkWalletWithdrawals)
-            .set({ reviewState: "processing", status: "processing", providerStatus: payload.status, updatedAt: new Date().toISOString() })
-            .where(eq(kkWalletWithdrawals.id, withdrawal.id));
+            .set({ reviewState: "processing", status: "processing", providerStatus: payout.status, updatedAt: new Date().toISOString() })
+            .where(
+              and(
+                eq(kkWalletWithdrawals.id, withdrawal.id),
+                inArray(kkWalletWithdrawals.reviewState, [...OPEN_WITHDRAWAL_STATES]),
+              ),
+            );
         }
         if (decision.kind === "review") {
           await db
             .update(kkWalletWithdrawals)
-            .set({ failureReason: decision.reason, providerStatus: payload.status, updatedAt: new Date().toISOString() })
-            .where(eq(kkWalletWithdrawals.id, withdrawal.id));
+            .set({ failureReason: decision.reason, providerStatus: payout.status, updatedAt: new Date().toISOString() })
+            .where(
+              and(
+                eq(kkWalletWithdrawals.id, withdrawal.id),
+                inArray(kkWalletWithdrawals.reviewState, [...OPEN_WITHDRAWAL_STATES]),
+              ),
+            );
         }
       }
     }
+  } catch (error) {
+    if (error instanceof NowPaymentsProviderError) {
+      return { status: 503 as const, body: { error: "provider_unavailable" } };
+    }
+    throw error;
   }
 
   await db
@@ -757,11 +1020,26 @@ export async function reviewWithdrawal(input: {
   actorRole: AdminRole;
   deps?: { config?: NowPaymentsConfig; client?: NowPaymentsClient };
 }) {
+  assertSuperAdmin(input.actorRole);
   const db = getDb();
   const [row] = await db.select().from(kkWalletWithdrawals).where(eq(kkWalletWithdrawals.id, input.withdrawalId)).limit(1);
   if (!row) throw new WalletError("Withdrawal not found.", "NOT_FOUND", 404);
+  const payoutAlreadySent = Boolean(
+    row.providerBatchId ||
+      row.providerPayoutId ||
+      row.providerStatus === "submitting" ||
+      row.providerStatus === "created_unparsed",
+  );
   if (input.action === "reject") {
-    await releaseReservation(row.id, "rejected", "Rejected by super admin");
+    if (payoutAlreadySent) {
+      throw new WalletError(
+        "This withdrawal may already have a payout. Reconcile the provider status before releasing KK.",
+        "CONFLICT",
+        409,
+      );
+    }
+    const accountId = await releaseReservation(row.id, "rejected", "Rejected by super admin");
+    if (!accountId) throw new WalletError("Withdrawal could not be rejected.", "CONFLICT", 409);
     await recordAdminAuditEvent({
       eventType: "ARENA_WALLET_ADJUSTMENT",
       actorId: input.actorId,
@@ -771,7 +1049,7 @@ export async function reviewWithdrawal(input: {
     return { withdrawalId: row.id, reviewState: "rejected" };
   }
   const config = input.deps?.config ?? readNowPaymentsConfig();
-  if (!config.payoutsEnabled) {
+  if (!config.payoutsEnabled || !config.ipnCallbackUrl) {
     throw new WalletError(
       "Payouts are disabled. NOWPayments requires a payout JWT, and the account still needs IP whitelist, address whitelist, and 2FA before USDT can be sent.",
       "CONFIGURATION_UNAVAILABLE",
@@ -783,35 +1061,82 @@ export async function reviewWithdrawal(input: {
   }
   if (!row.destinationAddress) throw new WalletError("Withdrawal address is missing.", "VALIDATION_ERROR", 400);
   const nowpayments = clientFor(config, input.deps?.client);
-  const payout = await nowpayments.createPayout({
-    address: row.destinationAddress,
-    amountDecimal: milliToUsdtDecimal(row.amountMilli),
-    ipnCallbackUrl: config.ipnCallbackUrl!,
-  });
-  if (!payout.batchId) {
+  if (row.providerBatchId) {
+    await nowpayments.verifyPayout(row.providerBatchId, input.verificationCode);
+    await db
+      .update(kkWalletWithdrawals)
+      .set({ reviewState: "processing", status: "processing", updatedAt: new Date().toISOString() })
+      .where(eq(kkWalletWithdrawals.id, row.id));
+    await recordAdminAuditEvent({
+      eventType: "ARENA_WALLET_ADJUSTMENT",
+      actorId: input.actorId,
+      actorRole: input.actorRole,
+      metadata: { withdrawalId: row.id, action: "verify", providerBatchId: row.providerBatchId },
+    });
+    return { withdrawalId: row.id, reviewState: "processing" };
+  }
+  if (payoutAlreadySent || row.reviewState !== "pending_review" || row.reservedMilli !== row.amountMilli || row.reservedMilli <= 0) {
+    throw new WalletError(
+      "A payout may already have been sent. Reconcile it before trying again.",
+      "CONFLICT",
+      409,
+    );
+  }
+  const [claimed] = await db
+    .update(kkWalletWithdrawals)
+    .set({ reviewState: "approved", providerStatus: "submitting", updatedAt: new Date().toISOString() })
+    .where(
+      and(
+        eq(kkWalletWithdrawals.id, row.id),
+        eq(kkWalletWithdrawals.reviewState, "pending_review"),
+        isNull(kkWalletWithdrawals.providerBatchId),
+        isNull(kkWalletWithdrawals.providerPayoutId),
+      ),
+    )
+    .returning({ id: kkWalletWithdrawals.id });
+  if (!claimed) {
+    throw new WalletError("A payout may already have been sent. Reconcile it before trying again.", "CONFLICT", 409);
+  }
+  let payout;
+  try {
+    payout = await nowpayments.createPayout({
+      address: row.destinationAddress,
+      amountDecimal: milliToUsdtDecimal(row.amountMilli),
+      ipnCallbackUrl: config.ipnCallbackUrl,
+    });
+  } catch (error) {
+    if (error instanceof NowPaymentsProviderError && error.status >= 400 && error.status < 500) {
+      await db
+        .update(kkWalletWithdrawals)
+        .set({ reviewState: "pending_review", providerStatus: "create_rejected", updatedAt: new Date().toISOString() })
+        .where(and(eq(kkWalletWithdrawals.id, row.id), isNull(kkWalletWithdrawals.providerBatchId)));
+    }
+    providerFailure(error);
+  }
+  if (!payout!.batchId) {
     await db
       .update(kkWalletWithdrawals)
       .set({ reviewState: "processing", providerStatus: "created_unparsed", updatedAt: new Date().toISOString() })
       .where(eq(kkWalletWithdrawals.id, row.id));
     throw new WalletError("Payout was accepted but the provider id was missing. It is held for reconciliation.", "CONFIGURATION_UNAVAILABLE", 502);
   }
-  await nowpayments.verifyPayout(payout.batchId, input.verificationCode);
   await db
     .update(kkWalletWithdrawals)
     .set({
       reviewState: "processing",
       status: "processing",
-      providerBatchId: payout.batchId,
-      providerPayoutId: payout.payoutId,
-      providerStatus: payout.status,
+      providerBatchId: payout!.batchId,
+      providerPayoutId: payout!.payoutId,
+      providerStatus: payout!.status,
       updatedAt: new Date().toISOString(),
     })
     .where(eq(kkWalletWithdrawals.id, row.id));
+  await nowpayments.verifyPayout(payout!.batchId, input.verificationCode);
   await recordAdminAuditEvent({
     eventType: "ARENA_WALLET_ADJUSTMENT",
     actorId: input.actorId,
     actorRole: input.actorRole,
-    metadata: { withdrawalId: row.id, action: "approve", providerBatchId: payout.batchId },
+    metadata: { withdrawalId: row.id, action: "approve", providerBatchId: payout!.batchId },
   });
   return { withdrawalId: row.id, reviewState: "processing" };
 }
@@ -895,9 +1220,30 @@ export async function listAdminWalletOperations() {
     .orderBy(desc(kkWalletWithdrawals.createdAt))
     .limit(50);
   const config = readNowPaymentsConfig();
+  const exceptions = await db
+    .select({
+      id: kkPaymentEvents.id,
+      providerPaymentId: kkPaymentEvents.providerPaymentId,
+      orderId: kkPaymentEvents.orderId,
+      providerStatus: kkPaymentEvents.providerStatus,
+      createdAt: kkPaymentEvents.createdAt,
+    })
+    .from(kkPaymentEvents)
+    .leftJoin(kkWalletDeposits, eq(kkPaymentEvents.providerPaymentId, kkWalletDeposits.providerPaymentId))
+    .leftJoin(
+      kkWalletWithdrawals,
+      or(
+        eq(kkPaymentEvents.providerPaymentId, kkWalletWithdrawals.providerPayoutId),
+        eq(kkPaymentEvents.providerPaymentId, kkWalletWithdrawals.providerBatchId),
+      ),
+    )
+    .where(and(isNotNull(kkPaymentEvents.providerPaymentId), isNull(kkWalletDeposits.id), isNull(kkWalletWithdrawals.id)))
+    .orderBy(desc(kkPaymentEvents.createdAt))
+    .limit(20);
   return {
     depositsEnabled: config.depositsEnabled,
     payoutsEnabled: config.payoutsEnabled,
+    exceptions,
     deposits: deposits.map((row) => ({
       ...row,
       amountKk: milliToKkDisplay(row.amountMilli),
@@ -919,6 +1265,7 @@ export async function applyWalletAdjustment(input: {
   actorId: string;
   actorRole: AdminRole;
 }) {
+  assertSuperAdmin(input.actorRole);
   if (input.reason.trim().length < 8) {
     throw new WalletError("An adjustment reason is required.", "VALIDATION_ERROR", 400);
   }
@@ -932,7 +1279,7 @@ export async function applyWalletAdjustment(input: {
   if (!account) throw new WalletError("Participant not found.", "NOT_FOUND", 404);
   const wallet = await getOrCreateWallet(account.id);
   const idempotencyKey = `wallet-adjustment:${input.clientRequestId}`;
-  await db.transaction(async (tx) => {
+  const applied = await db.transaction(async (tx) => {
     const [locked] = await tx.select().from(kkWallets).where(eq(kkWallets.id, wallet.id)).limit(1).for("update");
     if (!locked) throw new WalletError("Wallet unavailable.", "WALLET_UNAVAILABLE", 503);
     const [existing] = await tx
@@ -940,7 +1287,7 @@ export async function applyWalletAdjustment(input: {
       .from(kkWalletLedger)
       .where(eq(kkWalletLedger.idempotencyKey, idempotencyKey))
       .limit(1);
-    if (existing) return;
+    if (existing) return false;
     const delta = input.direction === "credit" ? amountMilli : -amountMilli;
     if (delta < 0 && !canSpend(locked.balanceMilli, locked.reservedMilli, amountMilli)) {
       throw new WalletError("Insufficient available KK PTS.", "INSUFFICIENT_BALANCE", 402);
@@ -968,7 +1315,7 @@ export async function applyWalletAdjustment(input: {
         description: input.reason.trim(),
         metadata: { actorId: input.actorId, direction: input.direction },
       });
-      return;
+      return true;
     }
     const [updated] = await tx
       .update(kkWallets)
@@ -987,7 +1334,9 @@ export async function applyWalletAdjustment(input: {
       description: input.reason.trim(),
       metadata: { actorId: input.actorId, direction: input.direction },
     });
+    return true;
   });
+  if (!applied) return;
   await recordAdminAuditEvent({
     eventType: "ARENA_WALLET_ADJUSTMENT",
     actorId: input.actorId,

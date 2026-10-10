@@ -180,7 +180,7 @@ export function WalletClient() {
             : "Deposits stay off until NOWPayments is configured for this environment."}
         </p>
         <label className="mt-4 block text-body-sm">
-          Amount (KK / USDT)
+          Amount (KK)
           <input
             type="text"
             inputMode="decimal"

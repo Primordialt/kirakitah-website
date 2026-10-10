@@ -61,6 +61,7 @@ export type ObservedPayment = {
 };
 
 export function shouldApplyPaymentStatus(current: string | null, incoming: string): boolean {
+  if (incoming === "refunded") return true;
   if (!current) return true;
   if (TERMINAL_PAYMENT_STATUSES.has(current) && current !== incoming) return false;
   const currentRank = PAYMENT_STATUS_RANK[current] ?? 0;
@@ -73,9 +74,11 @@ export function depositCreditIdempotencyKey(providerPaymentId: string): string {
 }
 
 /**
- * Credit 1 KK per 1 settled USDT only when the finished USDT TRC20 outcome
- * matches the requested amount exactly at milli precision.
- * Underpayment and overpayment stay in review and are not credited here.
+ * `price_amount` is the fiat price (USD). It is not USDT.
+ * `pay_amount` and `actually_paid` are in `pay_currency`.
+ * `outcome_amount` is the amount credited to the merchant balance, in `outcome_currency`.
+ * Auto-credit uses outcome_amount only when that currency is the USDT TRC20 ticker
+ * and, at milli precision, it equals the KK the participant requested.
  */
 export function decideDepositCredit(input: {
   currentStatus: string | null;
@@ -142,7 +145,49 @@ export function decideDepositCredit(input: {
   if (outcomeMilli > input.expected.requestedMilli) {
     return { kind: "review", reason: "overpayment" };
   }
-  return { kind: "credit", creditMilli: input.expected.requestedMilli };
+  return { kind: "credit", creditMilli: outcomeMilli };
+}
+
+export type CreditedFollowUp =
+  | { kind: "none" }
+  | { kind: "reverse" }
+  | { kind: "exception"; reason: "post_credit_status_change" | "payment_mismatch" };
+
+/** A credited deposit stays credited until the provider and a fresh status read both say refunded. */
+export function decideCreditedDepositFollowUp(input: {
+  expectedPaymentId: string;
+  observed: ObservedPayment;
+  reconciled: ObservedPayment | null;
+}): CreditedFollowUp {
+  if (
+    input.observed.paymentId !== input.expectedPaymentId ||
+    !input.reconciled ||
+    input.reconciled.paymentId !== input.expectedPaymentId ||
+    input.reconciled.paymentStatus !== input.observed.paymentStatus
+  ) {
+    return { kind: "exception", reason: "payment_mismatch" };
+  }
+  if (input.reconciled.paymentStatus === "refunded") return { kind: "reverse" };
+  if (input.reconciled.paymentStatus !== "finished") {
+    return { kind: "exception", reason: "post_credit_status_change" };
+  }
+  return { kind: "none" };
+}
+
+export function depositReversalIdempotencyKey(providerPaymentId: string, alreadyClawedMilli: number): string {
+  return `nowpayments-deposit-reversal:${providerPaymentId}:${alreadyClawedMilli}`;
+}
+
+/**
+ * `min_amount` is the provider minimum for the requested currency pair.
+ * Compare it with the estimated pay-currency amount, not with the USD price.
+ */
+export function depositMeetsMinimum(estimatedPayAmount: string | null, minAmount: string | null): boolean | null {
+  if (!minAmount) return true;
+  if (!estimatedPayAmount) return null;
+  const compared = compareDecimals(estimatedPayAmount, minAmount);
+  if (compared === null) return null;
+  return compared >= 0;
 }
 
 const PAYOUT_PROGRESS = new Set(["NEW", "CREATING", "WAITING", "PROCESSING"]);
