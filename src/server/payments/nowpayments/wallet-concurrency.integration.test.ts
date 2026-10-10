@@ -261,4 +261,51 @@ describe.skipIf(!localDatabase)("wallet postgres concurrency", () => {
     expect(afterLateFinish.reservedMilli).toBe(0);
     expect(ledgers.filter((row) => row.entryType === "withdrawal")).toHaveLength(0);
   });
+
+  it("debits a finished payout once when two completion events arrive together", async () => {
+    const accountId = await account();
+    const wallet = await getOrCreateWallet(accountId);
+    await getDb().update(kkWallets).set({ balanceMilli: 10_000, reservedMilli: 10_000 }).where(eq(kkWallets.id, wallet.id));
+    const payoutId = randomUUID();
+    await getDb().insert(kkWalletWithdrawals).values({
+      walletId: wallet.id,
+      amountMilli: 10_000,
+      status: "processing",
+      reviewState: "processing",
+      reservedMilli: 10_000,
+      destinationAddress: address,
+      network: "USDT TRC20",
+      providerPayoutId: payoutId,
+      providerBatchId: randomUUID(),
+      providerStatus: "PROCESSING",
+    });
+    const config = readNowPaymentsConfig({
+      NOWPAYMENTS_API_KEY: "test-key",
+      NOWPAYMENTS_IPN_SECRET: secret,
+      NOWPAYMENTS_IPN_CALLBACK_URL: "https://example.com/api/webhooks/nowpayments",
+    });
+    const observed = {
+      payoutId,
+      status: "FINISHED",
+      currency: "usdttrc20",
+      amount: "10",
+      address,
+      fee: "1",
+    };
+    const client = { async getPayout() { return observed; } } as unknown as NowPaymentsClient;
+    const first = signed({ id: payoutId, status: "FINISHED", currency: "usdttrc20", amount: 10, address });
+    const second = signed(
+      { id: payoutId, status: "FINISHED", currency: "usdttrc20", amount: 10, address },
+      JSON.stringify({ status: "FINISHED", id: payoutId, address, amount: 10, currency: "usdttrc20" }),
+    );
+    await Promise.all([
+      handleNowPaymentsIpn(first.raw, first.signature, { config, client }),
+      handleNowPaymentsIpn(second.raw, second.signature, { config, client }),
+    ]);
+    const after = await walletOf(accountId);
+    const ledgers = await getDb().select().from(kkWalletLedger).where(eq(kkWalletLedger.walletId, wallet.id));
+    expect(after.balanceMilli).toBe(0);
+    expect(after.reservedMilli).toBe(0);
+    expect(ledgers.filter((row) => row.entryType === "withdrawal")).toHaveLength(1);
+  });
 });

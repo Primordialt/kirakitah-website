@@ -1168,7 +1168,12 @@ export async function reconcileWithdrawal(
     await db
       .update(kkWalletWithdrawals)
       .set({ reviewState: "processing", status: "processing", providerStatus: payout.status, updatedAt: new Date().toISOString() })
-      .where(eq(kkWalletWithdrawals.id, row.id));
+      .where(
+        and(
+          eq(kkWalletWithdrawals.id, row.id),
+          inArray(kkWalletWithdrawals.reviewState, [...OPEN_WITHDRAWAL_STATES]),
+        ),
+      );
   }
   return { withdrawalId: row.id, providerStatus: payout.status };
 }
