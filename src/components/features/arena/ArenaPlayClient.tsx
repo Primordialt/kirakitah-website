@@ -57,7 +57,7 @@ type LiveState = {
     streak: number;
   } | null;
   lastRound: LastRound;
-  wallet: { balanceKk: string };
+  wallet: { balanceKk: string; availableKk?: string };
 };
 
 export function formatArenaClock(seconds: number): string {
@@ -150,7 +150,7 @@ export function ArenaPlayClient({ slug }: { slug: string }) {
         </p>
         <p className="mt-1 text-body-sm text-text-muted">Round #{round?.number ?? "—"}</p>
         <p className="mt-1 text-body-sm text-text-secondary">
-          Balance <strong>{live.wallet.balanceKk} KK</strong>
+          Balance <strong>{live.wallet.availableKk ?? live.wallet.balanceKk} KK</strong>
         </p>
         {round?.secondsRemaining !== null && round?.secondsRemaining !== undefined ? (
           <p

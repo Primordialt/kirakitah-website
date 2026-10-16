@@ -1785,6 +1785,7 @@ export const kkWallets = pgTable(
       .notNull()
       .references(() => participantAccounts.id, { onDelete: "cascade" }),
     balanceMilli: bigint("balance_milli", { mode: "number" }).notNull().default(0),
+    reservedMilli: bigint("reserved_milli", { mode: "number" }).notNull().default(0),
     createdAt: timestamp("created_at", { withTimezone: true, mode: "string" })
       .notNull()
       .defaultNow(),
@@ -1820,19 +1821,57 @@ export const kkWalletLedger = pgTable(
   ],
 );
 
-export const kkWalletDeposits = pgTable("kk_wallet_deposits", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  walletId: uuid("wallet_id")
-    .notNull()
-    .references(() => kkWallets.id, { onDelete: "cascade" }),
-  amountMilli: bigint("amount_milli", { mode: "number" }).notNull(),
-  status: kkWalletExternalStatusEnum("status").notNull().default("pending"),
-  provider: text("provider"),
-  externalReference: text("external_reference"),
-  ledgerEntryId: uuid("ledger_entry_id"),
-  createdAt: timestamp("created_at", { withTimezone: true, mode: "string" }).notNull().defaultNow(),
-  updatedAt: timestamp("updated_at", { withTimezone: true, mode: "string" }).notNull().defaultNow(),
-});
+export const kkWalletDeposits = pgTable(
+  "kk_wallet_deposits",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    walletId: uuid("wallet_id")
+      .notNull()
+      .references(() => kkWallets.id, { onDelete: "cascade" }),
+    amountMilli: bigint("amount_milli", { mode: "number" }).notNull(),
+    status: kkWalletExternalStatusEnum("status").notNull().default("pending"),
+    provider: text("provider"),
+    externalReference: text("external_reference"),
+    ledgerEntryId: uuid("ledger_entry_id"),
+    orderId: text("order_id"),
+    providerPaymentId: text("provider_payment_id"),
+    payCurrency: text("pay_currency"),
+    payAddress: text("pay_address"),
+    priceAmountText: text("price_amount_text"),
+    payAmountText: text("pay_amount_text"),
+    actuallyPaidText: text("actually_paid_text"),
+    outcomeAmountText: text("outcome_amount_text"),
+    outcomeCurrency: text("outcome_currency"),
+    providerStatus: text("provider_status"),
+    providerFee: jsonb("provider_fee"),
+    reviewReason: text("review_reason"),
+    creditedMilli: bigint("credited_milli", { mode: "number" }),
+    parentPaymentId: text("parent_payment_id"),
+    network: text("network"),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "string" }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true, mode: "string" }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("kk_wallet_deposits_order_uidx").on(table.orderId),
+    uniqueIndex("kk_wallet_deposits_provider_payment_uidx").on(table.providerPaymentId),
+  ],
+);
+
+export const kkPaymentEvents = pgTable(
+  "kk_payment_events",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    provider: text("provider").notNull(),
+    eventKey: text("event_key").notNull(),
+    providerPaymentId: text("provider_payment_id"),
+    orderId: text("order_id"),
+    providerStatus: text("provider_status"),
+    payload: jsonb("payload").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "string" }).notNull().defaultNow(),
+    processedAt: timestamp("processed_at", { withTimezone: true, mode: "string" }),
+  },
+  (table) => [uniqueIndex("kk_payment_events_provider_key_uidx").on(table.provider, table.eventKey)],
+);
 
 export const kkWalletWithdrawals = pgTable("kk_wallet_withdrawals", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -1843,6 +1882,16 @@ export const kkWalletWithdrawals = pgTable("kk_wallet_withdrawals", {
   status: kkWalletExternalStatusEnum("status").notNull().default("pending"),
   destinationHint: text("destination_hint"),
   ledgerEntryId: uuid("ledger_entry_id"),
+  reviewState: text("review_state").notNull().default("pending_review"),
+  destinationAddress: text("destination_address"),
+  network: text("network"),
+  reservedMilli: bigint("reserved_milli", { mode: "number" }).notNull().default(0),
+  idempotencyKey: text("idempotency_key"),
+  providerBatchId: text("provider_batch_id"),
+  providerPayoutId: text("provider_payout_id"),
+  providerStatus: text("provider_status"),
+  providerFeeText: text("provider_fee_text"),
+  failureReason: text("failure_reason"),
   createdAt: timestamp("created_at", { withTimezone: true, mode: "string" }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true, mode: "string" }).notNull().defaultNow(),
 });

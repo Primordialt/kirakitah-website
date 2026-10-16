@@ -56,6 +56,7 @@ export const ADMIN_PERMISSIONS = [
   "arena:wallet_review",
   "arena:moderate",
   "arena:economics",
+  "wallet:finance",
 ] as const;
 
 export type AdminPermission = (typeof ADMIN_PERMISSIONS)[number];
@@ -107,6 +108,7 @@ const ROLE_PERMISSIONS: Record<AdminRole, readonly AdminPermission[]> = {
     "arena:wallet_review",
     "arena:moderate",
     "arena:economics",
+    "wallet:finance",
   ],
   TOURNAMENT_ADMIN: [
     "dashboard:view",

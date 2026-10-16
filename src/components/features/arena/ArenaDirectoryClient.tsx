@@ -36,11 +36,13 @@ export function ArenaDirectoryClient() {
   const load = useCallback(async () => {
     const [{ response, payload }, walletRes] = await Promise.all([
       participantFetch<{ arenas?: ArenaCard[] }>("/api/participant/arena"),
-      participantFetch<{ wallet?: { balanceKk: string } }>("/api/participant/wallet"),
+      participantFetch<{ wallet?: { balanceKk: string; availableKk?: string } }>("/api/participant/wallet"),
     ]);
     setLoading(false);
     if (response.ok) setArenas(payload.arenas ?? []);
-    if (walletRes.response.ok) setWalletKk(walletRes.payload.wallet?.balanceKk ?? "0");
+    if (walletRes.response.ok) {
+      setWalletKk(walletRes.payload.wallet?.availableKk ?? walletRes.payload.wallet?.balanceKk ?? "0");
+    }
   }, []);
 
   useEffect(() => {

@@ -22,7 +22,10 @@ export type ParticipantAuditEventType =
   | "PARTICIPANT_ACCOUNT_DELETED"
   | "CHAT_MENTION"
   | "CHAT_REPLY"
-  | "CHAT_ANNOUNCEMENT";
+  | "CHAT_ANNOUNCEMENT"
+  | "WALLET_DEPOSIT_CREDITED"
+  | "WALLET_DEPOSIT_REVIEW"
+  | "WALLET_WITHDRAWAL_UPDATE";
 
 /**
  * Append-only participant audit writer.

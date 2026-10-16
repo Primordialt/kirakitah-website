@@ -12,6 +12,7 @@
     "lint": "eslint",
     "type-check": "tsc --noEmit",
     "test": "vitest run",
+    "test:wallet-concurrency": "vitest run src/server/payments/nowpayments/wallet-concurrency.integration.test.ts",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
     "db:generate": "drizzle-kit generate",

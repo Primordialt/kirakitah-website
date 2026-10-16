@@ -50,6 +50,7 @@ export function AdminShell({
   );
   const canModerateChat = roleHasPermission(session.user.role, "chat:moderate");
   const canViewArena = roleHasPermission(session.user.role, "arena:view");
+  const canViewWalletFinance = roleHasPermission(session.user.role, "wallet:finance");
 
   return (
     <div className="min-h-screen bg-background text-text-primary">
@@ -166,6 +167,14 @@ export function AdminShell({
                 href="/admin/arena"
               >
                 Arena
+              </Link>
+            ) : null}
+            {canViewWalletFinance ? (
+              <Link
+                className="hover:text-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-border-focus"
+                href="/admin/wallet"
+              >
+                Wallet
               </Link>
             ) : null}
             <AdminLogoutButton />
