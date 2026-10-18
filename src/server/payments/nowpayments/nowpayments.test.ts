@@ -449,7 +449,8 @@ describe("NOWPayments IPN while deposits are disabled", () => {
         return fn(db);
       },
     };
-    useDatabaseForTests(db as unknown as Db);
+    const bindTestDatabase = useDatabaseForTests;
+    bindTestDatabase(db as unknown as Db);
     return { wallet, ledger, events, deposit };
   }
 
