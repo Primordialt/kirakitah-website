@@ -1,5 +1,5 @@
 import { createHmac } from "node:crypto";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { roleHasPermission } from "@/server/admin/authorization/permissions";
 import { compareDecimals, usdtDecimalToMilli } from "@/server/payments/nowpayments/amounts";
 import { createNowPaymentsClient, resetNowPaymentsAuthCache } from "@/server/payments/nowpayments/client";
@@ -16,7 +16,11 @@ import {
   type ObservedPayment,
 } from "@/server/payments/nowpayments/policy";
 import { isDisposableWalletTestDatabase } from "@/server/payments/nowpayments/test-database";
-import { reconcileWithdrawal } from "@/server/payments/nowpayments/service";
+import { reconcileWithdrawal, refreshUsdtDeposit } from "@/server/payments/nowpayments/service";
+import type { NowPaymentsClient } from "@/server/payments/nowpayments/client";
+import { POST as nowPaymentsWebhook } from "@/app/api/webhooks/nowpayments/route";
+import { useDatabaseForTests, type Db } from "@/server/db";
+import { kkPaymentEvents, kkWalletDeposits, kkWalletLedger, kkWallets } from "@/server/db/schema";
 import { ipnEventKey, signIpnPayload, verifyIpnSignature } from "@/server/payments/nowpayments/signature";
 import { canSpend } from "@/server/wallet/money";
 
@@ -302,6 +306,356 @@ describe("NOWPayments payouts", () => {
     });
     expect(config.depositsEnabled).toBe(true);
     expect(config.payoutsEnabled).toBe(false);
+  });
+});
+
+describe("NOWPayments IPN while deposits are disabled", () => {
+  const ipnSecret = "ipn-secret";
+  const disabledEnv = {
+    NOWPAYMENTS_API_KEY: "test-key",
+    NOWPAYMENTS_IPN_SECRET: ipnSecret,
+    NOWPAYMENTS_IPN_CALLBACK_URL: "https://example.com/api/webhooks/nowpayments",
+    NOWPAYMENTS_DEPOSITS_ENABLED: "false",
+    NOWPAYMENTS_PAYOUTS_ENABLED: "false",
+  };
+  const payload = {
+    payment_id: "pay-1",
+    order_id: "kk-order",
+    payment_status: "finished",
+    pay_currency: "usdttrc20",
+    price_currency: "usd",
+    pay_amount: 10,
+    actually_paid: 10,
+    outcome_amount: 10,
+    outcome_currency: "usdttrc20",
+  };
+
+  afterEach(() => {
+    useDatabaseForTests(null);
+    vi.unstubAllEnvs();
+    vi.restoreAllMocks();
+  });
+
+  function finishedPayment(payCurrency = "usdttrc20") {
+    return JSON.stringify({
+      payment_id: "pay-1",
+      order_id: "kk-order",
+      payment_status: "finished",
+      pay_currency: payCurrency,
+      pay_amount: 10,
+      actually_paid: 10,
+      outcome_amount: 10,
+      outcome_currency: payCurrency,
+      price_currency: "usd",
+    });
+  }
+
+  function harness() {
+    const wallet = { balanceMilli: 0 };
+    const ledger: Array<{ id: string; entryType: string }> = [];
+    const events: Array<{ id: string; eventKey: string; processedAt: string | null }> = [];
+    const deposit = {
+      id: "deposit-1",
+      walletId: "wallet-1",
+      amountMilli: 10_000,
+      status: "pending",
+      orderId: "kk-order",
+      providerPaymentId: "pay-1",
+      providerStatus: "waiting",
+      ledgerEntryId: null as string | null,
+      reviewReason: null as string | null,
+    };
+    let eventSeq = 0;
+    const db = {
+      select() {
+        let table: unknown;
+        const chain: Record<string, unknown> = {};
+        const rows = () => {
+          if (table === kkWalletDeposits) return [deposit];
+          if (table === kkWallets) return [{ id: "wallet-1", balanceMilli: wallet.balanceMilli, participantAccountId: "account-1" }];
+          if (table === kkWalletLedger) return ledger;
+          if (table === kkPaymentEvents) return events;
+          return [];
+        };
+        chain.from = (next: unknown) => {
+          table = next;
+          return chain;
+        };
+        chain.where = () => chain;
+        chain.limit = () => chain;
+        chain.for = () => chain;
+        chain.then = (resolve: (value: unknown[]) => unknown, reject?: (reason: unknown) => unknown) =>
+          Promise.resolve(rows()).then(resolve, reject);
+        return chain;
+      },
+      insert(table: unknown) {
+        let row: Record<string, unknown> = {};
+        const chain: Record<string, unknown> = {};
+        const run = () => {
+          if (table === kkPaymentEvents) {
+            if (events.some((event) => event.eventKey === row.eventKey)) return [];
+            eventSeq += 1;
+            const event = { id: `event-${eventSeq}`, eventKey: String(row.eventKey), processedAt: null };
+            events.push(event);
+            return [{ id: event.id }];
+          }
+          if (table === kkWalletLedger) {
+            const entry = { id: `ledger-${ledger.length + 1}`, entryType: String(row.entryType) };
+            ledger.push(entry);
+            return [{ id: entry.id }];
+          }
+          return [];
+        };
+        chain.values = (next: Record<string, unknown>) => {
+          row = next;
+          return chain;
+        };
+        chain.onConflictDoNothing = () => chain;
+        chain.returning = () => Promise.resolve(run());
+        chain.then = (resolve: (value: unknown) => unknown, reject?: (reason: unknown) => unknown) =>
+          Promise.resolve(run()).then(resolve, reject);
+        return chain;
+      },
+      update(table: unknown) {
+        let values: Record<string, unknown> = {};
+        const chain: Record<string, unknown> = {};
+        const run = () => {
+          if (table === kkPaymentEvents) {
+            const event = events.find((item) => item.id === events[events.length - 1]?.id) ?? events[0];
+            if (event) event.processedAt = values.processedAt == null ? null : String(values.processedAt);
+            return [];
+          }
+          if (table === kkWallets) {
+            wallet.balanceMilli += 10_000;
+            return [{ balanceMilli: wallet.balanceMilli }];
+          }
+          if (table === kkWalletDeposits) {
+            Object.assign(deposit, values);
+            return [];
+          }
+          return [];
+        };
+        chain.set = (next: Record<string, unknown>) => {
+          values = next;
+          return chain;
+        };
+        chain.where = () => chain;
+        chain.returning = () => Promise.resolve(run());
+        chain.then = (resolve: (value: unknown) => unknown, reject?: (reason: unknown) => unknown) =>
+          Promise.resolve(run()).then(resolve, reject);
+        return chain;
+      },
+      transaction(fn: (tx: typeof db) => Promise<unknown>) {
+        return fn(db);
+      },
+    };
+    useDatabaseForTests(db as unknown as Db);
+    return { wallet, ledger, events, deposit };
+  }
+
+  function useEnv(env: Record<string, string>) {
+    for (const [key, value] of Object.entries(env)) vi.stubEnv(key, value);
+  }
+
+  async function postIpn(body: string) {
+    const signature = signIpnPayload(JSON.parse(body), ipnSecret);
+    return nowPaymentsWebhook(new Request("https://example.com/api/webhooks/nowpayments", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-nowpayments-sig": signature,
+      },
+      body,
+    }));
+  }
+
+  it("keeps a signed finished USDT TRC20 IPN unprocessed and uncredited while deposits are disabled", async () => {
+    const raw = JSON.stringify(payload);
+    expect(verifyIpnSignature(JSON.parse(raw), signIpnPayload(JSON.parse(raw), ipnSecret), ipnSecret)).toBe(true);
+    expect(readNowPaymentsConfig(disabledEnv).depositsEnabled).toBe(false);
+    const state = harness();
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(finishedPayment(), { status: 200 }));
+    useEnv(disabledEnv);
+
+    const first = await postIpn(raw);
+    const retry = await postIpn(raw);
+    const reordered = await postIpn(JSON.stringify({
+      outcome_currency: "usdttrc20",
+      outcome_amount: 10,
+      actually_paid: 10,
+      pay_amount: 10,
+      price_currency: "usd",
+      pay_currency: "usdttrc20",
+      payment_status: "finished",
+      order_id: "kk-order",
+      payment_id: "pay-1",
+    }));
+
+    expect(first.status).toBe(503);
+    expect(await first.json()).toEqual({ error: "deposits_disabled" });
+    expect(first.headers.get("cache-control")).toBe("no-store");
+    expect(retry.status).toBe(503);
+    expect(await retry.json()).toEqual({ error: "deposits_disabled" });
+    expect(reordered.status).toBe(503);
+    expect(state.wallet.balanceMilli).toBe(0);
+    expect(state.ledger).toEqual([]);
+    expect(state.deposit.status).toBe("pending");
+    expect(state.deposit.ledgerEntryId).toBeNull();
+    expect(state.events).toHaveLength(2);
+    expect(state.events.every((event) => event.processedAt == null)).toBe(true);
+    expect(globalThis.fetch).not.toHaveBeenCalled();
+  });
+
+  it("rejects an invalid signature before storing an event", async () => {
+    const state = harness();
+    useEnv(disabledEnv);
+    const response = await nowPaymentsWebhook(new Request("https://example.com/api/webhooks/nowpayments", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-nowpayments-sig": "ab",
+      },
+      body: JSON.stringify(payload),
+    }));
+    expect(response.status).toBe(401);
+    expect(await response.json()).toEqual({ error: "invalid_signature" });
+    expect(state.events).toEqual([]);
+    expect(state.wallet.balanceMilli).toBe(0);
+  });
+
+  function providerPayment(payCurrency = "usdttrc20") {
+    return {
+      paymentId: "pay-1",
+      orderId: "kk-order",
+      paymentStatus: "finished",
+      payCurrency,
+      payAmount: "10",
+      actuallyPaid: "10",
+      outcomeAmount: "10",
+      outcomeCurrency: payCurrency,
+      parentPaymentId: null,
+      priceCurrency: "usd",
+    };
+  }
+
+  function providerClient(payCurrency = "usdttrc20") {
+    const calls = { count: 0 };
+    const client = {
+      async getPayment() {
+        calls.count += 1;
+        return providerPayment(payCurrency);
+      },
+    } as unknown as NowPaymentsClient;
+    return { calls, client };
+  }
+
+  it("does not let participant refresh credit a finished deposit while deposits are disabled", async () => {
+    const state = harness();
+    const { calls, client } = providerClient();
+    useEnv(disabledEnv);
+
+    await expect(refreshUsdtDeposit("account-1", "deposit-1", {
+      config: readNowPaymentsConfig(disabledEnv),
+      client,
+    })).rejects.toMatchObject({ code: "CONFIGURATION_UNAVAILABLE", status: 503 });
+
+    expect(calls.count).toBe(0);
+    expect(state.wallet.balanceMilli).toBe(0);
+    expect(state.ledger).toEqual([]);
+    expect(state.deposit.status).toBe("pending");
+    expect(state.deposit.ledgerEntryId).toBeNull();
+  });
+
+  it("does not credit a stored IPN when deposits are enabled until refresh validates it", async () => {
+    const raw = JSON.stringify(payload);
+    const state = harness();
+    const { calls, client } = providerClient();
+    vi.spyOn(globalThis, "fetch").mockImplementation(async () => new Response(finishedPayment(), { status: 200 }));
+    useEnv(disabledEnv);
+
+    expect((await postIpn(raw)).status).toBe(503);
+    const enabledEnv = { ...disabledEnv, NOWPAYMENTS_DEPOSITS_ENABLED: "true" };
+    useEnv(enabledEnv);
+    expect(readNowPaymentsConfig(enabledEnv).depositsEnabled).toBe(true);
+    expect(state.wallet.balanceMilli).toBe(0);
+
+    const replay = await postIpn(raw);
+    const replayAgain = await postIpn(raw);
+
+    expect(replay.status).toBe(200);
+    expect(await replay.json()).toEqual({ received: true, reconciliationRequired: true });
+    expect(replayAgain.status).toBe(200);
+    expect(await replayAgain.json()).toEqual({ received: true, reconciliationRequired: true });
+    const reordered = await postIpn(JSON.stringify({
+      order_id: "kk-order",
+      payment_id: "pay-1",
+      payment_status: "finished",
+      pay_currency: "usdttrc20",
+      price_currency: "usd",
+      pay_amount: 10,
+      actually_paid: 10,
+      outcome_amount: 10,
+      outcome_currency: "usdttrc20",
+    }));
+    expect(reordered.status).toBe(200);
+    expect(await reordered.json()).toEqual({ received: true, reconciliationRequired: true });
+    expect(state.wallet.balanceMilli).toBe(0);
+    expect(state.ledger).toEqual([]);
+    expect(state.deposit.status).toBe("pending");
+    expect(state.events.every((event) => event.processedAt == null)).toBe(true);
+    expect(globalThis.fetch).not.toHaveBeenCalled();
+
+    const refreshed = await refreshUsdtDeposit("account-1", "deposit-1", {
+      config: readNowPaymentsConfig(enabledEnv),
+      client,
+    });
+    const again = await refreshUsdtDeposit("account-1", "deposit-1", {
+      config: readNowPaymentsConfig(enabledEnv),
+      client,
+    });
+
+    expect(refreshed.providerStatus).toBe("finished");
+    expect(again.providerStatus).toBe("finished");
+    expect(calls.count).toBe(2);
+    expect(state.wallet.balanceMilli).toBe(10_000);
+    expect(state.ledger).toEqual([{ id: "ledger-1", entryType: "deposit" }]);
+    expect(state.deposit.status).toBe("completed");
+    expect(state.deposit.ledgerEntryId).toBe("ledger-1");
+  });
+
+  it("credits a newly delivered finished IPN once deposits are already enabled", async () => {
+    const raw = JSON.stringify(payload);
+    const state = harness();
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async () => new Response(finishedPayment(), { status: 200 }));
+    useEnv({ ...disabledEnv, NOWPAYMENTS_DEPOSITS_ENABLED: "true" });
+
+    const credited = await postIpn(raw);
+    const duplicate = await postIpn(raw);
+
+    expect(credited.status).toBe(200);
+    expect(await credited.json()).toEqual({ received: true });
+    expect(duplicate.status).toBe(200);
+    expect(await duplicate.json()).toEqual({ duplicate: true });
+    expect(state.wallet.balanceMilli).toBe(10_000);
+    expect(state.ledger).toEqual([{ id: "ledger-1", entryType: "deposit" }]);
+    expect(state.events.map((event) => event.processedAt)).toEqual([expect.any(String)]);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not credit a wrong-network deposit when refresh runs after deposits are enabled", async () => {
+    const state = harness();
+    const { client } = providerClient("usdterc20");
+    useEnv({ ...disabledEnv, NOWPAYMENTS_DEPOSITS_ENABLED: "true" });
+
+    await refreshUsdtDeposit("account-1", "deposit-1", {
+      config: readNowPaymentsConfig({ ...disabledEnv, NOWPAYMENTS_DEPOSITS_ENABLED: "true" }),
+      client,
+    });
+
+    expect(state.wallet.balanceMilli).toBe(0);
+    expect(state.ledger).toEqual([]);
+    expect(state.deposit.status).not.toBe("completed");
+    expect(state.deposit.reviewReason).toBe("wrong_currency");
   });
 });
 

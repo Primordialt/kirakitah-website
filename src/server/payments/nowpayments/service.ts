@@ -607,6 +607,13 @@ export async function refreshUsdtDeposit(
   deps?: { config?: NowPaymentsConfig; client?: NowPaymentsClient },
 ) {
   const config = deps?.config ?? readNowPaymentsConfig();
+  if (!config.depositsEnabled) {
+    throw new WalletError(
+      "USDT deposits are not active yet. NOWPayments must be configured with an API key, IPN secret, and HTTPS callback before real deposits open.",
+      "CONFIGURATION_UNAVAILABLE",
+      503,
+    );
+  }
   const wallet = await getOrCreateWallet(participantAccountId);
   const db = getDb();
   const [deposit] = await db
@@ -929,6 +936,46 @@ export async function handleNowPaymentsIpn(
         .limit(1);
   if (!event) return { status: 500 as const, body: { error: "event_unavailable" } };
   if ("processedAt" in event && event.processedAt) return { status: 200 as const, body: { duplicate: true } };
+  if (payload.payment_id != null && !config.depositsEnabled) {
+    return { status: 503 as const, body: { error: "deposits_disabled" } };
+  }
+  if (payload.payment_id != null && !inserted) {
+    return { status: 200 as const, body: { received: true, reconciliationRequired: true } };
+  }
+  if (payload.payment_id != null && inserted) {
+    const paymentId = String(payload.payment_id);
+    const pending = await db
+      .select({ id: kkPaymentEvents.id, createdAt: kkPaymentEvents.createdAt })
+      .from(kkPaymentEvents)
+      .where(
+        and(
+          eq(kkPaymentEvents.provider, "nowpayments"),
+          eq(kkPaymentEvents.providerPaymentId, paymentId),
+          isNull(kkPaymentEvents.processedAt),
+        ),
+      );
+    const currentCreatedAt = pending.find((row) => row.id === event.id)?.createdAt;
+    const olderUnprocessed = pending.some((row) => {
+      if (row.id === event.id) return false;
+      if (currentCreatedAt == null || row.createdAt == null) return true;
+      return row.createdAt < currentCreatedAt;
+    });
+    if (olderUnprocessed) {
+      const orderId = typeof payload.order_id === "string" ? payload.order_id : null;
+      const [existingDeposit] = await db
+        .select({
+          status: kkWalletDeposits.status,
+          ledgerEntryId: kkWalletDeposits.ledgerEntryId,
+        })
+        .from(kkWalletDeposits)
+        .where(orderId ? eq(kkWalletDeposits.orderId, orderId) : eq(kkWalletDeposits.providerPaymentId, paymentId))
+        .limit(1);
+      const alreadyCredited = existingDeposit?.status === "completed" || existingDeposit?.ledgerEntryId != null;
+      if (!alreadyCredited) {
+        return { status: 200 as const, body: { received: true, reconciliationRequired: true } };
+      }
+    }
+  }
 
   try {
     if (payload.payment_id != null) {
