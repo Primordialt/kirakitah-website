@@ -39,7 +39,6 @@ export function WalletClient() {
   >([]);
   const [deposits, setDeposits] = useState<DepositRow[]>([]);
   const [withdrawals, setWithdrawals] = useState<WithdrawalRow[]>([]);
-  const [policy, setPolicy] = useState<string | null>(null);
   const [depositsEnabled, setDepositsEnabled] = useState(false);
   const [payoutsEnabled, setPayoutsEnabled] = useState(false);
   const [amount, setAmount] = useState("");
@@ -59,7 +58,6 @@ export function WalletClient() {
       transactions?: Array<{ signedDisplay: string; description: string; createdAt: string }>;
       deposits?: DepositRow[];
       withdrawals?: WithdrawalRow[];
-      creditPolicy?: string;
       depositsEnabled?: boolean;
       payoutsEnabled?: boolean;
     }>("/api/participant/wallet");
@@ -68,7 +66,6 @@ export function WalletClient() {
     setTransactions(payload.transactions ?? []);
     setDeposits(payload.deposits ?? []);
     setWithdrawals(payload.withdrawals ?? []);
-    setPolicy(payload.creditPolicy ?? null);
     setDepositsEnabled(payload.depositsEnabled === true);
     setPayoutsEnabled(payload.payoutsEnabled === true);
   }, []);
@@ -177,7 +174,7 @@ export function WalletClient() {
         <p className="mt-2 text-body-sm text-text-secondary">
           {depositsEnabled
             ? "Request a deposit address. Send only USDT on TRON (TRC20) to that address."
-            : "Deposits stay off until NOWPayments is configured for this environment."}
+            : "Deposits are not open yet."}
         </p>
         <label className="mt-4 block text-body-sm">
           Amount (KK)
@@ -197,7 +194,7 @@ export function WalletClient() {
           <div className="mt-4 space-y-2 rounded-lg border border-border p-3 text-body-sm">
             <p>Network: USDT TRC20</p>
             <p>Status: {shownDeposit.providerStatus ?? shownDeposit.status}</p>
-            <p>Send: {shownDeposit.payAmountText ?? "Waiting for provider amount"} {shownDeposit.payCurrency}</p>
+            <p>Send: {shownDeposit.payAmountText ?? "Waiting for the amount"} {shownDeposit.payCurrency}</p>
             <p className="break-all">Address: {shownDeposit.payAddress}</p>
             <Button variant="secondary" onClick={() => void copyAddress(shownDeposit.payAddress!)}>
               Copy address
@@ -209,15 +206,14 @@ export function WalletClient() {
             {shownDeposit.creditedKk ? <p>Credited: {shownDeposit.creditedKk} KK</p> : null}
           </div>
         ) : null}
-        {policy ? <p className="mt-3 text-caption text-text-muted">{policy}</p> : null}
       </section>
 
       <section className="rounded-xl border border-border bg-surface p-5">
         <h2 className="text-h4">Withdraw USDT TRC20</h2>
         <p className="mt-2 text-body-sm text-text-secondary">
           {payoutsEnabled
-            ? "A withdrawal reserves KK until NOWPayments reports the payout finished."
-            : "You can request a withdrawal. USDT is not sent until NOWPayments payouts, IP whitelist, address whitelist, and 2FA are enabled."}
+            ? "KK stays on hold until the withdrawal is complete."
+            : "Withdrawals are not open yet."}
         </p>
         <label className="mt-4 block text-body-sm">
           Destination address
