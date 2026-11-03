@@ -40,7 +40,7 @@ const DEPOSIT_LIMIT = 5;
 const recentActions = new Map<string, number[]>();
 
 export const DEPOSIT_CREDIT_POLICY =
-  "1 settled USDT equals 1 KK. The amount you enter is priced in USD and is not the on-chain amount. KK is credited only after NOWPayments reports the payment finished, both the paid asset and the settled balance currency are USDT TRC20, and the USDT credited to KIRAKITAH matches the requested amount exactly. A smaller or larger settled amount, a repeated deposit, or a different asset is held for review and is not credited automatically. Provider and network fees are whatever NOWPayments includes in the amount it tells you to send. Returning to this page does not confirm a payment.";
+  "Send only USDT on TRON (TRC20) to the address shown. Opening this page again does not confirm the payment.";
 
 const OPEN_WITHDRAWAL_STATES = ["pending_review", "approved", "processing"] as const;
 
@@ -51,12 +51,12 @@ const PUBLIC_DEPOSIT_REVIEW: Record<string, string> = {
   order_mismatch: "The payment did not match this deposit and is waiting for review.",
   payment_mismatch: "The payment did not match this deposit and is waiting for review.",
   repeated_deposit: "A repeated deposit is waiting for review.",
-  missing_outcome: "The provider did not report the settled USDT amount. This deposit is waiting for review.",
+  missing_outcome: "The settled amount was not confirmed. This deposit is waiting for review.",
   not_finished: "The payment is not finished and is waiting for review.",
   reconciliation_mismatch: "The payment could not be confirmed and is waiting for review.",
   post_credit_refund_shortfall: "A refund was reported after KK was credited. Recovery is waiting for review.",
   reversed: "The credited deposit was refunded and the KK was removed.",
-  post_credit_status_change: "The provider changed this payment after it was credited. It is waiting for review.",
+  post_credit_status_change: "This payment changed after it was credited. It is waiting for review.",
   unmatched_payment: "Another payment was reported for this deposit and is waiting for review.",
   amount_out_of_range: "The amount could not be credited safely and is waiting for review.",
 };
@@ -166,7 +166,7 @@ export async function createUsdtDeposit(
   const config = deps?.config ?? readNowPaymentsConfig();
   if (!config.depositsEnabled) {
     throw new WalletError(
-      "USDT deposits are not active yet. NOWPayments must be configured with an API key, IPN secret, and HTTPS callback before real deposits open.",
+      "USDT deposits are not open yet.",
       "CONFIGURATION_UNAVAILABLE",
       503,
     );
@@ -187,7 +187,7 @@ export async function createUsdtDeposit(
   const meetsMinimum = depositMeetsMinimum(estimatedPayAmount, minimum!.minAmount);
   if (meetsMinimum === null) {
     throw new WalletError(
-      "NOWPayments did not return a USDT TRC20 estimate for the minimum check.",
+      "This deposit could not be started. Try again later.",
       "CONFIGURATION_UNAVAILABLE",
       503,
     );
@@ -195,7 +195,7 @@ export async function createUsdtDeposit(
   if (!meetsMinimum) {
     const fiat = minimum!.fiatEquivalent ? ` (about ${minimum!.fiatEquivalent} USD)` : "";
     throw new WalletError(
-      `NOWPayments minimum for this USDT TRC20 pair is ${minimum!.minAmount} ${NOWPAYMENTS_PAY_CURRENCY}${fiat}.`,
+      `The minimum deposit is ${minimum!.minAmount} USDT${fiat}.`,
       "VALIDATION_ERROR",
       400,
     );
@@ -247,7 +247,7 @@ export async function createUsdtDeposit(
         })
         .where(eq(kkWalletDeposits.id, deposit!.id));
       throw new WalletError(
-        "NOWPayments returned an unexpected payment currency.",
+        "This deposit could not be started. Try again later.",
         "CONFIGURATION_UNAVAILABLE",
         502,
       );
@@ -607,6 +607,13 @@ export async function refreshUsdtDeposit(
   deps?: { config?: NowPaymentsConfig; client?: NowPaymentsClient },
 ) {
   const config = deps?.config ?? readNowPaymentsConfig();
+  if (!config.depositsEnabled) {
+    throw new WalletError(
+      "USDT deposits are not open yet.",
+      "CONFIGURATION_UNAVAILABLE",
+      503,
+    );
+  }
   const wallet = await getOrCreateWallet(participantAccountId);
   const db = getDb();
   const [deposit] = await db
@@ -642,7 +649,7 @@ export async function createUsdtWithdrawal(
   const config = deps?.config ?? readNowPaymentsConfig();
   if (!config.apiKey) {
     throw new WalletError(
-      "USDT withdrawals are not active yet. Payouts also need NOWPayments IP whitelist, address whitelist, and 2FA before a transfer can be sent.",
+      "USDT withdrawals are not open yet.",
       "CONFIGURATION_UNAVAILABLE",
       503,
     );
@@ -740,7 +747,7 @@ export async function createUsdtWithdrawal(
       duplicate: false,
       message: config.payoutsEnabled
         ? "Withdrawal reserved and waiting for review. KK stays on hold until the payout is finished or rejected."
-        : "Withdrawal reserved for review. NOWPayments payouts stay disabled until IP whitelist, address whitelist, and 2FA are confirmed. No USDT has been sent.",
+        : "Withdrawal requested. KK stays on hold. No USDT has been sent.",
     };
   } catch (error) {
     if (isUniqueViolation(error)) {
@@ -929,6 +936,46 @@ export async function handleNowPaymentsIpn(
         .limit(1);
   if (!event) return { status: 500 as const, body: { error: "event_unavailable" } };
   if ("processedAt" in event && event.processedAt) return { status: 200 as const, body: { duplicate: true } };
+  if (payload.payment_id != null && !config.depositsEnabled) {
+    return { status: 503 as const, body: { error: "deposits_disabled" } };
+  }
+  if (payload.payment_id != null && !inserted) {
+    return { status: 200 as const, body: { received: true, reconciliationRequired: true } };
+  }
+  if (payload.payment_id != null && inserted) {
+    const paymentId = String(payload.payment_id);
+    const pending = await db
+      .select({ id: kkPaymentEvents.id, createdAt: kkPaymentEvents.createdAt })
+      .from(kkPaymentEvents)
+      .where(
+        and(
+          eq(kkPaymentEvents.provider, "nowpayments"),
+          eq(kkPaymentEvents.providerPaymentId, paymentId),
+          isNull(kkPaymentEvents.processedAt),
+        ),
+      );
+    const currentCreatedAt = pending.find((row) => row.id === event.id)?.createdAt;
+    const olderUnprocessed = pending.some((row) => {
+      if (row.id === event.id) return false;
+      if (currentCreatedAt == null || row.createdAt == null) return true;
+      return row.createdAt < currentCreatedAt;
+    });
+    if (olderUnprocessed) {
+      const orderId = typeof payload.order_id === "string" ? payload.order_id : null;
+      const [existingDeposit] = await db
+        .select({
+          status: kkWalletDeposits.status,
+          ledgerEntryId: kkWalletDeposits.ledgerEntryId,
+        })
+        .from(kkWalletDeposits)
+        .where(orderId ? eq(kkWalletDeposits.orderId, orderId) : eq(kkWalletDeposits.providerPaymentId, paymentId))
+        .limit(1);
+      const alreadyCredited = existingDeposit?.status === "completed" || existingDeposit?.ledgerEntryId != null;
+      if (!alreadyCredited) {
+        return { status: 200 as const, body: { received: true, reconciliationRequired: true } };
+      }
+    }
+  }
 
   try {
     if (payload.payment_id != null) {

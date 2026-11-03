@@ -119,6 +119,7 @@ describe.skipIf(!localDatabase)("wallet postgres concurrency", () => {
       NOWPAYMENTS_API_KEY: "test-key",
       NOWPAYMENTS_IPN_SECRET: secret,
       NOWPAYMENTS_IPN_CALLBACK_URL: "https://example.com/api/webhooks/nowpayments",
+      NOWPAYMENTS_DEPOSITS_ENABLED: "true",
     });
     const first = signed({ payment_id: paymentId, order_id: orderId, payment_status: "finished" });
     const second = signed(
@@ -340,11 +341,13 @@ describe.skipIf(!localDatabase)("wallet postgres concurrency", () => {
     expect(stillHeld.balanceMilli).toBe(10_000);
     expect(stillHeld.reservedMilli).toBe(10_000);
 
+    const payoutId = randomUUID();
+    const batchId = randomUUID();
     const found = {
       async listPayouts() {
         return [{
-          payoutId: "payout-1",
-          batchId: "batch-1",
+          payoutId,
+          batchId,
           status: "FINISHED",
           currency: "usdttrc20",
           amount: "10",
