@@ -2,19 +2,22 @@
 
 import { Button } from "@/components/ui";
 import { participantFetch } from "@/lib/participant/api";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 export function LogoutButton() {
-  const router = useRouter();
   const [loading, setLoading] = useState(false);
 
   const onLogout = async () => {
     setLoading(true);
-    await participantFetch("/api/participant/auth/logout", { method: "POST" });
-    setLoading(false);
-    router.replace("/login");
-    router.refresh();
+    try {
+      await participantFetch("/api/participant/auth/logout", { method: "POST" });
+    } finally {
+      window.location.assign(
+        process.env.NEXT_PUBLIC_AUTH0_ENABLED === "true"
+          ? "/auth/logout"
+          : "/login",
+      );
+    }
   };
 
   return (

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { getAuth0 } from "@/lib/auth0";
 import { ADMIN_SESSION_COOKIE } from "@/server/admin/auth/constants";
 import { PARTICIPANT_SESSION_COOKIE } from "@/server/participant/auth/constants";
 
@@ -29,8 +30,20 @@ function isPublicParticipantAuthPath(pathname: string): boolean {
   );
 }
 
+function applyAuthCookies(
+  response: NextResponse,
+  authRes: NextResponse | null,
+): NextResponse {
+  if (!authRes) return response;
+  for (const cookie of authRes.headers.getSetCookie()) {
+    response.headers.append("set-cookie", cookie);
+  }
+  return response;
+}
+
 /**
  * Edge middleware:
+ * - mounts Auth0 /auth/* when configured
  * - blocks /dev in production-like environments
  * - redirects unauthenticated /admin page traffic to /admin/login
  * - rejects unauthenticated /api/admin traffic (except login)
@@ -38,11 +51,23 @@ function isPublicParticipantAuthPath(pathname: string): boolean {
  *
  * Full session signature verification happens in Node route handlers / RSC.
  */
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   if (pathname.startsWith("/dev") && isProductionLikeEnvironment()) {
     return NextResponse.redirect(new URL("/", request.url));
+  }
+
+  const auth0 = getAuth0();
+  if (pathname.startsWith("/auth") && !auth0) {
+    return NextResponse.redirect(new URL("/login", request.url));
+  }
+
+  let authRes: NextResponse | null = null;
+  if (auth0) {
+    authRes = await auth0.middleware(request);
+    if (pathname.startsWith("/auth")) return authRes;
+    if (authRes.status >= 300 && authRes.status < 400) return authRes;
   }
 
   const isAdminApi = pathname.startsWith("/api/admin");
@@ -51,31 +76,34 @@ export function middleware(request: NextRequest) {
   const isLoginPage = pathname === "/admin/login";
 
   if (isAdminApi && !isLoginApi && !hasAdminSessionCookie(request)) {
-    return NextResponse.json(
-      { error: { code: "UNAUTHORIZED", message: "Unauthorized" } },
-      {
-        status: 401,
-        headers: {
-          "Cache-Control": "no-store",
-          "X-Content-Type-Options": "nosniff",
-          "Referrer-Policy": "no-referrer",
-          "X-Robots-Tag": "noindex, nofollow",
+    return applyAuthCookies(
+      NextResponse.json(
+        { error: { code: "UNAUTHORIZED", message: "Unauthorized" } },
+        {
+          status: 401,
+          headers: {
+            "Cache-Control": "no-store",
+            "X-Content-Type-Options": "nosniff",
+            "Referrer-Policy": "no-referrer",
+            "X-Robots-Tag": "noindex, nofollow",
+          },
         },
-      },
+      ),
+      authRes,
     );
   }
 
   if (isAdminPage && !isLoginPage && !hasAdminSessionCookie(request)) {
     const loginUrl = new URL("/admin/login", request.url);
     loginUrl.searchParams.set("next", pathname);
-    return NextResponse.redirect(loginUrl);
+    return applyAuthCookies(NextResponse.redirect(loginUrl), authRes);
   }
 
   if (isAdminPage || isAdminApi) {
     const response = NextResponse.next();
     response.headers.set("X-Robots-Tag", "noindex, nofollow");
     response.headers.set("Cache-Control", "no-store");
-    return response;
+    return applyAuthCookies(response, authRes);
   }
 
   const isParticipantApi = pathname.startsWith("/api/participant");
@@ -104,30 +132,34 @@ export function middleware(request: NextRequest) {
     !isPublicParticipantAuthPath(pathname) &&
     !hasParticipantSessionCookie(request)
   ) {
-    return NextResponse.json(
-      { error: { code: "UNAUTHORIZED", message: "Unauthorized" } },
-      {
-        status: 401,
-        headers: {
-          "Cache-Control": "no-store",
-          "X-Content-Type-Options": "nosniff",
-          "Referrer-Policy": "no-referrer",
+    return applyAuthCookies(
+      NextResponse.json(
+        { error: { code: "UNAUTHORIZED", message: "Unauthorized" } },
+        {
+          status: 401,
+          headers: {
+            "Cache-Control": "no-store",
+            "X-Content-Type-Options": "nosniff",
+            "Referrer-Policy": "no-referrer",
+          },
         },
-      },
+      ),
+      authRes,
     );
   }
 
   if (isParticipantProtectedPage && !hasParticipantSessionCookie(request)) {
     const loginUrl = new URL("/login", request.url);
     loginUrl.searchParams.set("next", pathname);
-    return NextResponse.redirect(loginUrl);
+    return applyAuthCookies(NextResponse.redirect(loginUrl), authRes);
   }
 
-  return NextResponse.next();
+  return applyAuthCookies(NextResponse.next(), authRes);
 }
 
 export const config = {
   matcher: [
+    "/auth/:path*",
     "/dev/:path*",
     "/admin/:path*",
     "/api/admin/:path*",
