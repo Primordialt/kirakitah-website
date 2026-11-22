@@ -1,6 +1,7 @@
 "use client";
 
 import { Button, Input } from "@/components/ui";
+import { auth0SocialLoginPath, isAuth0LoginEnabled } from "@/lib/auth0-paths";
 import { apiErrorMessage, participantFetch } from "@/lib/participant/api";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -52,9 +53,39 @@ export function LoginForm() {
       <p className="mt-3 text-body text-text-secondary">
         Sign in to your KIRAKITAH participant account.
       </p>
+      {searchParams.get("error") === "unavailable" ? (
+        <p role="alert" className="mt-4 text-body-sm text-error">
+          This account cannot sign in right now.
+        </p>
+      ) : null}
+
+      {isAuth0LoginEnabled() ? (
+        <>
+          <div className="mt-8 flex flex-col gap-3">
+            <Button
+              href={auth0SocialLoginPath("google", searchParams.get("next"))}
+              className="w-full"
+            >
+              Continue with Google
+            </Button>
+            <Button
+              href={auth0SocialLoginPath("apple", searchParams.get("next"))}
+              variant="outline"
+              className="w-full"
+            >
+              Continue with Apple
+            </Button>
+          </div>
+          <p className="mt-8 text-body-sm text-text-secondary">
+            Or use your KIRAKITAH password
+          </p>
+        </>
+      ) : null}
 
       <form
-        className="mt-8 space-y-5"
+        className={
+          isAuth0LoginEnabled() ? "mt-4 space-y-5" : "mt-8 space-y-5"
+        }
         onSubmit={(event) => void onSubmit(event)}
         noValidate
       >

@@ -2,6 +2,7 @@ import { RegisterEmailForm } from "@/components/features/participant/RegisterEma
 import { SectionShell } from "@/components/sections/esports/SectionShell";
 import { siteConfig } from "@/config/site";
 import type { Metadata } from "next";
+import { Suspense } from "react";
 
 export const metadata: Metadata = {
   title: "Join KIRAKITAH — Register",
@@ -12,7 +13,13 @@ export const metadata: Metadata = {
 export default function RegisterPage() {
   return (
     <SectionShell className="py-12 md:py-16" containerClassName="max-w-2xl">
-      <RegisterEmailForm />
+      <Suspense
+        fallback={
+          <p className="text-body-sm text-text-muted">Loading registration…</p>
+        }
+      >
+        <RegisterEmailForm />
+      </Suspense>
     </SectionShell>
   );
 }

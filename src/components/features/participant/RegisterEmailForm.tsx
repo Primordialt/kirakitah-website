@@ -1,11 +1,12 @@
 "use client";
 
 import { Button, Input } from "@/components/ui";
+import { auth0SocialLoginPath, isAuth0LoginEnabled } from "@/lib/auth0-paths";
 import { apiErrorMessage, participantFetch } from "@/lib/participant/api";
 import { PARTICIPANT_ACCOUNT_EXISTS_MESSAGE } from "@/lib/participant/messages";
 import { writeRegistrationState } from "@/lib/participant/registration-session";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 
 type Step = "email" | "otp" | "already_registered";
@@ -13,7 +14,9 @@ type Step = "email" | "otp" | "already_registered";
 export function RegisterEmailForm() {
   const router = useRouter();
   const [step, setStep] = useState<Step>("email");
-  const [email, setEmail] = useState("");
+  const searchParams = useSearchParams();
+  const prefilledEmail = searchParams.get("email")?.trim() ?? "";
+  const [email, setEmail] = useState(prefilledEmail);
   const [challengeId, setChallengeId] = useState<string | null>(null);
   const [code, setCode] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -132,10 +135,37 @@ export function RegisterEmailForm() {
           ? "Enter the 6-digit code we sent to your email."
           : "Create your KIRAKITAH participant account."}
       </p>
+      {step === "email" && searchParams.get("notice") === "finish-profile" ? (
+        <p className="mt-4 text-body-sm text-text-secondary" role="status">
+          Your sign-up is confirmed. Finish your KIRAKITAH profile with the
+          same email.
+        </p>
+      ) : null}
+      {step === "email" &&
+      isAuth0LoginEnabled() &&
+      searchParams.get("notice") !== "finish-profile" ? (
+        <div className="mt-8 flex flex-col gap-3">
+          <Button href={auth0SocialLoginPath("google")} className="w-full">
+            Continue with Google
+          </Button>
+          <Button
+            href={auth0SocialLoginPath("apple")}
+            variant="outline"
+            className="w-full"
+          >
+            Continue with Apple
+          </Button>
+          <p className="mt-3 text-body-sm text-text-secondary">
+            Or continue with email verification
+          </p>
+        </div>
+      ) : null}
 
       {step === "email" ? (
         <form
-          className="mt-8 space-y-5"
+          className={
+            isAuth0LoginEnabled() ? "mt-4 space-y-5" : "mt-8 space-y-5"
+          }
           onSubmit={(event) => void onChallenge(event)}
           noValidate
         >
