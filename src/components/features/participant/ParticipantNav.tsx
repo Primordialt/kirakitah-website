@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useId, useState } from "react";
 import { ChatboxNavLink } from "@/components/features/chatbox/ChatboxNavLink";
 import { LogoutButton } from "@/components/features/participant/LogoutButton";
 import { VerifiedBadge } from "@/components/ui/VerifiedBadge";
@@ -87,38 +86,24 @@ export function ParticipantPortalHeader({
 }: {
   identity: PortalIdentity | null;
 }) {
-  const [menuOpen, setMenuOpen] = useState(false);
-  const menuId = useId();
-  const pathname = usePathname();
-
-  useEffect(() => {
-    setMenuOpen(false);
-  }, [pathname]);
-
-  useEffect(() => {
-    if (!menuOpen) return;
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setMenuOpen(false);
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [menuOpen]);
-
   return (
-    <header className="border-b border-border bg-surface">
-      <div className="mx-auto flex max-w-6xl items-center gap-3 px-4 py-3 sm:px-6">
+    <header
+      className="sticky top-0 z-30 border-b border-border bg-surface/95 backdrop-blur-md"
+      style={{ paddingTop: "env(safe-area-inset-top)" }}
+    >
+      <div className="mx-auto flex h-14 max-w-6xl items-center gap-3 px-4 sm:px-6">
         <div className="min-w-0 flex-1">
           <p className="text-caption font-semibold tracking-[0.18em] text-brand-primary">
             KIRAKITAH
           </p>
-          <p className="text-body-sm font-medium text-text-primary">
+          <p className="hidden text-body-sm font-medium text-text-primary sm:block">
             Participant Portal
           </p>
         </div>
 
         {identity ? (
-          <div className="hidden min-w-0 items-center gap-2 sm:flex">
-            <span className="truncate text-body-sm font-medium text-text-primary">
+          <div className="flex min-w-0 items-center gap-2">
+            <span className="max-w-28 truncate text-body-sm font-medium text-text-primary sm:max-w-none">
               {identity.username}
             </span>
             <VerifiedBadge verified={identity.profileVerified} />
@@ -132,16 +117,6 @@ export function ParticipantPortalHeader({
         >
           Alerts
         </Link>
-
-        <button
-          type="button"
-          className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg border border-border text-body-sm font-medium text-text-primary hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus md:hidden"
-          aria-expanded={menuOpen}
-          aria-controls={menuId}
-          onClick={() => setMenuOpen((open) => !open)}
-        >
-          Menu
-        </button>
       </div>
 
       <nav
@@ -155,29 +130,6 @@ export function ParticipantPortalHeader({
           </div>
         </div>
       </nav>
-
-      {menuOpen ? (
-        <div
-          id={menuId}
-          className="border-t border-border bg-surface px-4 py-4 md:hidden"
-        >
-          {identity ? (
-            <p className="mb-3 flex items-center gap-2 text-body-sm font-medium text-text-primary">
-              <span className="truncate">{identity.username}</span>
-              <VerifiedBadge verified={identity.profileVerified} />
-            </p>
-          ) : null}
-          <nav aria-label="Participant portal mobile">
-            <ParticipantNavLinks
-              orientation="vertical"
-              onNavigate={() => setMenuOpen(false)}
-            />
-            <div className="mt-3 border-t border-border pt-3">
-              <LogoutButton />
-            </div>
-          </nav>
-        </div>
-      ) : null}
     </header>
   );
 }

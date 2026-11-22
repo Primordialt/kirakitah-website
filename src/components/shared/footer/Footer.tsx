@@ -19,7 +19,7 @@ export function Footer() {
   const legalColumn = footerColumns.find((col) => col.title === "Legal");
 
   return (
-    <footer className="border-t border-border bg-surface">
+    <footer className="border-t border-border bg-surface pb-[env(safe-area-inset-bottom)]">
       <div className="container-wide py-12 md:py-16">
         <div className="grid gap-10 md:grid-cols-2 lg:grid-cols-12 lg:gap-8">
           <div className="lg:col-span-4">

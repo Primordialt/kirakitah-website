@@ -4,6 +4,7 @@ import {
   ParticipantPortalHeader,
   ParticipantNavLinks,
 } from "@/components/features/participant/ParticipantNav";
+import { PortalMobileTabBar } from "@/components/features/participant/portal/PortalMobileTabBar";
 
 export type PortalShellIdentity = {
   username: string;
@@ -18,7 +19,7 @@ export function ParticipantPortalShell({
   identity: PortalShellIdentity | null;
 }) {
   return (
-    <div className="flex min-h-screen flex-col bg-background">
+    <div className="flex min-h-dvh flex-col bg-background">
       <a
         href="#main-content"
         className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-[100] focus:rounded-lg focus:bg-brand-primary focus:px-4 focus:py-2 focus:text-white focus:outline-none"
@@ -26,7 +27,7 @@ export function ParticipantPortalShell({
         Skip to main content
       </a>
       <ParticipantPortalHeader identity={identity} />
-      <div className="mx-auto flex w-full max-w-6xl flex-1 gap-8 px-4 py-6 sm:px-6 md:py-8">
+      <div className="mx-auto flex w-full max-w-6xl flex-1 gap-8 px-4 pt-4 pb-[calc(5.5rem+env(safe-area-inset-bottom))] sm:px-6 md:py-8 md:pb-8">
         <aside className="hidden w-52 shrink-0 lg:block">
           <p className="mb-3 text-caption font-semibold uppercase tracking-wide text-text-muted">
             Navigate
@@ -50,7 +51,7 @@ export function ParticipantPortalShell({
           {children}
         </main>
       </div>
-      <footer className="border-t border-border py-4 text-center text-body-sm text-text-muted">
+      <footer className="hidden border-t border-border py-4 text-center text-body-sm text-text-muted md:block">
         KIRAKITAH Participant Portal ·{" "}
         <Link
           href="/"
@@ -59,6 +60,7 @@ export function ParticipantPortalShell({
           Back to website
         </Link>
       </footer>
+      <PortalMobileTabBar identity={identity} />
     </div>
   );
 }

@@ -47,7 +47,12 @@ export function Header({ auth = unauthenticatedSiteHeaderAuth }: HeaderProps) {
           ? "border-border bg-background/95 shadow-sm backdrop-blur-md"
           : "border-transparent bg-background/80 backdrop-blur-sm",
       )}
-      style={{ "--header-height": "4rem" } as CSSProperties}
+      style={
+        {
+          "--header-height": "calc(4rem + env(safe-area-inset-top))",
+          paddingTop: "env(safe-area-inset-top)",
+        } as CSSProperties
+      }
     >
       <div className="container-wide flex h-16 items-center justify-between gap-4">
         <BrandLogo tone="white" aria-current={isHome ? "page" : undefined} />
