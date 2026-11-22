@@ -15,6 +15,25 @@ type ArenaCard = {
   roundState?: string | null;
 };
 
+type ArenaHistoryItem = {
+  id: string;
+  at: string;
+  arenaName: string;
+  label: "Won" | "Entered";
+  detail: string;
+};
+
+function formatWhen(iso: string): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "";
+  return new Intl.DateTimeFormat(undefined, {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(date);
+}
+
 function arenaStatusLabel(arena: Pick<ArenaCard, "enabled" | "paused" | "roundState">): string {
   if (!arena.enabled) return "Offline";
   if (arena.paused) return "Paused";
@@ -30,19 +49,22 @@ function arenaStatusLabel(arena: Pick<ArenaCard, "enabled" | "paused" | "roundSt
 
 export function ArenaDirectoryClient() {
   const [arenas, setArenas] = useState<ArenaCard[]>([]);
+  const [history, setHistory] = useState<ArenaHistoryItem[]>([]);
   const [walletKk, setWalletKk] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
-    const [{ response, payload }, walletRes] = await Promise.all([
+    const [{ response, payload }, walletRes, historyRes] = await Promise.all([
       participantFetch<{ arenas?: ArenaCard[] }>("/api/participant/arena"),
       participantFetch<{ wallet?: { balanceKk: string; availableKk?: string } }>("/api/participant/wallet"),
+      participantFetch<{ items?: ArenaHistoryItem[] }>("/api/participant/arena/history"),
     ]);
     setLoading(false);
     if (response.ok) setArenas(payload.arenas ?? []);
     if (walletRes.response.ok) {
       setWalletKk(walletRes.payload.wallet?.availableKk ?? walletRes.payload.wallet?.balanceKk ?? "0");
     }
+    if (historyRes.response.ok) setHistory(historyRes.payload.items ?? []);
   }, []);
 
   useEffect(() => {
@@ -116,6 +138,33 @@ export function ArenaDirectoryClient() {
           })}
         </ul>
       )}
+
+      {!loading ? (
+        <section className="space-y-3" aria-labelledby="arena-history-heading">
+          <h2 id="arena-history-heading" className="text-h4 text-text-primary">
+            Your arena history
+          </h2>
+          {history.length === 0 ? (
+            <p className="text-body-sm text-text-secondary">No arena rounds yet.</p>
+          ) : (
+            <ul className="divide-y divide-border rounded-xl border border-border bg-surface">
+              {history.map((item) => (
+                <li key={item.id} className="flex flex-col gap-1 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="min-w-0">
+                    <p className="text-body-sm font-medium text-text-primary">
+                      {item.label} · {item.arenaName}
+                    </p>
+                    <p className="text-caption text-text-secondary">{item.detail}</p>
+                  </div>
+                  <time className="text-caption text-text-muted" dateTime={item.at}>
+                    {formatWhen(item.at)}
+                  </time>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      ) : null}
     </div>
   );
 }

@@ -58,6 +58,12 @@ describe("Arena participant UI", () => {
           payload: { wallet: { balanceKk: "12.5" } },
         };
       }
+      if (String(input) === "/api/participant/arena/history") {
+        return {
+          response: { ok: true } as Response,
+          payload: { items: [] },
+        };
+      }
       return {
         response: { ok: true } as Response,
         payload: {
@@ -92,6 +98,8 @@ describe("Arena participant UI", () => {
       "href",
       "/arena/quickfire",
     );
+    expect(screen.getByRole("heading", { name: "Your arena history" })).toBeInTheDocument();
+    expect(screen.getByText("No arena rounds yet.")).toBeInTheDocument();
 
     const card = screen.getByRole("heading", { name: /KIRAKITAH QUICKFIRE/i }).closest("li");
     const text = card?.textContent ?? "";
@@ -106,6 +114,43 @@ describe("Arena participant UI", () => {
     ]) {
       expect(text).not.toContain(phrase);
     }
+  });
+
+  it("shows the player's own arena result without the answer", async () => {
+    vi.mocked(participantFetch).mockImplementation((async (input) => {
+      if (String(input) === "/api/participant/wallet") {
+        return {
+          response: { ok: true } as Response,
+          payload: { wallet: { balanceKk: "12.5" } },
+        };
+      }
+      if (String(input) === "/api/participant/arena/history") {
+        return {
+          response: { ok: true } as Response,
+          payload: {
+            items: [
+              {
+                id: "response-1",
+                at: "2026-11-22T20:00:00.000Z",
+                arenaName: "KIRAKITAH QUICKFIRE",
+                label: "Won",
+                detail: "Round #4 · +3 KK",
+              },
+            ],
+          },
+        };
+      }
+      return {
+        response: { ok: true } as Response,
+        payload: { arenas: [] },
+      };
+    }) as typeof participantFetch);
+
+    render(<ArenaDirectoryClient />);
+
+    expect(await screen.findByText("Won · KIRAKITAH QUICKFIRE")).toBeInTheDocument();
+    expect(screen.getByText("Round #4 · +3 KK")).toBeInTheDocument();
+    expect(document.body.textContent).not.toMatch(/payload|@|email/i);
   });
 
   it("hides activity, player counts, and validation copy on the game screen", async () => {
