@@ -4,8 +4,11 @@ import { getAuth0 } from "@/lib/auth0";
 import { safeAppPath } from "@/lib/auth0-paths";
 import { getDb } from "@/server/db";
 import { participantAccounts } from "@/server/db/schema";
-import { recordParticipantAuditEvent } from "@/server/participant/audit";
-import { setParticipantSessionCookie } from "@/server/participant/auth/session";
+import {
+  createSocialParticipantAccount,
+  socialProviderFromSubject,
+  startSocialParticipantSession,
+} from "@/server/participant/auth/social";
 import { normalizeRegistrationEmail } from "@/server/verification/email/pre-registration";
 
 export const dynamic = "force-dynamic";
@@ -21,11 +24,13 @@ export async function GET(request: Request) {
 
   const session = await auth0.getSession();
   const email = session?.user.email;
-  if (!email) return NextResponse.redirect(loginUrl);
+  const provider = socialProviderFromSubject(session?.user.sub);
+  if (!email || !provider) return NextResponse.redirect(loginUrl);
+  if (session?.user.email_verified === false) return NextResponse.redirect(loginUrl);
 
   const emailNormalized = normalizeRegistrationEmail(email);
   const db = getDb();
-  const [row] = await db
+  const [existing] = await db
     .select({
       id: participantAccounts.id,
       email: participantAccounts.email,
@@ -37,43 +42,30 @@ export async function GET(request: Request) {
     .where(eq(participantAccounts.emailNormalized, emailNormalized))
     .limit(1);
 
-  if (!row) {
-    const registerUrl = new URL("/register", url);
-    registerUrl.searchParams.set("notice", "finish-profile");
-    registerUrl.searchParams.set("email", email);
-    return NextResponse.redirect(registerUrl);
-  }
-
   const locked =
-    Boolean(row.lockedUntil) && Date.parse(row.lockedUntil ?? "") > Date.now();
-  if (!row.active || locked) {
+    Boolean(existing?.lockedUntil) &&
+    Date.parse(existing?.lockedUntil ?? "") > Date.now();
+  if (existing && (!existing.active || locked)) {
     loginUrl.searchParams.set("error", "unavailable");
     return NextResponse.redirect(loginUrl);
   }
 
-  const now = new Date().toISOString();
-  await db
-    .update(participantAccounts)
-    .set({
-      failedLoginAttempts: 0,
-      lockedUntil: null,
-      updatedAt: now,
-    })
-    .where(eq(participantAccounts.id, row.id));
+  const user =
+    existing ??
+    (await createSocialParticipantAccount({
+      email: emailNormalized,
+      provider,
+    }));
 
-  await setParticipantSessionCookie({
-    id: row.id,
-    email: row.email,
-    username: row.username,
-    active: row.active,
-  });
-
-  await recordParticipantAuditEvent({
-    eventType: "PARTICIPANT_LOGIN_SUCCESS",
-    accountId: row.id,
-    actor: row.id,
-    metadata: { method: "auth0" },
-  }).catch(() => undefined);
+  await startSocialParticipantSession(
+    {
+      id: user.id,
+      email: user.email,
+      username: user.username,
+      active: user.active,
+    },
+    provider,
+  );
 
   return NextResponse.redirect(new URL(nextPath, url));
 }

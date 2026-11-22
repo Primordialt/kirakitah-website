@@ -34,3 +34,20 @@ export function auth0LoginPath(
   params.set("returnTo", auth0ContinuePath(nextPath));
   return `/auth/login?${params.toString()}`;
 }
+
+export type Auth0SocialProvider = "google" | "apple";
+
+const SOCIAL_CONNECTION: Record<Auth0SocialProvider, string> = {
+  google: "google-oauth2",
+  apple: "apple",
+};
+
+export function auth0SocialLoginPath(
+  provider: Auth0SocialProvider,
+  nextPath?: string | null,
+): string {
+  const params = new URLSearchParams();
+  params.set("connection", SOCIAL_CONNECTION[provider]);
+  params.set("returnTo", auth0ContinuePath(nextPath));
+  return `/auth/login?${params.toString()}`;
+}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { auth0LoginPath, safeAppPath } from "@/lib/auth0-paths";
+import { auth0SocialLoginPath, safeAppPath } from "@/lib/auth0-paths";
 
 describe("auth0 paths", () => {
   it("keeps in-app destinations", () => {
@@ -8,12 +8,12 @@ describe("auth0 paths", () => {
     expect(safeAppPath("https://evil.example")).toBe("/dashboard");
   });
 
-  it("sends sign-in and sign-up through Auth0 and back to the app", () => {
-    expect(auth0LoginPath("/wallet")).toBe(
-      "/auth/login?returnTo=%2Flogin%2Fcontinue%3Fnext%3D%252Fwallet",
+  it("sends Google and Apple sign-in through Auth0 and back to the app", () => {
+    expect(auth0SocialLoginPath("google", "/wallet")).toBe(
+      "/auth/login?connection=google-oauth2&returnTo=%2Flogin%2Fcontinue%3Fnext%3D%252Fwallet",
     );
-    expect(auth0LoginPath("/wallet", "signup")).toBe(
-      "/auth/login?screen_hint=signup&returnTo=%2Flogin%2Fcontinue%3Fnext%3D%252Fwallet",
+    expect(auth0SocialLoginPath("apple", "/wallet")).toBe(
+      "/auth/login?connection=apple&returnTo=%2Flogin%2Fcontinue%3Fnext%3D%252Fwallet",
     );
   });
 });

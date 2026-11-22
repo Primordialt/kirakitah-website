@@ -1,7 +1,7 @@
 "use client";
 
 import { Button, Input } from "@/components/ui";
-import { auth0LoginPath, isAuth0LoginEnabled } from "@/lib/auth0-paths";
+import { auth0SocialLoginPath, isAuth0LoginEnabled } from "@/lib/auth0-paths";
 import { apiErrorMessage, participantFetch } from "@/lib/participant/api";
 import { PARTICIPANT_ACCOUNT_EXISTS_MESSAGE } from "@/lib/participant/messages";
 import { writeRegistrationState } from "@/lib/participant/registration-session";
@@ -144,11 +144,18 @@ export function RegisterEmailForm() {
       {step === "email" &&
       isAuth0LoginEnabled() &&
       searchParams.get("notice") !== "finish-profile" ? (
-        <div className="mt-8">
-          <Button href={auth0LoginPath(null, "signup")} className="w-full">
-            Sign up
+        <div className="mt-8 flex flex-col gap-3">
+          <Button href={auth0SocialLoginPath("google")} className="w-full">
+            Continue with Google
           </Button>
-          <p className="mt-6 text-body-sm text-text-secondary">
+          <Button
+            href={auth0SocialLoginPath("apple")}
+            variant="outline"
+            className="w-full"
+          >
+            Continue with Apple
+          </Button>
+          <p className="mt-3 text-body-sm text-text-secondary">
             Or continue with email verification
           </p>
         </div>

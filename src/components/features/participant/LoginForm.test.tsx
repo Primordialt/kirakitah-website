@@ -31,13 +31,13 @@ describe("LoginForm Auth0 entry", () => {
     vi.stubEnv("NEXT_PUBLIC_AUTH0_ENABLED", "true");
     render(<LoginForm />);
 
-    expect(screen.getByRole("link", { name: "Sign in" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "Continue with Google" })).toHaveAttribute(
       "href",
-      "/auth/login?returnTo=%2Flogin%2Fcontinue%3Fnext%3D%252Fwallet",
+      "/auth/login?connection=google-oauth2&returnTo=%2Flogin%2Fcontinue%3Fnext%3D%252Fwallet",
     );
-    expect(screen.getByRole("link", { name: "Sign up" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "Continue with Apple" })).toHaveAttribute(
       "href",
-      "/auth/login?screen_hint=signup&returnTo=%2Flogin%2Fcontinue%3Fnext%3D%252Fwallet",
+      "/auth/login?connection=apple&returnTo=%2Flogin%2Fcontinue%3Fnext%3D%252Fwallet",
     );
     expect(screen.getByRole("button", { name: "LOGIN" })).toBeInTheDocument();
   });
@@ -46,7 +46,7 @@ describe("LoginForm Auth0 entry", () => {
     vi.stubEnv("NEXT_PUBLIC_AUTH0_ENABLED", "false");
     render(<LoginForm />);
 
-    expect(screen.queryByRole("link", { name: "Sign in" })).toBeNull();
+    expect(screen.queryByRole("link", { name: "Continue with Google" })).toBeNull();
     expect(screen.getByRole("button", { name: "LOGIN" })).toBeInTheDocument();
   });
 });

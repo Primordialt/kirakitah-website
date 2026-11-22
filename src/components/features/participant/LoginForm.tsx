@@ -1,7 +1,7 @@
 "use client";
 
 import { Button, Input } from "@/components/ui";
-import { auth0LoginPath, isAuth0LoginEnabled } from "@/lib/auth0-paths";
+import { auth0SocialLoginPath, isAuth0LoginEnabled } from "@/lib/auth0-paths";
 import { apiErrorMessage, participantFetch } from "@/lib/participant/api";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -63,17 +63,17 @@ export function LoginForm() {
         <>
           <div className="mt-8 flex flex-col gap-3">
             <Button
-              href={auth0LoginPath(searchParams.get("next"))}
+              href={auth0SocialLoginPath("google", searchParams.get("next"))}
               className="w-full"
             >
-              Sign in
+              Continue with Google
             </Button>
             <Button
-              href={auth0LoginPath(searchParams.get("next"), "signup")}
+              href={auth0SocialLoginPath("apple", searchParams.get("next"))}
               variant="outline"
               className="w-full"
             >
-              Sign up
+              Continue with Apple
             </Button>
           </div>
           <p className="mt-8 text-body-sm text-text-secondary">
