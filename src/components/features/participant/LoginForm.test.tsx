@@ -1,5 +1,5 @@
 import { LoginForm } from "@/components/features/participant/LoginForm";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("next/navigation", () => ({
@@ -39,6 +39,26 @@ describe("LoginForm Auth0 entry", () => {
       "href",
       "/auth/login?connection=apple&returnTo=%2Flogin%2Fcontinue%3Fnext%3D%252Fwallet",
     );
+    expect(screen.getByRole("button", { name: "Email or username" })).toHaveAttribute(
+      "aria-expanded",
+      "false",
+    );
+    expect(screen.queryByLabelText(/password/i)).toBeNull();
+    expect(screen.queryByRole("button", { name: "LOGIN" })).toBeNull();
+  });
+
+  it("shows the username and password fields after Email or username is chosen", () => {
+    vi.stubEnv("NEXT_PUBLIC_AUTH0_ENABLED", "true");
+    render(<LoginForm />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Email or username" }));
+
+    expect(screen.getByRole("button", { name: "Email or username" })).toHaveAttribute(
+      "aria-expanded",
+      "true",
+    );
+    expect(screen.getByLabelText(/email or username/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/^password/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "LOGIN" })).toBeInTheDocument();
   });
 
