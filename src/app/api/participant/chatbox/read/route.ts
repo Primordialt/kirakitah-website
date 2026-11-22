@@ -3,6 +3,7 @@ import { apiError } from "@/server/errors";
 import { isChatError } from "@/server/chat/errors";
 import { markCommunityRead } from "@/server/chat/service";
 import {
+  assertParticipantCsrf,
   ParticipantAuthenticationError,
   requireParticipantApiSession,
 } from "@/server/participant";
@@ -18,6 +19,7 @@ export async function POST(request: Request) {
   const requestId = getOrCreateRequestId(request);
   try {
     const session = await requireParticipantApiSession(request);
+    assertParticipantCsrf(request);
     const body = (await request.json()) as { lastReadMessageId?: string };
     if (!body.lastReadMessageId || typeof body.lastReadMessageId !== "string") {
       return NextResponse.json(apiError("VALIDATION_ERROR", "lastReadMessageId required."), {

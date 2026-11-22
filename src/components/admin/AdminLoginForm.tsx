@@ -1,6 +1,7 @@
 "use client";
 
 import { ADMIN_ROLES, type AdminRole } from "@/lib/admin-roles";
+import { safeAppPath } from "@/lib/auth0-paths";
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
@@ -49,8 +50,8 @@ export function AdminLoginForm({
       return;
     }
 
-    const next = searchParams.get("next") || "/admin";
-    router.replace(next.startsWith("/admin") ? next : "/admin");
+    const next = safeAppPath(searchParams.get("next"), "/admin");
+    router.replace(next === "/admin" || next.startsWith("/admin/") ? next : "/admin");
     router.refresh();
   };
 

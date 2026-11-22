@@ -5,6 +5,7 @@ import { isArenaError } from "@/server/arena/errors";
 import { isWalletError } from "@/server/wallet/errors";
 import { apiError } from "@/server/errors";
 import {
+  assertParticipantCsrf,
   ParticipantAuthenticationError,
   requireParticipantApiSession,
 } from "@/server/participant";
@@ -22,6 +23,7 @@ export async function POST(
   const { slug } = await context.params;
   try {
     const session = await requireParticipantApiSession(request);
+    assertParticipantCsrf(request);
     const body = (await request.json()) as {
       payload?: unknown;
       clientRequestId?: unknown;

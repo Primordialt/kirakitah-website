@@ -10,12 +10,9 @@ export function safeAppPath(
   fallback = DEFAULT_NEXT_PATH,
 ): string {
   if (!value) return fallback;
-  if (!value.startsWith("/") || value.startsWith("//") || value.startsWith("/\\")) {
-    return fallback;
-  }
-  if (value.includes("\\") || value.includes("\n") || value.includes("\r")) {
-    return fallback;
-  }
+  if (/[\u0000-\u001F\u007F]/.test(value) || value.includes("\\")) return fallback;
+  const slashes = value.replaceAll("\\", "/");
+  if (!slashes.startsWith("/") || slashes.startsWith("//")) return fallback;
   return value;
 }
 

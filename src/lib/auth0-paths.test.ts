@@ -6,6 +6,8 @@ describe("auth0 paths", () => {
     expect(safeAppPath("/wallet")).toBe("/wallet");
     expect(safeAppPath("//evil.example")).toBe("/dashboard");
     expect(safeAppPath("https://evil.example")).toBe("/dashboard");
+    expect(safeAppPath("/\\evil.example")).toBe("/dashboard");
+    expect(safeAppPath("/wallet\nSet-Cookie:a")).toBe("/dashboard");
   });
 
   it("sends Google and Apple sign-in through Auth0 and back to the app", () => {

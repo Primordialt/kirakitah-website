@@ -4,6 +4,7 @@ import { ChatError, isChatError } from "@/server/chat/errors";
 import { sendParticipantMessage } from "@/server/chat/service";
 import { validateChatMessageContent } from "@/server/chat/validation";
 import {
+  assertParticipantCsrf,
   ParticipantAuthenticationError,
   requireParticipantApiSession,
 } from "@/server/participant";
@@ -19,6 +20,7 @@ export async function POST(request: Request) {
   const requestId = getOrCreateRequestId(request);
   try {
     const session = await requireParticipantApiSession(request);
+    assertParticipantCsrf(request);
     const body = (await request.json()) as {
       content?: string;
       replyToMessageId?: string | null;

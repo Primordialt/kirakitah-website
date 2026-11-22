@@ -30,6 +30,20 @@ function isPublicParticipantAuthPath(pathname: string): boolean {
   );
 }
 
+function dropUnsafeLogoutReturn(request: NextRequest): void {
+  if (request.nextUrl.pathname !== "/auth/logout") return;
+  const returnTo = request.nextUrl.searchParams.get("returnTo");
+  if (returnTo === null) return;
+  try {
+    const target = new URL(returnTo, request.nextUrl.origin);
+    if (target.origin !== request.nextUrl.origin) {
+      request.nextUrl.searchParams.delete("returnTo");
+    }
+  } catch {
+    request.nextUrl.searchParams.delete("returnTo");
+  }
+}
+
 function applyAuthCookies(
   response: NextResponse,
   authRes: NextResponse | null,
@@ -65,6 +79,7 @@ export async function middleware(request: NextRequest) {
 
   let authRes: NextResponse | null = null;
   if (auth0) {
+    dropUnsafeLogoutReturn(request);
     authRes = await auth0.middleware(request);
     if (pathname.startsWith("/auth")) return authRes;
     if (authRes.status >= 300 && authRes.status < 400) return authRes;

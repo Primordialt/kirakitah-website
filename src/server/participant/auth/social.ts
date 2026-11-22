@@ -16,6 +16,10 @@ import { normalizeRegistrationEmail } from "@/server/verification/email/pre-regi
 
 export type SocialProvider = "google" | "apple";
 
+export function providerEmailIsVerified(emailVerified: unknown): boolean {
+  return emailVerified === true;
+}
+
 export function socialProviderFromSubject(
   subject: string | undefined,
 ): SocialProvider | null {

@@ -6,6 +6,7 @@ import { getDb } from "@/server/db";
 import { participantAccounts } from "@/server/db/schema";
 import {
   createSocialParticipantAccount,
+  providerEmailIsVerified,
   socialProviderFromSubject,
   startSocialParticipantSession,
 } from "@/server/participant/auth/social";
@@ -26,7 +27,9 @@ export async function GET(request: Request) {
   const email = session?.user.email;
   const provider = socialProviderFromSubject(session?.user.sub);
   if (!email || !provider) return NextResponse.redirect(loginUrl);
-  if (session?.user.email_verified === false) return NextResponse.redirect(loginUrl);
+  if (!providerEmailIsVerified(session?.user.email_verified)) {
+    return NextResponse.redirect(loginUrl);
+  }
 
   const emailNormalized = normalizeRegistrationEmail(email);
   const db = getDb();

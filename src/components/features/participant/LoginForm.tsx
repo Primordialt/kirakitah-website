@@ -1,7 +1,11 @@
 "use client";
 
 import { Button, Input } from "@/components/ui";
-import { auth0SocialLoginPath, isAuth0LoginEnabled } from "@/lib/auth0-paths";
+import {
+  auth0SocialLoginPath,
+  isAuth0LoginEnabled,
+  safeAppPath,
+} from "@/lib/auth0-paths";
 import { apiErrorMessage, participantFetch } from "@/lib/participant/api";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -40,10 +44,7 @@ export function LoginForm() {
       return;
     }
 
-    const next = searchParams.get("next");
-    const safeNext =
-      next && next.startsWith("/") && !next.startsWith("//") ? next : "/dashboard";
-    router.replace(safeNext);
+    router.replace(safeAppPath(searchParams.get("next")));
     router.refresh();
   };
 
