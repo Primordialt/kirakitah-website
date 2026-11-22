@@ -39,7 +39,7 @@ describe("LoginForm Auth0 entry", () => {
       "href",
       "/auth/login?connection=apple&returnTo=%2Flogin%2Fcontinue%3Fnext%3D%252Fwallet",
     );
-    expect(screen.getByRole("button", { name: "Email or username" })).toHaveAttribute(
+    expect(screen.getByRole("button", { name: "Continue with Email or Username" })).toHaveAttribute(
       "aria-expanded",
       "false",
     );
@@ -47,13 +47,13 @@ describe("LoginForm Auth0 entry", () => {
     expect(screen.queryByRole("button", { name: "LOGIN" })).toBeNull();
   });
 
-  it("shows the username and password fields after Email or username is chosen", () => {
+  it("shows the username and password fields after Continue with Email or Username is chosen", () => {
     vi.stubEnv("NEXT_PUBLIC_AUTH0_ENABLED", "true");
     render(<LoginForm />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Email or username" }));
+    fireEvent.click(screen.getByRole("button", { name: "Continue with Email or Username" }));
 
-    expect(screen.getByRole("button", { name: "Email or username" })).toHaveAttribute(
+    expect(screen.getByRole("button", { name: "Continue with Email or Username" })).toHaveAttribute(
       "aria-expanded",
       "true",
     );

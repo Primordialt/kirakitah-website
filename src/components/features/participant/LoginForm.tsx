@@ -97,7 +97,7 @@ export function LoginForm() {
               setPasswordOpen(true);
             }}
           >
-            Email or username
+            Continue with Email or Username
           </Button>
         </div>
       ) : null}
