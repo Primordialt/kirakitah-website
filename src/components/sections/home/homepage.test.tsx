@@ -66,7 +66,7 @@ describe("HomePage", () => {
       "/register",
     );
 
-    expect(screen.getByText(/Put KIRAKITAH on your phone/i)).toBeInTheDocument();
+    expect(screen.getByText("Put KIRAKITAH on your phone.")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Install App" })).toHaveAttribute(
       "href",
       "/get-the-app",
