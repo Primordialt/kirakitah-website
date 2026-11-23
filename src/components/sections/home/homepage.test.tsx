@@ -65,6 +65,12 @@ describe("HomePage", () => {
       "href",
       "/register",
     );
+
+    expect(screen.getByText(/Put KIRAKITAH on your phone/i)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Install App" })).toHaveAttribute(
+      "href",
+      "/get-the-app",
+    );
   });
 
   it("renders featured initiative statistics", async () => {

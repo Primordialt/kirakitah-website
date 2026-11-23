@@ -50,6 +50,8 @@ export const homepageHero = {
     "KIRAKITAH is a growing platform creating experiences around competition, creativity, technology, community and participation.",
   primaryCta: { label: "EXPLORE KIRAKITAH", href: "/about" } satisfies HomepageCta,
   secondaryCta: { label: "JOIN KIRAKITAH", href: "/register" } satisfies HomepageCta,
+  installNote: "Put KIRAKITAH on your phone. No app store.",
+  installCta: { label: "Install App", href: "/get-the-app" } satisfies HomepageCta,
 } as const;
 
 export const homepageBrandIntro = {

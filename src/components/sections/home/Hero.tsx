@@ -22,6 +22,10 @@ export function Hero() {
           <HomeCta cta={homepageHero.primaryCta} variant="primary" />
           <HomeCta cta={homepageHero.secondaryCta} variant="outline" />
         </div>
+        <div className="flex flex-col items-start gap-3">
+          <p className="text-body-sm text-text-secondary">{homepageHero.installNote}</p>
+          <HomeCta cta={homepageHero.installCta} variant="outline" />
+        </div>
       </div>
     </SectionShell>
   );
