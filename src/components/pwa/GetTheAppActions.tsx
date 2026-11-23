@@ -101,7 +101,7 @@ export function GetTheAppActions() {
     <div className="mt-8 flex flex-col gap-3">
       {installEvent ? (
         <Button type="button" size="lg" className="w-full" onClick={() => void install()}>
-          Add KIRAKITAH to this phone
+          Install App
         </Button>
       ) : null}
       <Button

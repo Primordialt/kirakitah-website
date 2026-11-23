@@ -7,6 +7,7 @@ describe("Add KIRAKITAH to your phone", () => {
     render(<GetTheAppPage />);
     expect(screen.getByRole("heading", { name: "Add KIRAKITAH to your phone" })).toBeInTheDocument();
     expect(screen.getByText(/Tap the Share button/i)).toBeInTheDocument();
+    expect(screen.getByText(/Tap Install App if you see that button/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Turn on phone alerts" })).toBeInTheDocument();
     expect(screen.queryByText(/service worker/i)).toBeNull();
     expect(screen.queryByText(/VAPID/i)).toBeNull();

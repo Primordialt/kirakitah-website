@@ -27,7 +27,7 @@ const MORE_LINKS = [
   { href: "/matches", label: "Fixtures" },
   { href: "/profile", label: "Profile" },
   { href: "/notifications", label: "Notifications" },
-  { href: "/get-the-app", label: "Add to your phone" },
+  { href: "/get-the-app", label: "Install App" },
   { href: "/account", label: "Account" },
   { href: "/esports", label: "Competition info" },
 ] as const;

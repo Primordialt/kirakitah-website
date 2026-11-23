@@ -23,7 +23,7 @@ const steps = [
   },
   {
     title: "Android",
-    body: "Tap Add KIRAKITAH to this phone if you see that button. If you do not, open the browser menu and tap Install app or Add to Home screen.",
+    body: "Tap Install App if you see that button. If you do not, open the browser menu and tap Install app or Add to Home screen.",
   },
   {
     title: "Open the icon",

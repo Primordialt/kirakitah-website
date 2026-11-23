@@ -101,7 +101,7 @@ export function NotificationsClient() {
         </p>
         <p className="mt-3 text-body-sm">
           <Link href="/get-the-app" className="font-medium text-brand-primary underline">
-            Add KIRAKITAH to your phone and turn on alerts
+            Install App
           </Link>
         </p>
       </header>
