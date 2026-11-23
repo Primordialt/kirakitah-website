@@ -99,6 +99,11 @@ export function NotificationsClient() {
         <p className="mt-2 text-body text-text-secondary">
           Updates about your profile, application, and tournament activity.
         </p>
+        <p className="mt-3 text-body-sm">
+          <Link href="/get-the-app" className="font-medium text-brand-primary underline">
+            Add KIRAKITAH to your phone and turn on alerts
+          </Link>
+        </p>
       </header>
 
       {error ? (

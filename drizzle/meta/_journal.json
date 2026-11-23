@@ -232,6 +232,13 @@
       "when": 1722556800000,
       "tag": "0032_nowpayments_wallet",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1722643200000,
+      "tag": "0033_push_subscriptions",
+      "breakpoints": true
     }
   ]
 }

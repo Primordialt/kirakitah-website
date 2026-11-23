@@ -4,6 +4,7 @@ import { Analytics } from "@vercel/analytics/next";
 import "@/styles/globals.css";
 import { siteConfig } from "@/config/site";
 import { withSocialMetadata } from "@/lib/social-metadata";
+import { PwaRegister } from "@/components/pwa/PwaRegister";
 import { OrganizationJsonLd } from "@/components/seo/OrganizationJsonLd";
 
 const montserrat = Montserrat({
@@ -29,6 +30,14 @@ export const metadata: Metadata = withSocialMetadata({
     type: "website",
     locale: "en",
   },
+  appleWebApp: {
+    capable: true,
+    title: "KIRAKITAH",
+    statusBarStyle: "black-translucent",
+  },
+  icons: {
+    apple: "/brand/logo-mark.png",
+  },
 });
 
 export default function RootLayout({
@@ -40,6 +49,7 @@ export default function RootLayout({
     <html lang="en">
       <body className={`${montserrat.variable} font-sans antialiased`}>
         <OrganizationJsonLd />
+        <PwaRegister />
         {children}
         <Analytics />
       </body>

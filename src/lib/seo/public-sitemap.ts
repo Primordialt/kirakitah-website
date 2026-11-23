@@ -41,6 +41,7 @@ export const PUBLIC_STATIC_SITEMAP_ENTRIES: readonly PublicSitemapEntry[] = [
   { path: "/contact", priority: 0.7, changeFrequency: "monthly", lastModified: "2026-08-01" },
   { path: "/terms", priority: 0.5, changeFrequency: "yearly", lastModified: "2026-08-01" },
   { path: "/privacy", priority: 0.5, changeFrequency: "yearly", lastModified: "2026-08-01" },
+  { path: "/get-the-app", priority: 0.7, changeFrequency: "monthly", lastModified: "2026-11-23" },
   {
     path: "/code-of-conduct",
     priority: 0.6,

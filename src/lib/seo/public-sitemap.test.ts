@@ -44,6 +44,7 @@ describe("public sitemap", () => {
         "/contact",
         "/terms",
         "/privacy",
+        "/get-the-app",
         "/code-of-conduct",
         "/initiatives/kirakitah-gaming",
         "/stories/kirakitah-gaming-926",

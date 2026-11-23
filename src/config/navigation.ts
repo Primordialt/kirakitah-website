@@ -83,6 +83,7 @@ export const footerColumns: FooterColumn[] = [
       { label: "Competition", href: "/esports" },
       { label: "Tournament Rules", href: "/esports/rules" },
       { label: "FAQ", href: "/esports/faq" },
+      { label: "Add to your phone", href: "/get-the-app" },
       { label: "Code of Conduct", href: "/code-of-conduct" },
     ],
   },
