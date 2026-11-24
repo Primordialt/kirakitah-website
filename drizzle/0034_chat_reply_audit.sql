@@ -1,0 +1,1 @@
+ALTER TYPE "admin_audit_event_type" ADD VALUE IF NOT EXISTS 'CHAT_REPLY_CREATED';

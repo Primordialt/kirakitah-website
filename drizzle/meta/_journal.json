@@ -239,6 +239,13 @@
       "when": 1722643200000,
       "tag": "0033_push_subscriptions",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1722729600000,
+      "tag": "0034_chat_reply_audit",
+      "breakpoints": true
     }
   ]
 }

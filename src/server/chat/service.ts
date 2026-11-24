@@ -751,6 +751,95 @@ export async function postAdminAnnouncement(input: {
   return view!;
 }
 
+export async function postAdminChatMessage(input: {
+  adminUserId: string;
+  adminRole: AdminRole;
+  content: string;
+  replyToMessageId?: string | null;
+  requestId?: string;
+}): Promise<ChatMessageView> {
+  const normalized = validateChatMessageContent(input.content);
+  const room = await getCommunityRoom();
+  const db = getDb();
+
+  if (input.replyToMessageId) {
+    const [replyTarget] = await db
+      .select({ id: chatMessages.id })
+      .from(chatMessages)
+      .where(
+        and(
+          eq(chatMessages.id, input.replyToMessageId),
+          eq(chatMessages.roomId, room.id),
+        ),
+      )
+      .limit(1);
+    if (!replyTarget) {
+      throw new ChatError("Reply target not found.", "VALIDATION_ERROR", 400);
+    }
+  }
+
+  const [inserted] = await db
+    .insert(chatMessages)
+    .values({
+      roomId: room.id,
+      senderAdminUserId: input.adminUserId,
+      content: normalized,
+      messageType: "user",
+      replyToMessageId: input.replyToMessageId ?? null,
+    })
+    .returning();
+
+  const mentionUsernames = parseMentionUsernames(normalized);
+  const mentioned = await resolveMentionAccounts(mentionUsernames);
+  if (mentioned.length > 0) {
+    await db.insert(chatMessageMentions).values(
+      mentioned.map((row) => ({
+        messageId: inserted!.id,
+        mentionedAccountId: row.id,
+      })),
+    );
+    for (const row of mentioned) {
+      await notifyChatEvent({
+        accountId: row.id,
+        eventType: "CHAT_MENTION",
+        messageId: inserted!.id,
+        roomSlug: room.slug,
+      });
+    }
+  }
+
+  if (input.replyToMessageId) {
+    const [parent] = await db
+      .select({ senderParticipantAccountId: chatMessages.senderParticipantAccountId })
+      .from(chatMessages)
+      .where(eq(chatMessages.id, input.replyToMessageId))
+      .limit(1);
+    if (parent?.senderParticipantAccountId) {
+      await notifyChatEvent({
+        accountId: parent.senderParticipantAccountId,
+        eventType: "CHAT_REPLY",
+        messageId: inserted!.id,
+        roomSlug: room.slug,
+      });
+    }
+  }
+
+  await recordAdminAuditEvent({
+    eventType: "CHAT_REPLY_CREATED",
+    actorId: input.adminUserId,
+    actorRole: input.adminRole,
+    requestId: input.requestId,
+    metadata: {
+      roomSlug: room.slug,
+      messageId: inserted!.id,
+      replyToMessageId: input.replyToMessageId ?? null,
+    },
+  });
+
+  const [view] = await projectMessages([inserted!], new Map());
+  return view!;
+}
+
 export async function postAdminMessageWhileLocked(input: {
   adminUserId: string;
   content: string;

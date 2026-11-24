@@ -77,6 +77,10 @@ export function AdminChatboxConsole({
   const [loadingOlder, setLoadingOlder] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
   const [announcement, setAnnouncement] = useState("");
+  const [reply, setReply] = useState("");
+  const [replyTarget, setReplyTarget] = useState<ChatMessageView | null>(null);
+  const [sendingReply, setSendingReply] = useState(false);
+  const replyRef = useRef<HTMLTextAreaElement>(null);
   const [restrictUsername, setRestrictUsername] = useState("");
   const [filters, setFilters] = useState({
     q: "",
@@ -145,6 +149,26 @@ export function AdminChatboxConsole({
     setLoadingOlder(true);
     await loadChat({ silent: true, cursor: nextCursor, prepend: true });
     setLoadingOlder(false);
+  };
+
+  const sendReply = async () => {
+    const content = reply.trim();
+    if (!content) {
+      setStatus("Write a reply before sending.");
+      return;
+    }
+    setSendingReply(true);
+    const result = await adminPost("/api/admin/chatbox/messages", {
+      content,
+      replyToMessageId: replyTarget?.id ?? null,
+    });
+    setSendingReply(false);
+    setStatus(result.ok ? "Reply sent." : result.message ?? "Failed.");
+    if (result.ok) {
+      setReply("");
+      setReplyTarget(null);
+      void loadChat({ silent: true });
+    }
   };
 
   const pinMessage = async (messageId: string | null) => {
@@ -334,27 +358,83 @@ export function AdminChatboxConsole({
                   Mentions: {message.mentions.join(", ")}
                 </p>
               ) : null}
-              {permissions.canModerate && !message.isDeleted ? (
+              {!message.isDeleted && (permissions.canAnnounce || permissions.canModerate) ? (
                 <div className="mt-2 flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    className="min-h-9 rounded px-2 text-caption font-medium text-accent underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus"
-                    onClick={() => void pinMessage(message.id)}
-                  >
-                    Pin
-                  </button>
-                  <button
-                    type="button"
-                    className="min-h-9 rounded px-2 text-caption font-medium text-error underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus"
-                    onClick={() => void deleteMessage(message.id)}
-                  >
-                    Delete
-                  </button>
+                  {permissions.canAnnounce ? (
+                    <button
+                      type="button"
+                      className="min-h-9 rounded px-2 text-caption font-medium text-accent underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus"
+                      onClick={() => {
+                        setReplyTarget(message);
+                        replyRef.current?.focus();
+                      }}
+                    >
+                      Reply
+                    </button>
+                  ) : null}
+                  {permissions.canModerate ? (
+                    <>
+                      <button
+                        type="button"
+                        className="min-h-9 rounded px-2 text-caption font-medium text-accent underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus"
+                        onClick={() => void pinMessage(message.id)}
+                      >
+                        Pin
+                      </button>
+                      <button
+                        type="button"
+                        className="min-h-9 rounded px-2 text-caption font-medium text-error underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus"
+                        onClick={() => void deleteMessage(message.id)}
+                      >
+                        Delete
+                      </button>
+                    </>
+                  ) : null}
                 </div>
               ) : null}
             </article>
           ))}
         </div>
+
+        {permissions.canAnnounce ? (
+          <form
+            className="border-t border-border px-4 py-4 sm:px-6"
+            onSubmit={(event) => {
+              event.preventDefault();
+              void sendReply();
+            }}
+          >
+            {replyTarget ? (
+              <div className="mb-2 flex items-center justify-between gap-3 rounded-lg bg-surface-muted px-3 py-2 text-body-sm">
+                <span className="min-w-0 break-words">
+                  Replying to {replyTarget.senderLabel}
+                </span>
+                <button
+                  type="button"
+                  className="shrink-0 text-caption font-medium text-accent underline-offset-2 hover:underline"
+                  onClick={() => setReplyTarget(null)}
+                >
+                  Cancel
+                </button>
+              </div>
+            ) : null}
+            <label htmlFor="admin-chat-reply" className="sr-only">
+              Reply in the chat
+            </label>
+            <textarea
+              id="admin-chat-reply"
+              ref={replyRef}
+              rows={3}
+              value={reply}
+              onChange={(event) => setReply(event.target.value)}
+              placeholder="Reply in the chat…"
+              className="w-full min-w-0 resize-none rounded-lg border border-border bg-background px-3 py-2 text-body-sm text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus"
+            />
+            <Button className="mt-3" type="submit" loading={sendingReply}>
+              Send reply
+            </Button>
+          </form>
+        ) : null}
       </section>
 
       <aside className="min-w-0 space-y-4" aria-label="Chat moderation controls">

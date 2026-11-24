@@ -21,8 +21,8 @@ export default async function AdminChatboxPage() {
       <div className="mx-auto max-w-6xl space-y-4">
         <h1 className="text-h2 text-text-primary">Community Chatbox</h1>
         <p className="text-body-sm text-text-muted">
-          Read the live community transcript and moderate the KIRAKITAH Chatbox. Participants
-          use the participant portal Chatbox.
+          Read the live community transcript, reply to participants, and moderate the
+          KIRAKITAH Chatbox. Participants use the participant portal Chatbox.
         </p>
         <AdminChatboxConsole permissions={permissions} />
       </div>
